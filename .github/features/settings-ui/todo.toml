@@ -1,0 +1,26 @@
+version = 1
+current_task_id = "P1-T3"
+
+[[tasks]]
+id = "P1-T1"
+title = "建立最小设置状态与运行时接入"
+status = "completed"
+plan = "plan-p1.md#p1-t1"
+commit = "c0893ff"
+note = "偏好持久化、声音显式 setter、三档 pointerSpeed 与启动应用已接入；12 tests/build/刷新持久化验证通过"
+
+[[tasks]]
+id = "P1-T2"
+title = "实现简洁设置面板"
+status = "completed"
+plan = "plan-p1.md#p1-t2"
+commit = "715c44e"
+note = "原生 dialog 设置面板、声音/三档灵敏度、快捷键隔离与 Pointer Lock 隐藏已接入；持久化/375px/真实交互回归通过"
+
+[[tasks]]
+id = "P1-T3"
+title = "更新用户文档并完整回归"
+status = "in_progress"
+plan = "plan-p1.md#p1-t3"
+commit = ""
+note = ""
