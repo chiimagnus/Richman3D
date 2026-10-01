@@ -1,5 +1,5 @@
 import { tileAt, type PropertyTile } from "../domain/board";
-import type { GameSnapshot, PlayerState } from "../domain/game";
+import type { GameSnapshot, PlayerId, PlayerState } from "../domain/game";
 
 export type HudActions = {
   readonly roll: () => void;
@@ -27,6 +27,7 @@ export class Hud {
   private readonly buyButton: HTMLButtonElement;
   private readonly skipButton: HTMLButtonElement;
   private readonly lookHint: HTMLElement;
+  private readonly previousCash = new Map<PlayerId, number>();
 
   constructor(container: HTMLElement, actions: HudActions) {
     this.root.className = "hud";
@@ -130,10 +131,8 @@ export class Hud {
     this.updatePlayerCard(this.humanCard, human, snapshot.activePlayerId === "human");
     this.updatePlayerCard(this.botCard, bot, snapshot.activePlayerId === "bot");
 
-    const humanCash = requiredElement(this.humanCard, "[data-human-cash]");
-    const botCash = requiredElement(this.botCard, "[data-bot-cash]");
-    humanCash.textContent = formatCash(human.cash);
-    botCash.textContent = formatCash(bot.cash);
+    this.updateCash(this.humanCard, human, "[data-human-cash]");
+    this.updateCash(this.botCard, bot, "[data-bot-cash]");
 
     this.renderEvents(snapshot);
 
@@ -182,6 +181,32 @@ export class Hud {
   ): void {
     card.classList.toggle("is-active", active);
     card.classList.toggle("is-bankrupt", player.cash < 0);
+  }
+
+  private updateCash(
+    card: HTMLElement,
+    player: PlayerState,
+    selector: string,
+  ): void {
+    const value = requiredElement(card, selector);
+    const previous = this.previousCash.get(player.id);
+    value.textContent = formatCash(player.cash);
+    this.previousCash.set(player.id, player.cash);
+
+    if (previous === undefined || previous === player.cash) {
+      return;
+    }
+
+    const delta = player.cash - previous;
+    const badge = document.createElement("span");
+    badge.className = `cash-delta ${delta > 0 ? "is-positive" : "is-negative"}`;
+    badge.textContent = `${delta > 0 ? "+" : "−"}¥${Math.abs(delta).toLocaleString("zh-CN")}`;
+    badge.setAttribute("aria-hidden", "true");
+    card.append(badge);
+
+    window.setTimeout(() => {
+      badge.remove();
+    }, 1_100);
   }
 
   private renderEvents(snapshot: GameSnapshot): void {

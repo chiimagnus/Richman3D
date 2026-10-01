@@ -1,6 +1,7 @@
 import { tileAt, type PropertyTile } from "../domain/board";
 import { Game, type GameSnapshot, type RollResult } from "../domain/game";
 import { World } from "../rendering/World";
+import { FeedbackLayer } from "../ui/FeedbackLayer";
 import { Hud } from "../ui/Hud";
 
 const BOT_CASH_RESERVE = 260;
@@ -9,6 +10,7 @@ export class GameApp {
   private readonly game = new Game();
   private readonly world: World;
   private readonly hud: Hud;
+  private readonly feedback: FeedbackLayer;
   private busy = false;
   private pointerLocked = false;
   private status = "你的回合，掷骰开始。";
@@ -27,6 +29,7 @@ export class GameApp {
       buy: () => this.buyHumanProperty(),
       skip: () => this.skipHumanProperty(),
     });
+    this.feedback = new FeedbackLayer(this.root, () => window.location.reload());
 
     this.world.sync(this.game.snapshot);
     this.world.canvas.addEventListener("click", this.enterFirstPerson);
@@ -37,6 +40,7 @@ export class GameApp {
     window.addEventListener("keydown", this.handleKeydown);
 
     this.render();
+    this.feedback.showTurn("human");
   }
 
   private readonly enterFirstPerson = (): void => {
@@ -85,12 +89,14 @@ export class GameApp {
     this.render();
 
     const result = this.game.roll();
+    await this.feedback.showDice(result.dice, "你");
     this.status = rollStatus("你", result);
     await this.world.moveHuman(result.path);
     this.world.syncOwnership(this.game.snapshot);
 
     this.busy = false;
     this.render();
+    this.feedback.showRollResult("你", result);
 
     if (this.game.snapshot.phase === "game_over") {
       this.finishGame();
@@ -126,6 +132,7 @@ export class GameApp {
     this.world.syncOwnership(this.game.snapshot);
     this.status = `已购买「${property.name}」。`;
     this.render();
+    this.feedback.showPurchase("你", property.name, property.price);
     void this.runBotTurn();
   }
 
@@ -145,6 +152,7 @@ export class GameApp {
     this.game.skipPurchase();
     this.status = `已跳过「${property.name}」。`;
     this.render();
+    this.feedback.showSkipped("你", property.name);
     void this.runBotTurn();
   }
 
@@ -161,11 +169,14 @@ export class GameApp {
     this.busy = true;
     this.status = "城市玩家正在行动…";
     this.render();
-    await pause(520);
+    this.feedback.showTurn("bot");
+    await pause(620);
 
     const result = this.game.roll();
+    await this.feedback.showDice(result.dice, "城市玩家");
     await this.world.moveBot(result.path);
     this.world.syncOwnership(this.game.snapshot);
+    this.feedback.showRollResult("城市玩家", result);
 
     if (
       this.game.snapshot.phase === "awaiting_purchase" &&
@@ -183,6 +194,7 @@ export class GameApp {
 
     this.status = "轮到你了。";
     this.render();
+    this.feedback.showTurn("human");
   }
 
   private resolveBotPurchase(): void {
@@ -202,9 +214,11 @@ export class GameApp {
       this.game.buyCurrentProperty();
       this.world.syncOwnership(this.game.snapshot);
       this.status = `城市玩家购买了「${property.name}」。`;
+      this.feedback.showPurchase("城市玩家", property.name, property.price);
     } else {
       this.game.skipPurchase();
       this.status = `城市玩家跳过了「${property.name}」。`;
+      this.feedback.showSkipped("城市玩家", property.name);
     }
   }
 
@@ -235,8 +249,9 @@ export class GameApp {
     const winner = snapshot.players.find(
       (player) => player.id === snapshot.winnerId,
     );
-    this.status = winner ? `${winner.name} 获胜。刷新页面可重新开始。` : "游戏结束。";
+    this.status = winner ? `${winner.name} 获胜。` : "游戏结束。";
     this.render();
+    this.feedback.showGameOver(snapshot.winnerId);
   }
 
   private render(): void {
