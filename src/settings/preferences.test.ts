@@ -71,6 +71,22 @@ describe("game preferences", () => {
     });
   });
 
+  it("keeps the game usable when browser storage is unavailable", () => {
+    const unavailableStorage = {
+      getItem: () => {
+        throw new Error("storage unavailable");
+      },
+      setItem: () => {
+        throw new Error("storage unavailable");
+      },
+    };
+
+    expect(loadPreferences(unavailableStorage)).toEqual(DEFAULT_PREFERENCES);
+    expect(() =>
+      savePreferences(DEFAULT_PREFERENCES, unavailableStorage),
+    ).not.toThrow();
+  });
+
   it("maps the three sensitivity levels to pointer speed", () => {
     expect(lookSensitivityScale("low")).toBe(0.7);
     expect(lookSensitivityScale("standard")).toBe(1);
