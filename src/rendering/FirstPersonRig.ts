@@ -62,6 +62,10 @@ export class FirstPersonRig {
     }
   }
 
+  setPointerSpeed(pointerSpeed: number): void {
+    this.controls.pointerSpeed = pointerSpeed;
+  }
+
   lock(): void {
     if (!this.controls.isLocked) {
       this.controls.lock();

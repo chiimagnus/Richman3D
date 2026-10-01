@@ -77,6 +77,10 @@ export class World {
     this.board.pulseTile(index, landing);
   }
 
+  setLookSensitivity(pointerSpeed: number): void {
+    this.firstPerson.setPointerSpeed(pointerSpeed);
+  }
+
   lockFirstPerson(): void {
     this.firstPerson.lock();
   }

@@ -2,15 +2,11 @@ import type { LandingResult, PlayerId } from "../domain/game";
 
 export class GameAudio {
   private context: AudioContext | null = null;
-  private enabled = true;
 
-  get isEnabled(): boolean {
-    return this.enabled;
-  }
+  constructor(private enabled = true) {}
 
-  toggle(): boolean {
-    this.enabled = !this.enabled;
-    return this.enabled;
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
   }
 
   playRoll(): void {

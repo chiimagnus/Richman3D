@@ -2,6 +2,12 @@ import { GameAudio } from "../audio/GameAudio";
 import { tileAt, type PropertyTile } from "../domain/board";
 import { Game, type GameSnapshot, type RollResult } from "../domain/game";
 import { World } from "../rendering/World";
+import {
+  loadPreferences,
+  lookSensitivityScale,
+  savePreferences,
+  type GamePreferences,
+} from "../settings/preferences";
 import { FeedbackLayer } from "../ui/FeedbackLayer";
 import { Hud } from "../ui/Hud";
 
@@ -9,7 +15,8 @@ const BOT_CASH_RESERVE = 260;
 
 export class GameApp {
   private readonly game = new Game();
-  private readonly audio = new GameAudio();
+  private preferences: GamePreferences = loadPreferences();
+  private readonly audio = new GameAudio(this.preferences.soundEnabled);
   private readonly world: World;
   private readonly hud: Hud;
   private readonly feedback: FeedbackLayer;
@@ -26,6 +33,9 @@ export class GameApp {
     this.root.append(worldLayer);
 
     this.world = new World(worldLayer);
+    this.world.setLookSensitivity(
+      lookSensitivityScale(this.preferences.lookSensitivity),
+    );
     this.hud = new Hud(this.root, {
       roll: () => void this.rollHuman(),
       buy: () => this.buyHumanProperty(),
@@ -260,11 +270,14 @@ export class GameApp {
   }
 
   private toggleSound(): void {
-    const enabled = this.audio.toggle();
-    this.status = enabled ? "声音已开启。" : "声音已关闭。";
+    const soundEnabled = !this.preferences.soundEnabled;
+    this.preferences = { ...this.preferences, soundEnabled };
+    this.audio.setEnabled(soundEnabled);
+    savePreferences(this.preferences);
+    this.status = soundEnabled ? "声音已开启。" : "声音已关闭。";
     this.render();
 
-    if (enabled) {
+    if (soundEnabled) {
       this.audio.playTurn(this.game.snapshot.activePlayerId);
     }
   }
@@ -287,7 +300,7 @@ export class GameApp {
     this.hud.render(this.game.snapshot, {
       busy: this.busy,
       pointerLocked: this.pointerLocked,
-      soundEnabled: this.audio.isEnabled,
+      soundEnabled: this.preferences.soundEnabled,
       status: this.status,
     });
   }
