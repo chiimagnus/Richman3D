@@ -19,7 +19,6 @@ export type GameSnapshot = {
   readonly pendingPropertyId: string | null;
   readonly winnerId: PlayerId | null;
   readonly lastRoll: readonly [number, number] | null;
-  readonly events: readonly string[];
 };
 
 export type LandingResult =
@@ -79,7 +78,6 @@ export class Game {
   private readonly random: () => number;
   private readonly players: MutablePlayer[];
   private readonly owners = new Map<string, PlayerId>();
-  private readonly events: string[] = [];
   private activePlayerIndex = 0;
   private phase: GamePhase = "awaiting_roll";
   private pendingPropertyId: string | null = null;
@@ -103,7 +101,6 @@ export class Game {
         position: 0,
       },
     ];
-    this.pushEvent("游戏开始：你的回合");
   }
 
   get snapshot(): GameSnapshot {
@@ -117,7 +114,6 @@ export class Game {
       pendingPropertyId: this.pendingPropertyId,
       winnerId: this.winnerId,
       lastRoll: this.lastRoll,
-      events: [...this.events],
     };
   }
 
@@ -141,12 +137,10 @@ export class Game {
     const passedStart = path.includes(0);
     if (passedStart) {
       player.cash += PASS_START_BONUS;
-      this.pushEvent(`${player.name} 经过起点，获得 ${PASS_START_BONUS}`);
     }
 
     player.position = to;
     this.lastRoll = dice;
-    this.pushEvent(`${player.name} 掷出 ${dice[0]} + ${dice[1]} = ${steps}`);
 
     const landing = this.resolveLanding(player);
 
@@ -178,7 +172,6 @@ export class Game {
 
     player.cash -= property.price;
     this.owners.set(property.id, player.id);
-    this.pushEvent(`${player.name} 以 ${property.price} 购买了「${property.name}」`);
     this.pendingPropertyId = null;
     this.advanceTurn();
   }
@@ -186,8 +179,7 @@ export class Game {
   skipPurchase(): void {
     this.requirePhase("awaiting_purchase");
 
-    const property = this.pendingProperty();
-    this.pushEvent(`${this.currentPlayer.name} 放弃购买「${property.name}」`);
+    this.pendingProperty();
     this.pendingPropertyId = null;
     this.advanceTurn();
   }
@@ -197,7 +189,6 @@ export class Game {
 
     switch (tile.type) {
       case "start": {
-        this.pushEvent(`${player.name} 回到「${tile.name}」`);
         this.advanceTurn();
         return { kind: "start" };
       }
@@ -207,7 +198,6 @@ export class Game {
 
       case "tax": {
         player.cash -= tile.amount;
-        this.pushEvent(`${player.name} 支付「${tile.name}」 ${tile.amount}`);
         const gameEnded = this.checkBankruptcy(player);
         if (!gameEnded) {
           this.advanceTurn();
@@ -224,7 +214,6 @@ export class Game {
         }
 
         player.cash += card.amount;
-        this.pushEvent(`${player.name}：${card.message}`);
         const gameEnded = this.checkBankruptcy(player);
         if (!gameEnded) {
           this.advanceTurn();
@@ -248,7 +237,6 @@ export class Game {
     if (!ownerId) {
       this.phase = "awaiting_purchase";
       this.pendingPropertyId = property.id;
-      this.pushEvent(`${property.name} 可购买：${property.price}`);
       return {
         kind: "property_available",
         propertyId: property.id,
@@ -257,7 +245,6 @@ export class Game {
     }
 
     if (ownerId === player.id) {
-      this.pushEvent(`${player.name} 回到自己的「${property.name}」`);
       this.advanceTurn();
       return { kind: "property_owned", propertyId: property.id };
     }
@@ -265,9 +252,6 @@ export class Game {
     const owner = this.playerById(ownerId);
     player.cash -= property.rent;
     owner.cash += property.rent;
-    this.pushEvent(
-      `${player.name} 向 ${owner.name} 支付「${property.name}」租金 ${property.rent}`,
-    );
 
     const gameEnded = this.checkBankruptcy(player);
     if (!gameEnded) {
@@ -304,7 +288,6 @@ export class Game {
     this.phase = "game_over";
     this.pendingPropertyId = null;
     this.winnerId = this.players.find((candidate) => candidate.id !== player.id)?.id ?? null;
-    this.pushEvent(`${player.name} 破产，游戏结束`);
     return true;
   }
 
@@ -316,7 +299,6 @@ export class Game {
     this.activePlayerIndex = (this.activePlayerIndex + 1) % this.players.length;
     this.phase = "awaiting_roll";
     this.pendingPropertyId = null;
-    this.pushEvent(`轮到 ${this.currentPlayer.name}`);
   }
 
   private requirePhase(expected: GamePhase): void {
@@ -355,10 +337,4 @@ export class Game {
     return player;
   }
 
-  private pushEvent(message: string): void {
-    this.events.push(message);
-    if (this.events.length > 12) {
-      this.events.shift();
-    }
-  }
 }

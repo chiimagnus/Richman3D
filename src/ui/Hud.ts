@@ -168,7 +168,9 @@ export class Hud {
   ): void {
     const value = requiredElement(container, selector);
     const previous = this.previousCash.get(player.id);
-    value.textContent = formatCash(player.cash);
+    const formattedCash = formatCash(player.cash);
+    value.textContent = formattedCash;
+    container.setAttribute("aria-label", `${player.name} ${formattedCash}`);
     this.previousCash.set(player.id, player.cash);
     container.classList.toggle("is-bankrupt", player.cash < 0);
 

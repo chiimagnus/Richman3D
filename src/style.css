@@ -282,6 +282,7 @@ kbd {
 }
 
 .hud[data-pointer-locked="true"] .hud-tools {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
 }
