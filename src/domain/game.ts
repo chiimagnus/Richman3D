@@ -1,4 +1,4 @@
-import { BOARD, tileAt, type BoardTile, type PropertyTile } from "./board";
+import { BOARD, tileAt, type PropertyTile } from "./board";
 
 export type PlayerId = "human" | "bot";
 
@@ -9,7 +9,6 @@ export type PlayerState = {
   readonly name: string;
   readonly cash: number;
   readonly position: number;
-  readonly color: string;
 };
 
 export type GameSnapshot = {
@@ -17,7 +16,6 @@ export type GameSnapshot = {
   readonly activePlayerId: PlayerId;
   readonly phase: GamePhase;
   readonly owners: Readonly<Record<string, PlayerId>>;
-  readonly currentTile: BoardTile;
   readonly pendingPropertyId: string | null;
   readonly winnerId: PlayerId | null;
   readonly lastRoll: readonly [number, number] | null;
@@ -61,7 +59,6 @@ type MutablePlayer = {
   name: string;
   cash: number;
   position: number;
-  color: string;
 };
 
 type GameOptions = {
@@ -98,14 +95,12 @@ export class Game {
         name: "你",
         cash: startingCash,
         position: 0,
-        color: "#57d4ff",
       },
       {
         id: "bot",
         name: "城市玩家",
         cash: startingCash,
         position: 0,
-        color: "#ffb75e",
       },
     ];
     this.pushEvent("游戏开始：你的回合");
@@ -119,7 +114,6 @@ export class Game {
       activePlayerId: currentPlayer.id,
       phase: this.phase,
       owners: Object.fromEntries(this.owners.entries()),
-      currentTile: tileAt(currentPlayer.position),
       pendingPropertyId: this.pendingPropertyId,
       winnerId: this.winnerId,
       lastRoll: this.lastRoll,

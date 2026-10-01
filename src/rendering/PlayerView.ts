@@ -6,7 +6,7 @@ import { animatePositions } from "./motion";
 const PAWN_OFFSET = new THREE.Vector3(0.72, 0.18, -0.72);
 
 export class PlayerView {
-  readonly object = new THREE.Group();
+  private readonly object = new THREE.Group();
 
   constructor(scene: THREE.Scene, color: string) {
     const body = new THREE.Mesh(

@@ -17,7 +17,7 @@ const PLAYER_COLORS: Record<PlayerId, number> = {
 };
 
 export class BoardView {
-  readonly object = new THREE.Group();
+  private readonly object = new THREE.Group();
 
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
 

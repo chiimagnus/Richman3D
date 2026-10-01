@@ -4,7 +4,7 @@ import { BOARD } from "../domain/board";
 
 export const TILE_SPACING = 4.2;
 export const TILE_SIZE = 3.7;
-export const BOARD_GRID_SIZE = 6;
+const BOARD_GRID_SIZE = 6;
 
 const HALF_GRID = (BOARD_GRID_SIZE - 1) / 2;
 

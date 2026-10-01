@@ -16,10 +16,6 @@ export class FirstPersonRig {
     this.controls = new PointerLockControls(camera, canvas);
   }
 
-  get isLocked(): boolean {
-    return this.controls.isLocked;
-  }
-
   setPosition(index: number): void {
     const position = boardPosition(index);
     this.camera.position.set(position.x, EYE_HEIGHT, position.z);
