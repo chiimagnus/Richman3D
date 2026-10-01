@@ -65,14 +65,6 @@ export class World {
     this.board.syncOwnership(snapshot);
   }
 
-  setHumanPosition(index: number): void {
-    this.firstPerson.setPosition(index);
-  }
-
-  setBotPosition(index: number): void {
-    this.bot.setPosition(index);
-  }
-
   moveHuman(path: readonly number[]): Promise<void> {
     return this.firstPerson.moveAlong(path);
   }

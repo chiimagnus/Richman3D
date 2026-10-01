@@ -2,59 +2,76 @@ import * as THREE from "three";
 
 type PositionWriter = (position: THREE.Vector3) => void;
 
-export async function animatePositions(
+export function animatePositions(
   points: readonly THREE.Vector3[],
   write: PositionWriter,
   durationPerSegment = 220,
 ): Promise<void> {
-  if (points.length === 0) {
-    return;
+  const firstPoint = points[0];
+  const lastPoint = points.at(-1);
+
+  if (!firstPoint || !lastPoint) {
+    return Promise.resolve();
   }
 
-  if (prefersReducedMotion() || durationPerSegment <= 0) {
-    const lastPoint = points.at(-1);
-    if (lastPoint) {
-      write(lastPoint);
-    }
-    return;
+  if (points.length === 1 || prefersReducedMotion() || durationPerSegment <= 0) {
+    write(lastPoint);
+    return Promise.resolve();
   }
 
-  for (let index = 0; index < points.length; index += 1) {
-    const target = points[index];
-    if (!target) {
-      continue;
-    }
+  const segmentCount = points.length - 1;
+  const totalDuration = segmentCount * durationPerSegment;
 
-    const previous = index === 0 ? undefined : points[index - 1];
-    if (!previous) {
-      write(target);
-      continue;
-    }
-
-    await animateSegment(previous, target, write, durationPerSegment);
-  }
-}
-
-function animateSegment(
-  from: THREE.Vector3,
-  to: THREE.Vector3,
-  write: PositionWriter,
-  duration: number,
-): Promise<void> {
   return new Promise((resolve) => {
     const startedAt = performance.now();
     const current = new THREE.Vector3();
+    let finished = false;
+
+    const finish = (): void => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      write(lastPoint);
+      resolve();
+    };
+
+    const fallbackTimer = window.setTimeout(finish, totalDuration + 120);
 
     const frame = (now: number): void => {
-      const rawProgress = Math.min((now - startedAt) / duration, 1);
-      const eased = rawProgress * rawProgress * (3 - 2 * rawProgress);
+      if (finished) {
+        return;
+      }
+
+      const elapsed = Math.min(now - startedAt, totalDuration);
+      const pathProgress = elapsed / durationPerSegment;
+      const segmentIndex = Math.min(
+        Math.floor(pathProgress),
+        segmentCount - 1,
+      );
+      const from = points[segmentIndex];
+      const to = points[segmentIndex + 1];
+
+      if (!from || !to) {
+        window.clearTimeout(fallbackTimer);
+        finish();
+        return;
+      }
+
+      const linearProgress =
+        elapsed >= totalDuration ? 1 : pathProgress - segmentIndex;
+      const eased =
+        linearProgress * linearProgress * (3 - 2 * linearProgress);
+
       current.lerpVectors(from, to, eased);
       write(current);
 
-      if (rawProgress < 1) {
+      if (elapsed < totalDuration) {
         requestAnimationFrame(frame);
       } else {
-        resolve();
+        window.clearTimeout(fallbackTimer);
+        finish();
       }
     };
 
