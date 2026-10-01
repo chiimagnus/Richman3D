@@ -44,7 +44,13 @@ export class GameApp {
   };
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
-    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+    if (
+      event.repeat ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      isNativeInteractiveTarget(event.target)
+    ) {
       return;
     }
 
@@ -259,6 +265,15 @@ function rollStatus(actor: string, result: RollResult): string {
     case "start":
       return `${actor}移动 ${result.steps} 格，回到起点。`;
   }
+}
+
+function isNativeInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.closest(
+      "button, input, select, textarea, a[href], [contenteditable='true']",
+    ) !== null
+  );
 }
 
 function pause(milliseconds: number): Promise<void> {
