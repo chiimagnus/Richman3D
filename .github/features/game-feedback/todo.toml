@@ -1,0 +1,26 @@
+version = 1
+current_task_id = "P1-T1"
+
+[[tasks]]
+id = "P1-T1"
+title = "增加可感知的 UI 回合与结算反馈"
+status = "in_progress"
+plan = "plan-p1.md#p1-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P1-T2"
+title = "增加空间节奏与音效反馈"
+status = "pending"
+plan = "plan-p1.md#p1-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P1-T3"
+title = "更新玩法文档并完成真实浏览器回归"
+status = "pending"
+plan = "plan-p1.md#p1-t3"
+commit = ""
+note = ""
