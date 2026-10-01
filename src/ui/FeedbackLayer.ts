@@ -14,6 +14,7 @@ export class FeedbackLayer {
   private readonly diceActor: HTMLElement;
   private readonly diceLeft: HTMLElement;
   private readonly diceRight: HTMLElement;
+  private readonly diceAnnouncement: HTMLElement;
   private readonly eventCard: HTMLElement;
   private readonly eventKicker: HTMLElement;
   private readonly eventTitle: HTMLElement;
@@ -34,12 +35,13 @@ export class FeedbackLayer {
         <strong data-turn-title>你的回合</strong>
       </div>
 
-      <div class="dice-stage" data-feedback-dice hidden aria-live="polite">
+      <div class="dice-stage" data-feedback-dice hidden>
         <span class="feedback-kicker" data-dice-actor>你掷骰</span>
         <div class="dice-pair" aria-hidden="true">
           <span class="feedback-die" data-die-left>⚀</span>
           <span class="feedback-die" data-die-right>⚀</span>
         </div>
+        <span class="sr-only" data-dice-announcement aria-live="polite"></span>
       </div>
 
       <div class="event-card" data-feedback-event hidden aria-live="polite">
@@ -67,6 +69,7 @@ export class FeedbackLayer {
     this.diceActor = requiredElement(this.root, "[data-dice-actor]");
     this.diceLeft = requiredElement(this.root, "[data-die-left]");
     this.diceRight = requiredElement(this.root, "[data-die-right]");
+    this.diceAnnouncement = requiredElement(this.root, "[data-dice-announcement]");
     this.eventCard = requiredElement(this.root, "[data-feedback-event]");
     this.eventKicker = requiredElement(this.root, "[data-event-kicker]");
     this.eventTitle = requiredElement(this.root, "[data-event-title]");
@@ -95,7 +98,7 @@ export class FeedbackLayer {
     this.turnTimer = window.setTimeout(() => {
       this.turnBanner.hidden = true;
       this.turnTimer = null;
-    }, reducedMotion() ? 80 : 850);
+    }, 850);
   }
 
   async showDice(
@@ -103,6 +106,7 @@ export class FeedbackLayer {
     actor: string,
   ): Promise<void> {
     this.diceActor.textContent = `${actor}掷骰`;
+    this.diceAnnouncement.textContent = "";
     this.diceStage.hidden = false;
     this.diceStage.classList.add("is-rolling");
 
@@ -117,9 +121,10 @@ export class FeedbackLayer {
     }
 
     this.setDice(dice[0], dice[1]);
+    this.diceAnnouncement.textContent = `${actor}掷出 ${dice[0]} 加 ${dice[1]}，共 ${dice[0] + dice[1]}`;
     this.diceStage.classList.remove("is-rolling");
     this.diceStage.classList.add("is-settled");
-    await wait(reducedMotion() ? 40 : 260);
+    await wait(reducedMotion() ? 360 : 260);
     this.diceStage.classList.remove("is-settled");
     this.diceStage.hidden = true;
   }
@@ -222,16 +227,12 @@ export class FeedbackLayer {
     this.eventTimer = window.setTimeout(() => {
       this.eventCard.hidden = true;
       this.eventTimer = null;
-    }, reducedMotion() ? 120 : 1750);
+    }, 1750);
   }
 
   private setDice(left: number, right: number): void {
     this.diceLeft.textContent = diceFace(left);
     this.diceRight.textContent = diceFace(right);
-    this.diceStage.setAttribute(
-      "aria-label",
-      `${this.diceActor.textContent ?? "掷骰"}：${left} 加 ${right}，共 ${left + right}`,
-    );
   }
 }
 
