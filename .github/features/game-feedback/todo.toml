@@ -1,26 +1,26 @@
 version = 1
-current_task_id = "P1-T1"
+current_task_id = ""
 
 [[tasks]]
 id = "P1-T1"
 title = "增加可感知的 UI 回合与结算反馈"
-status = "in_progress"
+status = "completed"
 plan = "plan-p1.md#p1-t1"
-commit = ""
-note = ""
+commit = "f4ba2f9"
+note = "骰子、回合横幅、落地事件、资金 delta、购买反馈和胜负结算已接入；真实浏览器验证通过"
 
 [[tasks]]
 id = "P1-T2"
 title = "增加空间节奏与音效反馈"
-status = "pending"
+status = "completed"
 plan = "plan-p1.md#p1-t2"
-commit = ""
-note = ""
+commit = "f406c69"
+note = "逐格步进/弹跳、地块脉冲、归属标记弹出、Web Audio 和静音开关已接入；前台与后台回归通过"
 
 [[tasks]]
 id = "P1-T3"
 title = "更新玩法文档并完成真实浏览器回归"
-status = "pending"
+status = "completed"
 plan = "plan-p1.md#p1-t3"
-commit = ""
-note = ""
+commit = "21a72cd"
+note = "玩法文档已更新；真实浏览器验证 Pointer Lock、静音、键盘掷骰、完整回合、overlay 自动结束、无运行期错误和无横向溢出"
