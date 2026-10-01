@@ -1,11 +1,21 @@
 import * as THREE from "three";
 
-type PositionWriter = (position: THREE.Vector3) => void;
+export type MotionFrame = {
+  readonly segmentIndex: number;
+  readonly segmentProgress: number;
+};
+
+type PositionWriter = (position: THREE.Vector3, frame: MotionFrame) => void;
+
+type MotionOptions = {
+  readonly durationPerSegment?: number;
+  readonly onSegment?: (segmentIndex: number) => void;
+};
 
 export function animatePositions(
   points: readonly THREE.Vector3[],
   write: PositionWriter,
-  durationPerSegment = 220,
+  options: MotionOptions = {},
 ): Promise<void> {
   const firstPoint = points[0];
   const lastPoint = points.at(-1);
@@ -14,18 +24,28 @@ export function animatePositions(
     return Promise.resolve();
   }
 
-  if (points.length === 1 || prefersReducedMotion() || durationPerSegment <= 0) {
-    write(lastPoint);
+  const segmentCount = Math.max(points.length - 1, 0);
+  const durationPerSegment = options.durationPerSegment ?? 220;
+
+  if (
+    segmentCount === 0 ||
+    prefersReducedMotion() ||
+    durationPerSegment <= 0
+  ) {
+    write(lastPoint, {
+      segmentIndex: Math.max(segmentCount - 1, 0),
+      segmentProgress: 1,
+    });
     return Promise.resolve();
   }
 
-  const segmentCount = points.length - 1;
   const totalDuration = segmentCount * durationPerSegment;
 
   return new Promise((resolve) => {
     const startedAt = performance.now();
     const current = new THREE.Vector3();
     let finished = false;
+    let lastSegment = -1;
 
     const finish = (): void => {
       if (finished) {
@@ -33,7 +53,10 @@ export function animatePositions(
       }
 
       finished = true;
-      write(lastPoint);
+      write(lastPoint, {
+        segmentIndex: segmentCount - 1,
+        segmentProgress: 1,
+      });
       resolve();
     };
 
@@ -59,13 +82,21 @@ export function animatePositions(
         return;
       }
 
+      if (segmentIndex !== lastSegment) {
+        lastSegment = segmentIndex;
+        options.onSegment?.(segmentIndex);
+      }
+
       const linearProgress =
         elapsed >= totalDuration ? 1 : pathProgress - segmentIndex;
       const eased =
         linearProgress * linearProgress * (3 - 2 * linearProgress);
 
       current.lerpVectors(from, to, eased);
-      write(current);
+      write(current, {
+        segmentIndex,
+        segmentProgress: linearProgress,
+      });
 
       if (elapsed < totalDuration) {
         requestAnimationFrame(frame);

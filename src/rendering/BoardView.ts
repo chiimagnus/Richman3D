@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { BOARD, type BoardTile } from "../domain/board";
-import type { GameSnapshot, PlayerId } from "../domain/game";
+import type { GameSnapshot, LandingResult, PlayerId } from "../domain/game";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 
 const GROUP_COLORS = {
@@ -20,6 +20,9 @@ export class BoardView {
   private readonly object = new THREE.Group();
 
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
+  private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
+  private readonly tilePulses = new Map<number, number>();
+  private readonly markerPops = new Map<THREE.Mesh, number>();
 
   constructor(scene: THREE.Scene) {
     this.object.name = "board";
@@ -38,7 +41,10 @@ export class BoardView {
       const existing = this.ownerMarkers.get(tile.id);
 
       if (!ownerId) {
-        existing?.removeFromParent();
+        if (existing) {
+          this.markerPops.delete(existing);
+          existing.removeFromParent();
+        }
         this.ownerMarkers.delete(tile.id);
         continue;
       }
@@ -58,8 +64,62 @@ export class BoardView {
         0.72,
         position.z - TILE_SIZE * 0.32,
       );
+      if (!reducedMotion()) {
+        marker.scale.setScalar(0.01);
+        this.markerPops.set(marker, performance.now());
+      }
       this.object.add(marker);
       this.ownerMarkers.set(tile.id, marker);
+    }
+  }
+
+  pulseTile(index: number, landing: LandingResult): void {
+    const material = this.tileMaterials.get(index);
+    if (!material) {
+      return;
+    }
+
+    material.emissive.setHex(pulseColor(landing));
+
+    if (reducedMotion()) {
+      material.emissiveIntensity = 0.6;
+      window.setTimeout(() => {
+        material.emissiveIntensity = 0;
+        material.emissive.setHex(0x000000);
+      }, 120);
+      return;
+    }
+
+    this.tilePulses.set(index, performance.now());
+  }
+
+  update(now: number): void {
+    for (const [index, startedAt] of this.tilePulses) {
+      const material = this.tileMaterials.get(index);
+      if (!material) {
+        this.tilePulses.delete(index);
+        continue;
+      }
+
+      const progress = Math.min((now - startedAt) / 720, 1);
+      material.emissiveIntensity = Math.sin(Math.PI * progress) * 1.25;
+
+      if (progress >= 1) {
+        material.emissiveIntensity = 0;
+        material.emissive.setHex(0x000000);
+        this.tilePulses.delete(index);
+      }
+    }
+
+    for (const [marker, startedAt] of this.markerPops) {
+      const progress = Math.min((now - startedAt) / 300, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      marker.scale.setScalar(Math.max(eased, 0.01));
+
+      if (progress >= 1) {
+        marker.scale.setScalar(1);
+        this.markerPops.delete(marker);
+      }
     }
   }
 
@@ -69,14 +129,16 @@ export class BoardView {
       const tileGroup = new THREE.Group();
       tileGroup.position.copy(position);
 
+      const baseMaterial = new THREE.MeshStandardMaterial({
+        color: tileColor(tile),
+        roughness: 0.72,
+        metalness: 0.08,
+      });
       const base = new THREE.Mesh(
         new THREE.BoxGeometry(TILE_SIZE, 0.32, TILE_SIZE),
-        new THREE.MeshStandardMaterial({
-          color: tileColor(tile),
-          roughness: 0.72,
-          metalness: 0.08,
-        }),
+        baseMaterial,
       );
+      this.tileMaterials.set(index, baseMaterial);
       base.castShadow = true;
       base.receiveShadow = true;
       tileGroup.add(base);
@@ -173,6 +235,29 @@ export class BoardView {
     marker.castShadow = true;
     return marker;
   }
+}
+
+function pulseColor(landing: LandingResult): number {
+  switch (landing.kind) {
+    case "rent":
+    case "tax":
+      return 0xff5f6d;
+    case "chance":
+      return landing.amount >= 0 ? 0x62e2aa : 0xb58cff;
+    case "property_available":
+      return 0xffc66e;
+    case "property_owned":
+    case "start":
+      return 0x62e2aa;
+  }
+}
+
+function reducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 }
 
 function tileColor(tile: BoardTile): number {

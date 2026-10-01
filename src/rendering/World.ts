@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { GameSnapshot } from "../domain/game";
+import type { GameSnapshot, LandingResult } from "../domain/game";
 import { BoardView } from "./BoardView";
 import { FirstPersonRig } from "./FirstPersonRig";
 import { PlayerView } from "./PlayerView";
@@ -65,12 +65,16 @@ export class World {
     this.board.syncOwnership(snapshot);
   }
 
-  moveHuman(path: readonly number[]): Promise<void> {
-    return this.firstPerson.moveAlong(path);
+  moveHuman(path: readonly number[], onStep?: () => void): Promise<void> {
+    return this.firstPerson.moveAlong(path, onStep);
   }
 
-  moveBot(path: readonly number[]): Promise<void> {
-    return this.bot.moveAlong(path);
+  moveBot(path: readonly number[], onStep?: () => void): Promise<void> {
+    return this.bot.moveAlong(path, onStep);
+  }
+
+  landOnTile(index: number, landing: LandingResult): void {
+    this.board.pulseTile(index, landing);
   }
 
   lockFirstPerson(): void {
@@ -85,7 +89,8 @@ export class World {
     return this.firstPerson.onLockChange(listener);
   }
 
-  private readonly render = (): void => {
+  private readonly render = (time: number): void => {
+    this.board.update(time);
     this.renderer.render(this.scene, this.camera);
   };
 

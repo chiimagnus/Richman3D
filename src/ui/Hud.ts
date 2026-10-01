@@ -5,11 +5,13 @@ export type HudActions = {
   readonly roll: () => void;
   readonly buy: () => void;
   readonly skip: () => void;
+  readonly toggleSound: () => void;
 };
 
 export type HudRenderOptions = {
   readonly busy: boolean;
   readonly pointerLocked: boolean;
+  readonly soundEnabled: boolean;
   readonly status: string;
 };
 
@@ -26,6 +28,7 @@ export class Hud {
   private readonly rollButton: HTMLButtonElement;
   private readonly buyButton: HTMLButtonElement;
   private readonly skipButton: HTMLButtonElement;
+  private readonly soundButton: HTMLButtonElement;
   private readonly lookHint: HTMLElement;
   private readonly previousCash = new Map<PlayerId, number>();
 
@@ -41,6 +44,7 @@ export class Hud {
           <span class="meta-label">当前回合</span>
           <strong data-turn>—</strong>
           <span data-phase>等待开始</span>
+          <button class="sound-toggle" type="button" data-sound aria-pressed="true">声音 开</button>
         </div>
       </header>
 
@@ -106,11 +110,13 @@ export class Hud {
     this.rollButton = requiredElement<HTMLButtonElement>(this.root, "[data-roll]");
     this.buyButton = requiredElement<HTMLButtonElement>(this.root, "[data-buy]");
     this.skipButton = requiredElement<HTMLButtonElement>(this.root, "[data-skip]");
+    this.soundButton = requiredElement<HTMLButtonElement>(this.root, "[data-sound]");
     this.lookHint = requiredElement(this.root, "[data-look-hint]");
 
     this.rollButton.addEventListener("click", actions.roll);
     this.buyButton.addEventListener("click", actions.buy);
     this.skipButton.addEventListener("click", actions.skip);
+    this.soundButton.addEventListener("click", actions.toggleSound);
   }
 
   render(snapshot: GameSnapshot, options: HudRenderOptions): void {
@@ -162,6 +168,12 @@ export class Hud {
     }
 
     this.root.dataset.pointerLocked = String(options.pointerLocked);
+    this.soundButton.textContent = options.soundEnabled ? "声音 开" : "声音 关";
+    this.soundButton.setAttribute("aria-pressed", String(options.soundEnabled));
+    this.soundButton.setAttribute(
+      "aria-label",
+      options.soundEnabled ? "关闭游戏音效" : "开启游戏音效",
+    );
     this.lookHint.textContent = options.pointerLocked
       ? "第一人称环视中 · Esc 退出"
       : "点击棋盘进入第一人称环视 · Esc 退出";

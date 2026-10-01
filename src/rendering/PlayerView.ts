@@ -50,7 +50,10 @@ export class PlayerView {
     this.object.position.copy(boardPosition(index).add(PAWN_OFFSET));
   }
 
-  async moveAlong(path: readonly number[]): Promise<void> {
+  async moveAlong(
+    path: readonly number[],
+    onStep?: () => void,
+  ): Promise<void> {
     const points = [
       this.object.position.clone(),
       ...worldPath(path, PAWN_OFFSET.y).map((position) =>
@@ -58,8 +61,13 @@ export class PlayerView {
       ),
     ];
 
-    await animatePositions(points, (position) => {
-      this.object.position.copy(position);
-    });
+    await animatePositions(
+      points,
+      (position, frame) => {
+        this.object.position.copy(position);
+        this.object.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.24;
+      },
+      { onSegment: () => onStep?.() },
+    );
   }
 }

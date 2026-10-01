@@ -22,7 +22,10 @@ export class FirstPersonRig {
     this.faceBoardDirection(index);
   }
 
-  async moveAlong(path: readonly number[]): Promise<void> {
+  async moveAlong(
+    path: readonly number[],
+    onStep?: () => void,
+  ): Promise<void> {
     const points = [
       this.camera.position.clone(),
       ...worldPath(path, EYE_HEIGHT),
@@ -31,22 +34,27 @@ export class FirstPersonRig {
     const movement = new THREE.Vector3();
     const lookTarget = new THREE.Vector3();
 
-    await animatePositions(points, (position) => {
-      this.camera.position.copy(position);
+    await animatePositions(
+      points,
+      (position, frame) => {
+        this.camera.position.copy(position);
+        this.camera.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.08;
 
-      if (!this.controls.isLocked) {
-        movement.copy(position).sub(previous);
-        movement.y = 0;
+        if (!this.controls.isLocked) {
+          movement.copy(position).sub(previous);
+          movement.y = 0;
 
-        if (movement.lengthSq() > 0.0001) {
-          movement.normalize();
-          lookTarget.copy(position).add(movement);
-          this.camera.lookAt(lookTarget);
+          if (movement.lengthSq() > 0.0001) {
+            movement.normalize();
+            lookTarget.copy(position).add(movement);
+            this.camera.lookAt(lookTarget);
+          }
         }
-      }
 
-      previous.copy(position);
-    });
+        previous.copy(position);
+      },
+      { onSegment: () => onStep?.() },
+    );
 
     const destination = path.at(-1);
     if (destination !== undefined && !this.controls.isLocked) {

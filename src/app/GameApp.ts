@@ -1,3 +1,4 @@
+import { GameAudio } from "../audio/GameAudio";
 import { tileAt, type PropertyTile } from "../domain/board";
 import { Game, type GameSnapshot, type RollResult } from "../domain/game";
 import { World } from "../rendering/World";
@@ -8,6 +9,7 @@ const BOT_CASH_RESERVE = 260;
 
 export class GameApp {
   private readonly game = new Game();
+  private readonly audio = new GameAudio();
   private readonly world: World;
   private readonly hud: Hud;
   private readonly feedback: FeedbackLayer;
@@ -28,6 +30,7 @@ export class GameApp {
       roll: () => void this.rollHuman(),
       buy: () => this.buyHumanProperty(),
       skip: () => this.skipHumanProperty(),
+      toggleSound: () => this.toggleSound(),
     });
     this.feedback = new FeedbackLayer(this.root, () => window.location.reload());
 
@@ -88,10 +91,13 @@ export class GameApp {
     this.status = "正在掷骰…";
     this.render();
 
+    this.audio.playRoll();
     const result = this.game.roll();
     await this.feedback.showDice(result.dice, "你");
     this.status = rollStatus("你", result);
-    await this.world.moveHuman(result.path);
+    await this.world.moveHuman(result.path, () => this.audio.playStep());
+    this.world.landOnTile(result.to, result.landing);
+    this.audio.playLanding(result.landing);
     this.world.syncOwnership(this.game.snapshot);
 
     this.busy = false;
@@ -132,6 +138,7 @@ export class GameApp {
     this.world.syncOwnership(this.game.snapshot);
     this.status = `已购买「${property.name}」。`;
     this.render();
+    this.audio.playPurchase();
     this.feedback.showPurchase("你", property.name, property.price);
     void this.runBotTurn();
   }
@@ -170,11 +177,15 @@ export class GameApp {
     this.status = "城市玩家正在行动…";
     this.render();
     this.feedback.showTurn("bot");
+    this.audio.playTurn("bot");
     await pause(620);
 
+    this.audio.playRoll();
     const result = this.game.roll();
     await this.feedback.showDice(result.dice, "城市玩家");
-    await this.world.moveBot(result.path);
+    await this.world.moveBot(result.path, () => this.audio.playStep());
+    this.world.landOnTile(result.to, result.landing);
+    this.audio.playLanding(result.landing);
     this.world.syncOwnership(this.game.snapshot);
     this.feedback.showRollResult("城市玩家", result);
 
@@ -195,6 +206,7 @@ export class GameApp {
     this.status = "轮到你了。";
     this.render();
     this.feedback.showTurn("human");
+    this.audio.playTurn("human");
   }
 
   private resolveBotPurchase(): void {
@@ -214,6 +226,7 @@ export class GameApp {
       this.game.buyCurrentProperty();
       this.world.syncOwnership(this.game.snapshot);
       this.status = `城市玩家购买了「${property.name}」。`;
+      this.audio.playPurchase();
       this.feedback.showPurchase("城市玩家", property.name, property.price);
     } else {
       this.game.skipPurchase();
@@ -241,6 +254,16 @@ export class GameApp {
       : null;
   }
 
+  private toggleSound(): void {
+    const enabled = this.audio.toggle();
+    this.status = enabled ? "声音已开启。" : "声音已关闭。";
+    this.render();
+
+    if (enabled) {
+      this.audio.playTurn(this.game.snapshot.activePlayerId);
+    }
+  }
+
   private finishGame(): void {
     this.busy = false;
     this.world.unlockFirstPerson();
@@ -251,6 +274,7 @@ export class GameApp {
     );
     this.status = winner ? `${winner.name} 获胜。` : "游戏结束。";
     this.render();
+    this.audio.playGameOver(snapshot.winnerId);
     this.feedback.showGameOver(snapshot.winnerId);
   }
 
@@ -258,6 +282,7 @@ export class GameApp {
     this.hud.render(this.game.snapshot, {
       busy: this.busy,
       pointerLocked: this.pointerLocked,
+      soundEnabled: this.audio.isEnabled,
       status: this.status,
     });
   }

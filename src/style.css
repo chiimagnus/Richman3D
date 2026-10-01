@@ -163,6 +163,29 @@ button:focus-visible,
   font-size: 0.76rem;
 }
 
+.sound-toggle {
+  min-height: 28px;
+  margin-top: 5px;
+  border: 1px solid rgb(170 219 233 / 16%);
+  border-radius: 999px;
+  padding: 0 9px;
+  color: #bdd0d9;
+  background: rgb(255 255 255 / 5%);
+  font-size: 0.66rem;
+  font-weight: 720;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.sound-toggle[aria-pressed="false"] {
+  color: #80939d;
+  opacity: 0.78;
+}
+
+.sound-toggle:hover {
+  background: rgb(255 255 255 / 9%);
+}
+
 .player-stack {
   align-self: start;
   display: grid;
