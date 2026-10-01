@@ -1,0 +1,59 @@
+version = 1
+current_task_id = ""
+
+[[tasks]]
+id = "P1-T1"
+title = "建立最小现代 TypeScript 工程"
+status = "completed"
+plan = "plan-p1.md#p1-t1"
+commit = "0dea2e0"
+note = "typecheck/test/build 通过；生产依赖 npm audit 为 0 漏洞"
+
+[[tasks]]
+id = "P1-T2"
+title = "实现可测试的大富翁规则内核"
+status = "completed"
+plan = "plan-p1.md#p1-t2"
+commit = "5e88e3d"
+note = "5 个规则测试、typecheck、build 通过；另有 4de392f 仅忽略 CodeGraph 本地索引"
+
+[[tasks]]
+id = "P2-T1"
+title = "建立职责分离的 Three.js 世界与第一人称视角"
+status = "completed"
+plan = "plan-p2.md#p2-t1"
+commit = "243a518"
+note = "7 个测试、typecheck/build 通过；修复开局电脑棋子与第一人称镜头重叠"
+
+[[tasks]]
+id = "P2-T2"
+title = "接通 HUD、回合协调和电脑玩家"
+status = "completed"
+plan = "plan-p2.md#p2-t2"
+commit = "d827181"
+note = "7 tests/typecheck/build 通过；真实 Helium 验证完整人机回合、购买地产、相机拐角朝向与 Pointer Lock"
+
+[[tasks]]
+id = "P3-T1"
+title = "核对用户任务与文档结构"
+status = "completed"
+plan = "plan-p3.md#p3-t1"
+commit = ""
+no_commit_reason = "只读文档与源码审计，不产生长期文件改动"
+note = "neat-freak 预检完成；仓库无长期 Markdown；CodeGraph 已核对用户规则、操作与结束条件"
+
+[[tasks]]
+id = "P3-T2"
+title = "编写入口与玩法指南"
+status = "completed"
+plan = "plan-p3.md#p3-t2"
+commit = "7c3ef93"
+note = "新增 README.md 与 docs/how-to-play.md；README 只负责入口，玩法页统一拥有规则、界面和快捷键"
+
+[[tasks]]
+id = "P3-T3"
+title = "验证并收尾"
+status = "completed"
+plan = "plan-p3.md#p3-t3"
+commit = "7c3ef93"
+note = "neat-freak 链接核销、Markdown 实际渲染、typecheck、7 tests、build、diff check 全通过"
