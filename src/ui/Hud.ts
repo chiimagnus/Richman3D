@@ -17,16 +17,14 @@ export type HudRenderOptions = {
 
 export class Hud {
   private readonly root = document.createElement("div");
-  private readonly turnValue: HTMLElement;
-  private readonly phaseValue: HTMLElement;
-  private readonly statusValue: HTMLElement;
-  private readonly humanCard: HTMLElement;
-  private readonly botCard: HTMLElement;
+  private readonly humanBalance: HTMLElement;
+  private readonly botBalance: HTMLElement;
   private readonly tileValue: HTMLElement;
+  private readonly statusValue: HTMLElement;
   private readonly diceValue: HTMLElement;
-  private readonly logList: HTMLOListElement;
   private readonly rollButton: HTMLButtonElement;
   private readonly buyButton: HTMLButtonElement;
+  private readonly buyLabel: HTMLElement;
   private readonly skipButton: HTMLButtonElement;
   private readonly soundButton: HTMLButtonElement;
   private readonly lookHint: HTMLElement;
@@ -35,80 +33,65 @@ export class Hud {
   constructor(container: HTMLElement, actions: HudActions) {
     this.root.className = "hud";
     this.root.innerHTML = `
-      <header class="hud-top">
-        <div class="brand-block">
-          <span class="brand-kicker">RICHMAN / 3D</span>
-          <strong>城市环线</strong>
-        </div>
-        <div class="turn-block" aria-live="polite">
-          <span class="meta-label">当前回合</span>
-          <strong data-turn>—</strong>
-          <span data-phase>等待开始</span>
-          <button class="sound-toggle" type="button" data-sound aria-pressed="true">声音 开</button>
-        </div>
-      </header>
-
-      <aside class="player-stack" aria-label="玩家资产">
-        <article class="player-card" data-player="human">
-          <span class="player-dot human-dot"></span>
-          <div>
-            <span class="meta-label">PLAYER</span>
-            <strong>你</strong>
-          </div>
-          <span class="cash" data-human-cash>0</span>
-        </article>
-        <article class="player-card" data-player="bot">
-          <span class="player-dot bot-dot"></span>
-          <div>
-            <span class="meta-label">RIVAL</span>
-            <strong>城市玩家</strong>
-          </div>
-          <span class="cash" data-bot-cash>0</span>
-        </article>
+      <aside class="balance-bar" aria-label="玩家资金">
+        <span class="balance-item" data-player="human">
+          <span class="player-dot human-dot" aria-hidden="true"></span>
+          <span class="balance-name">你</span>
+          <strong class="cash" data-human-cash>0</strong>
+        </span>
+        <span class="balance-divider" aria-hidden="true"></span>
+        <span class="balance-item" data-player="bot">
+          <span class="player-dot bot-dot" aria-hidden="true"></span>
+          <span class="balance-name">城市玩家</span>
+          <strong class="cash" data-bot-cash>0</strong>
+        </span>
       </aside>
 
-      <aside class="event-panel">
-        <span class="meta-label">城市动态</span>
-        <ol class="event-list" data-log aria-live="polite"></ol>
-      </aside>
+      <div class="hud-tools">
+        <button
+          class="sound-toggle"
+          type="button"
+          data-sound
+          aria-pressed="true"
+          aria-label="关闭游戏音效"
+        >声音 开</button>
+      </div>
 
       <div class="look-hint" data-look-hint>
-        点击棋盘进入第一人称环视 · Esc 退出
+        点击画面进入第一人称
       </div>
       <div class="crosshair" aria-hidden="true"><span></span><span></span></div>
 
       <footer class="action-dock">
         <div class="action-copy">
-          <span class="meta-label">当前位置</span>
           <strong data-tile>中央起点</strong>
           <span data-status>准备掷骰</span>
         </div>
-        <div class="dice-readout" aria-label="最近一次骰子">
-          <span class="meta-label">DICE</span>
-          <strong data-dice>— + —</strong>
-        </div>
+        <strong class="dice-value" data-dice aria-label="最近一次骰子">— + —</strong>
         <div class="action-buttons">
           <button class="primary-action" type="button" data-roll>
             掷骰子 <kbd>Space</kbd>
           </button>
-          <button class="buy-action" type="button" data-buy hidden>购买</button>
-          <button class="secondary-action" type="button" data-skip hidden>跳过</button>
+          <button class="buy-action" type="button" data-buy hidden>
+            <span data-buy-label>购买</span> <kbd>B</kbd>
+          </button>
+          <button class="secondary-action" type="button" data-skip hidden>
+            跳过 <kbd>N</kbd>
+          </button>
         </div>
       </footer>
     `;
 
     container.append(this.root);
 
-    this.turnValue = requiredElement(this.root, "[data-turn]");
-    this.phaseValue = requiredElement(this.root, "[data-phase]");
-    this.statusValue = requiredElement(this.root, "[data-status]");
-    this.humanCard = requiredElement(this.root, '[data-player="human"]');
-    this.botCard = requiredElement(this.root, '[data-player="bot"]');
+    this.humanBalance = requiredElement(this.root, '[data-player="human"]');
+    this.botBalance = requiredElement(this.root, '[data-player="bot"]');
     this.tileValue = requiredElement(this.root, "[data-tile]");
+    this.statusValue = requiredElement(this.root, "[data-status]");
     this.diceValue = requiredElement(this.root, "[data-dice]");
-    this.logList = requiredElement<HTMLOListElement>(this.root, "[data-log]");
     this.rollButton = requiredElement<HTMLButtonElement>(this.root, "[data-roll]");
     this.buyButton = requiredElement<HTMLButtonElement>(this.root, "[data-buy]");
+    this.buyLabel = requiredElement(this.root, "[data-buy-label]");
     this.skipButton = requiredElement<HTMLButtonElement>(this.root, "[data-skip]");
     this.soundButton = requiredElement<HTMLButtonElement>(this.root, "[data-sound]");
     this.lookHint = requiredElement(this.root, "[data-look-hint]");
@@ -120,27 +103,19 @@ export class Hud {
   }
 
   render(snapshot: GameSnapshot, options: HudRenderOptions): void {
-    const activePlayer = playerById(snapshot, snapshot.activePlayerId);
     const human = playerById(snapshot, "human");
     const bot = playerById(snapshot, "bot");
     const humanTile = tileAt(human.position);
     const pendingProperty = pendingPropertyFor(snapshot);
 
-    this.turnValue.textContent = activePlayer.name;
-    this.phaseValue.textContent = phaseLabel(snapshot);
     this.statusValue.textContent = options.status;
     this.tileValue.textContent = humanTile.name;
     this.diceValue.textContent = snapshot.lastRoll
       ? `${snapshot.lastRoll[0]} + ${snapshot.lastRoll[1]}`
       : "— + —";
 
-    this.updatePlayerCard(this.humanCard, human, snapshot.activePlayerId === "human");
-    this.updatePlayerCard(this.botCard, bot, snapshot.activePlayerId === "bot");
-
-    this.updateCash(this.humanCard, human, "[data-human-cash]");
-    this.updateCash(this.botCard, bot, "[data-bot-cash]");
-
-    this.renderEvents(snapshot);
+    this.updateCash(this.humanBalance, human, "[data-human-cash]");
+    this.updateCash(this.botBalance, bot, "[data-bot-cash]");
 
     const humanCanRoll =
       snapshot.phase === "awaiting_roll" &&
@@ -160,10 +135,10 @@ export class Hud {
     this.skipButton.disabled = !humanBuying;
 
     if (pendingProperty) {
-      this.buyButton.textContent = `购买 · ${pendingProperty.price}`;
+      this.buyLabel.textContent = `购买 · ${pendingProperty.price}`;
       this.buyButton.disabled = !humanBuying || human.cash < pendingProperty.price;
     } else {
-      this.buyButton.textContent = "购买";
+      this.buyLabel.textContent = "购买";
       this.buyButton.disabled = true;
     }
 
@@ -176,7 +151,7 @@ export class Hud {
     );
     this.lookHint.textContent = options.pointerLocked
       ? "第一人称环视中 · Esc 退出"
-      : "点击棋盘进入第一人称环视 · Esc 退出";
+      : "点击画面进入第一人称";
 
     if (snapshot.phase === "game_over") {
       this.rollButton.hidden = false;
@@ -186,24 +161,16 @@ export class Hud {
     }
   }
 
-  private updatePlayerCard(
-    card: HTMLElement,
-    player: PlayerState,
-    active: boolean,
-  ): void {
-    card.classList.toggle("is-active", active);
-    card.classList.toggle("is-bankrupt", player.cash < 0);
-  }
-
   private updateCash(
-    card: HTMLElement,
+    container: HTMLElement,
     player: PlayerState,
     selector: string,
   ): void {
-    const value = requiredElement(card, selector);
+    const value = requiredElement(container, selector);
     const previous = this.previousCash.get(player.id);
     value.textContent = formatCash(player.cash);
     this.previousCash.set(player.id, player.cash);
+    container.classList.toggle("is-bankrupt", player.cash < 0);
 
     if (previous === undefined || previous === player.cash) {
       return;
@@ -214,29 +181,17 @@ export class Hud {
     badge.className = `cash-delta ${delta > 0 ? "is-positive" : "is-negative"}`;
     badge.textContent = `${delta > 0 ? "+" : "−"}¥${Math.abs(delta).toLocaleString("zh-CN")}`;
     badge.setAttribute("aria-hidden", "true");
-    card.append(badge);
+    container.append(badge);
 
     window.setTimeout(() => {
       badge.remove();
     }, 1_100);
   }
-
-  private renderEvents(snapshot: GameSnapshot): void {
-    const fragment = document.createDocumentFragment();
-
-    for (const message of [...snapshot.events].reverse().slice(0, 5)) {
-      const item = document.createElement("li");
-      item.textContent = message;
-      fragment.append(item);
-    }
-
-    this.logList.replaceChildren(fragment);
-  }
 }
 
 function playerById(
   snapshot: GameSnapshot,
-  id: "human" | "bot",
+  id: PlayerId,
 ): PlayerState {
   const player = snapshot.players.find((candidate) => candidate.id === id);
 
@@ -258,21 +213,6 @@ function pendingPropertyFor(snapshot: GameSnapshot): PropertyTile | null {
   return tile.type === "property" && tile.id === snapshot.pendingPropertyId
     ? tile
     : null;
-}
-
-function phaseLabel(snapshot: GameSnapshot): string {
-  if (snapshot.phase === "game_over") {
-    const winner = snapshot.winnerId
-      ? playerById(snapshot, snapshot.winnerId).name
-      : "无人";
-    return `游戏结束 · ${winner} 获胜`;
-  }
-
-  if (snapshot.phase === "awaiting_purchase") {
-    return "等待地产决策";
-  }
-
-  return snapshot.activePlayerId === "human" ? "等待掷骰" : "电脑行动";
 }
 
 function formatCash(value: number): string {
