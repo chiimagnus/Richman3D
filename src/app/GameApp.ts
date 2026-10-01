@@ -7,9 +7,11 @@ import {
   lookSensitivityScale,
   savePreferences,
   type GamePreferences,
+  type LookSensitivity,
 } from "../settings/preferences";
 import { FeedbackLayer } from "../ui/FeedbackLayer";
 import { Hud } from "../ui/Hud";
+import { SettingsPanel } from "../ui/SettingsPanel";
 
 const BOT_CASH_RESERVE = 260;
 
@@ -19,6 +21,7 @@ export class GameApp {
   private readonly audio = new GameAudio(this.preferences.soundEnabled);
   private readonly world: World;
   private readonly hud: Hud;
+  private readonly settings: SettingsPanel;
   private readonly feedback: FeedbackLayer;
   private busy = false;
   private pointerLocked = false;
@@ -40,7 +43,11 @@ export class GameApp {
       roll: () => void this.rollHuman(),
       buy: () => this.buyHumanProperty(),
       skip: () => this.skipHumanProperty(),
-      toggleSound: () => this.toggleSound(),
+    });
+    this.settings = new SettingsPanel(this.root, {
+      setSoundEnabled: (enabled) => this.setSoundEnabled(enabled),
+      setLookSensitivity: (sensitivity) =>
+        this.setLookSensitivity(sensitivity),
     });
     this.feedback = new FeedbackLayer(this.root, () => window.location.reload());
 
@@ -66,6 +73,7 @@ export class GameApp {
       event.metaKey ||
       event.ctrlKey ||
       event.altKey ||
+      this.settings.isOpen ||
       isNativeInteractiveTarget(event.target)
     ) {
       return;
@@ -270,7 +278,14 @@ export class GameApp {
   }
 
   private toggleSound(): void {
-    const soundEnabled = !this.preferences.soundEnabled;
+    this.setSoundEnabled(!this.preferences.soundEnabled);
+  }
+
+  private setSoundEnabled(soundEnabled: boolean): void {
+    if (soundEnabled === this.preferences.soundEnabled) {
+      return;
+    }
+
     this.preferences = { ...this.preferences, soundEnabled };
     this.audio.setEnabled(soundEnabled);
     savePreferences(this.preferences);
@@ -280,6 +295,18 @@ export class GameApp {
     if (soundEnabled) {
       this.audio.playTurn(this.game.snapshot.activePlayerId);
     }
+  }
+
+  private setLookSensitivity(lookSensitivity: LookSensitivity): void {
+    if (lookSensitivity === this.preferences.lookSensitivity) {
+      return;
+    }
+
+    this.preferences = { ...this.preferences, lookSensitivity };
+    this.world.setLookSensitivity(lookSensitivityScale(lookSensitivity));
+    savePreferences(this.preferences);
+    this.status = "鼠标灵敏度已更新。";
+    this.render();
   }
 
   private finishGame(): void {
@@ -300,8 +327,12 @@ export class GameApp {
     this.hud.render(this.game.snapshot, {
       busy: this.busy,
       pointerLocked: this.pointerLocked,
-      soundEnabled: this.preferences.soundEnabled,
       status: this.status,
+    });
+    this.settings.render({
+      preferences: this.preferences,
+      pointerLocked: this.pointerLocked,
+      busy: this.busy,
     });
   }
 }
