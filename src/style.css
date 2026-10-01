@@ -169,7 +169,7 @@ button:focus-visible,
   left: 50%;
   bottom: clamp(14px, 2vw, 24px);
   translate: -50% 0;
-  width: min(720px, calc(100vw - 28px));
+  width: min(640px, calc(100vw - 28px));
   min-height: 64px;
   border: 1px solid rgb(160 219 238 / 12%);
   border-radius: 17px;
@@ -281,8 +281,23 @@ kbd {
   transition: opacity 180ms ease;
 }
 
+.hud[data-pointer-locked="true"] .hud-tools {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud[data-pointer-locked="true"] .action-dock {
+  width: min(400px, calc(100vw - 28px));
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.hud[data-pointer-locked="true"] .action-buttons {
+  display: none;
+}
+
 .hud[data-pointer-locked="true"] .look-hint {
-  opacity: 0.72;
+  color: rgb(226 240 246 / 82%);
+  opacity: 1;
 }
 
 .crosshair {
@@ -700,7 +715,7 @@ kbd {
 
   .action-dock {
     bottom: 12px;
-    width: calc(100vw - 24px);
+    width: min(640px, calc(100vw - 24px));
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     padding: 8px 9px 8px 12px;

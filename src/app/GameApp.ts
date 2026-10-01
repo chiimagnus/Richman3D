@@ -74,6 +74,11 @@ export class GameApp {
 
     if (event.code === "KeyN") {
       this.skipHumanProperty();
+      return;
+    }
+
+    if (event.code === "KeyM") {
+      this.toggleSound();
     }
   };
 

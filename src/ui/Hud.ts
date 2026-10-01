@@ -150,7 +150,7 @@ export class Hud {
       options.soundEnabled ? "关闭游戏音效" : "开启游戏音效",
     );
     this.lookHint.textContent = options.pointerLocked
-      ? "第一人称环视中 · Esc 退出"
+      ? pointerLockHint(snapshot, pendingProperty)
       : "点击画面进入第一人称";
 
     if (snapshot.phase === "game_over") {
@@ -200,6 +200,28 @@ function playerById(
   }
 
   return player;
+}
+
+function pointerLockHint(
+  snapshot: GameSnapshot,
+  pendingProperty: PropertyTile | null,
+): string {
+  if (
+    snapshot.activePlayerId === "human" &&
+    snapshot.phase === "awaiting_purchase" &&
+    pendingProperty
+  ) {
+    return `B 购买 ¥${pendingProperty.price} · N 跳过 · M 声音 · Esc 退出`;
+  }
+
+  if (
+    snapshot.activePlayerId === "human" &&
+    snapshot.phase === "awaiting_roll"
+  ) {
+    return "Space 掷骰 · M 声音 · Esc 退出";
+  }
+
+  return "M 声音 · Esc 退出";
 }
 
 function pendingPropertyFor(snapshot: GameSnapshot): PropertyTile | null {
