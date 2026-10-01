@@ -1,0 +1,26 @@
+version = 1
+current_task_id = ""
+
+[[tasks]]
+id = "P1-T1"
+title = "收敛常驻 HUD"
+status = "completed"
+plan = "plan-p1.md#p1-t1"
+commit = "fd65c30"
+note = "删除品牌/回合/玩家卡/事件日志常驻面板；首屏只保留轻量资金条、声音按钮和紧凑操作条；真实浏览器首屏验证通过"
+
+[[tasks]]
+id = "P1-T2"
+title = "补全 Pointer Lock 快捷键交互"
+status = "completed"
+plan = "plan-p1.md#p1-t2"
+commit = "e5d9bb5"
+note = "Pointer Lock 下 Space/B/N/M 均实测可用；锁定时按钮收起并显示上下文键位；操作条进一步收紧至 640px/锁定 400px"
+
+[[tasks]]
+id = "P1-T3"
+title = "更新玩法说明并完整回归"
+status = "completed"
+plan = "plan-p1.md#p1-t3"
+commit = "c85e319"
+note = "玩法说明同步 Pointer Lock 快捷键；桌面/375px 窄屏、普通鼠标完整回合、无横向溢出和无运行期错误均通过"
