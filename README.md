@@ -1,6 +1,6 @@
 # Richman 3D
 
-第一人称 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，可直接在浏览器中与 AI 玩家进行 1v1 对战。
+第一人称 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，可直接在浏览器中与电脑玩家进行 1v1 对战。
 
 **在线试玩：https://chiimagnus.github.io/Richman3D/**
 
@@ -12,8 +12,8 @@
 - 双骰移动、经过起点奖励
 - 购买地产、地产归属与租金结算
 - 税收格、机会事件与破产判定
-- 单机 1v1：玩家对战 AI
-- HUD、移动动画与键盘快捷键
+- 单机 1v1：玩家对战电脑
+- 简洁操作界面、移动动画与键盘快捷键
 
 完整规则与操作方式见 **[游戏玩法说明](docs/how-to-play.md)**。
 
