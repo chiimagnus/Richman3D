@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { finishMatch } from "./match-actions";
 
 test("view remount neither reannounces nor revives an expired settlement", async ({ page }) => {
   await page.goto("http://127.0.0.1:4318/Richman3D/test/fixtures/lifecycle.html");
@@ -49,6 +50,55 @@ test("20 actual scene/session entries release canvas, global listeners, audio an
   }
   expect(errors).toEqual([]);
   await info.attach("resource-trend", { body: JSON.stringify(trend, null, 2), contentType: "application/json" });
+});
+
+test("20 complete real 20-round matches return to menu with fresh state and released resources", async ({ page }, info) => {
+  test.setTimeout(900_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(341); return array; } });
+    Object.assign(window, { documentMarker: "same-document" });
+  });
+  await page.goto("http://127.0.0.1:4318/Richman3D/test/fixtures/lifecycle.html");
+  const matchIds = new Set<string>();
+  const trend: unknown[] = [];
+  const stats = async () => JSON.parse(await page.locator("#stats").innerText() || "{}");
+  for (let index = 0; index < 20; index += 1) {
+    await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
+    await expect(page.locator("[data-roll]")).toBeEnabled();
+    await expect.poll(async () => (await stats()).revision).toBe(0);
+    const fresh = await stats();
+    expect(fresh.activeWorlds).toBe(1);
+    expect(fresh.state.random.draws).toBe(0);
+    expect(fresh.state.owners).toEqual({});
+    expect(fresh.state.players.map((player: { cash: number }) => player.cash)).toEqual([1500, 1500]);
+    expect(matchIds.has(fresh.matchId)).toBe(false);
+    matchIds.add(fresh.matchId);
+    trend.push(fresh);
+    await finishMatch(page);
+    await expect(page.locator("[data-round]")).toHaveText("第20 / 20轮");
+    await expect.poll(async () => (await stats()).state?.decision.kind).toBe("game_over");
+    const terminal = await stats();
+    expect(terminal.state.completedRounds).toBe(20);
+    expect(terminal.matchId).toBe(fresh.matchId);
+    expect(terminal.state.revision).toBeGreaterThan(40);
+    trend.push(terminal);
+    await page.getByRole("dialog").getByRole("button", { name: "主菜单", exact: true }).click();
+    await expect(page.locator("canvas")).toHaveCount(0);
+    await expect.poll(async () => (await stats()).activeWorlds).toBe(0);
+    const released = await stats();
+    expect(released.listeners).toBe(0);
+    expect(released.audioNodes).toBe(0);
+    expect(released.world).toMatchObject({ disposed: true, canvases: 0, geometries: 0, textures: 0, activeAnimations: 0 });
+    expect(released.state).toBeUndefined();
+    trend.push(released);
+  }
+  expect(errors).toEqual([]);
+  expect(await page.evaluate(() => Reflect.get(window, "documentMarker"))).toBe("same-document");
+  await info.attach("complete-match-resource-trend", { body: JSON.stringify(trend, null, 2), contentType: "application/json" });
 });
 
 test("StrictMode view remount during motion preserves match, committed cash and RNG without replay", async ({ page }) => {

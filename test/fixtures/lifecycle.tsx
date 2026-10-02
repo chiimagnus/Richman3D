@@ -33,9 +33,10 @@ World.prototype.sync = function (snapshot) {
   world = this;
   activeWorlds.add(this);
   sync.call(this, snapshot);
+  report();
 };
 const dispose = World.prototype.dispose;
-World.prototype.dispose = function () { activeWorlds.delete(this); dispose.call(this); };
+World.prototype.dispose = function () { activeWorlds.delete(this); dispose.call(this); report(); };
 const roll = GameAudio.prototype.playRoll;
 GameAudio.prototype.playRoll = function () { audio = this; roll.call(this); };
 
@@ -45,6 +46,13 @@ root.render(<StrictMode><App app={app} /></StrictMode>);
 const output = document.querySelector<HTMLOutputElement>("#stats")!;
 const listeners = () => [...tracked.values()].flatMap((events) => [...events.values()]).reduce((total, entries) => total + entries.size, 0);
 const baseline = listeners();
+function report() {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const session = app.getSnapshot().session;
+    output.textContent = JSON.stringify({ world: world?.resourceInfo, audioNodes: app.audio.activeNodeCount, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, matchId: session?.matchId, revision: session?.getSnapshot().committed.revision, state: session?.getSnapshot().committed });
+  }));
+}
+app.subscribe(report);
 document.querySelector("#start")!.addEventListener("click", async () => {
   await app.start(createMatchConfig(1));
   await new Promise<void>((resolve) => {

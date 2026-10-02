@@ -1,4 +1,4 @@
-.game { position: relative; width: 100%; height: 100dvh; min-height: 480px; overflow: hidden; background: #07111a; }
+.game { position: relative; width: 100%; height: 100dvh; overflow: hidden; background: #07111a; }
 .scene { position: absolute; inset: 0; }
 .tools { position: absolute; top: 16px; right: 16px; z-index: 4; display: grid; gap: 8px; }
 .camera { position: absolute; top: 184px; right: 16px; z-index: 2; max-width: min(320px, 60%); display: grid; gap: 8px; }
