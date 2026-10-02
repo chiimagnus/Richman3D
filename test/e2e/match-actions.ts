@@ -39,3 +39,24 @@ export async function finishMatch(page: Page, buying = false): Promise<void> {
   }
   throw new Error("Real UI commands did not reach a result");
 }
+
+export async function startLocal(page: Page, seats = 2, seed = 940, humans = 2) {
+  await page.addInitScript((seed) => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(seed); return array; } }), seed);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./");
+  await page.locator("[data-start]").click();
+  await page.locator("[data-seats]").selectOption(String(seats));
+  await page.locator("[data-humans]").selectOption(String(humans));
+  await page.locator('[data-name="p1"]').fill("Alex<&>");
+  await page.locator('[data-name="p2"]').fill("中文玩家");
+  await page.locator("[data-launch]").click();
+}
+
+export async function expectHandover(page: Page, actor: string) {
+  await expect(page.locator(`[data-handover-actor="${actor}"]`)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect(page.locator("[data-roll],[data-buy],[data-skip],[data-status]")).toHaveCount(0);
+  await expect(page.locator("[data-match-id]")).toHaveAttribute("data-view-player", "");
+  await expect(page.locator("canvas")).toHaveAttribute("data-observer", "");
+  await expect(page.locator("canvas")).toHaveAttribute("data-view", "overview");
+}

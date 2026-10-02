@@ -10,9 +10,9 @@ it.each([20, 40])("waits for the last actual purchase at %s complete rounds, the
   const rules = { ...QUICK_RULES, roundLimit, passStartBonus: 0 };
   const map = { ...CITY, tiles: CITY.tiles.map((tile) => tile.type === "start" ? tile : { type: "property" as const, id: tile.id, price: 100, rent: 0, group: "cyan" as const }) };
   const game = new Game(createMatchConfig(940), rules, map);
-  while (game.snapshot.completedRounds < roundLimit - 1 || game.snapshot.activePlayerId === "p1") {
+  while (game.snapshot.completedRounds < roundLimit - 1 || game.snapshot.turnPlayerId === "p1") {
     const snapshot = game.snapshot;
-    expect(game.apply({ kind: snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll", actor: snapshot.activePlayerId, expectedRevision: snapshot.revision }).ok).toBe(true);
+    expect(game.apply({ kind: snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll", actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision }).ok).toBe(true);
   }
   expect(game.apply({ kind: "roll", actor: "p2", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
@@ -32,7 +32,7 @@ it.each([20, 40])("retains a true tie after %s actual rounds, without seat-order
   const map = { ...CITY, tiles: CITY.tiles.map((tile) => tile.type === "start" ? tile : { type: "tax" as const, id: tile.id, amount: 0 }) };
   const game = new Game(createMatchConfig(768), rules, map);
   for (let turn = 0; turn < roundLimit * 2; turn += 1) {
-    const result = game.apply({ kind: "roll", actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision });
+    const result = game.apply({ kind: "roll", actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision });
     expect(result.ok).toBe(true);
     if (turn < roundLimit * 2 - 1) expect(game.snapshot.decision.kind).not.toBe("game_over");
   }
@@ -46,5 +46,5 @@ it("last survivor wins and fixed slots skip eliminated seats", () => {
   expect(game.snapshot.decision).toMatchObject({ result: { reason: "last_survivor", winnerIds: ["p2"] } });
   const snapshot = game.snapshot;
   expect(matchResult(snapshot, "last_survivor").winnerIds).toEqual(["p2"]);
-  expect(nextTurn({ ...snapshot, activePlayerId: "p2" })).toEqual({ activePlayerId: "p2", completedRounds: 1 });
+  expect(nextTurn({ ...snapshot, turnPlayerId: "p2" })).toEqual({ turnPlayerId: "p2", completedRounds: 1 });
 });

@@ -2,7 +2,7 @@
 
 [中文](how-to-play.md)
 
-Choose **Start Game** in the main menu, select 2–4 seats, enter the names and match length, then choose **Start match**. The current game supports one local human against 1–3 normal computers; multiple humans are not enabled yet. Blank names use translated defaults; custom names are trimmed, contain at most 16 visible characters, and do not change with the language. **More options** contains pawn colors.
+Choose **Start Game** in the main menu, select 2–4 seats and the number of local humans, enter the names and match length, then choose **Start match**. At least one seat is human; the rest may be humans sharing the device or normal computers. Blank names use translated defaults; custom names are trimmed, contain at most 16 visible characters, and do not change with the language. **More options** contains pawn colors.
 
 **How to play** is available in the menu and during a match, with the same current rules as this guide.
 
@@ -42,6 +42,8 @@ Doubles do not grant another turn. You do not manually walk along the board, and
 Purchased property has an ownership marker in the scene. The action area shows the current property’s price, rent and purchasing consequences.
 
 ## View and input
+
+With multiple humans sharing the device, **Pass the device** appears on entry, restoration and changes of local player. Check the name and pawn color, then choose **I have the device** to reveal the action area and switch the observer. Confirmation does not roll, transfer money or advance a round. Game shortcuts stay blocked and the previous action area is unmounted until confirmation. Computers do not need a handover. Esc opens Pause; Resume still requires confirmation. Rebuilding the view temporarily neither starts a new match nor repeats an already confirmed handover.
 
 Desktop starts in your first-person view without automatically locking the mouse. **Board overview** shows the full board and all pawns; **Your first-person view** returns to your own position. Overview disables mouse-lock control and does not affect money or dice. Touch starts in overview. The current fixed overview has no drag, zoom or property picking.
 

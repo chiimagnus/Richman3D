@@ -2,7 +2,7 @@
 
 **中文** | [English](README.en.md)
 
-第一人称 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，可直接在浏览器中以一名真人对战1–3名电脑。
+第一人称 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，支持2–4席同机真人与电脑对局。
 
 **在线试玩：https://chiimagnus.github.io/Richman3D/**
 
@@ -14,7 +14,7 @@
 - 双骰移动、经过起点奖励
 - 购买地产、地产归属与租金结算
 - 税收格、机会事件与破产判定
-- 单机2–4席：一名真人对战1–3名电脑，种子确定固定轮序
+- 单机2–4席：至少一名真人，其余可选真人或电脑，固定轮序与确认交接
 - 中文 / English 实时切换，并保存语言设置
 - 简洁操作界面、可保存设置与键盘快捷键
 - 开局配置、20/40整轮排名与财务结算
@@ -51,6 +51,6 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-浏览器回归自动构建并启动独立的生产预览，测试后关闭服务器，报告位于 `test-results/`。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定已有 Chromium 内核的可执行文件；测试使用独立临时配置，不连接日常浏览器。
+浏览器回归自动构建并启动独立的生产预览，测试后关闭服务器，报告位于 `test-results/`。原生 Pointer Lock 的两个用例使用有窗口浏览器，其余无头运行；Linux 无桌面环境需用 `xvfb-run -a npm run test:e2e`。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定已有 Chromium 内核的可执行文件；测试使用独立临时配置，不连接日常浏览器。
 
 玩家规则、界面操作或快捷键发生变化时，以 `docs/how-to-play.md` 为用户文档真源并同步更新。

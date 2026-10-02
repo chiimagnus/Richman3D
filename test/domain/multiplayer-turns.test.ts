@@ -15,7 +15,7 @@ it.each([2, 3, 4])("creates one seeded %s-seat permutation, preserving seat orde
     const game = new Game(config);
     expect(game.snapshot.turnOrder).toEqual(initialTurnOrder(config));
     expect([...game.snapshot.turnOrder].sort()).toEqual(config.players.map((player) => player.id));
-    expect(game.snapshot.activePlayerId).toBe(game.snapshot.turnOrder[0]);
+    expect(game.snapshot.turnPlayerId).toBe(game.snapshot.turnOrder[0]);
     expect(game.snapshot.random.draws).toBe(size - 1);
     const record = makeSave(game.snapshot, "00000000-0000-4000-8000-000000000004");
     expect(Game.restore(readSave(JSON.parse(JSON.stringify(record))).record.state).snapshot).toEqual(game.snapshot);
@@ -27,13 +27,13 @@ it.each([2, 3, 4])("creates one seeded %s-seat permutation, preserving seat orde
 it.each([[0], [1], [3], [1, 2], [0, 3]].map((eliminated) => ({ eliminated })))("skips eliminated fixed positions $eliminated without moving the full-round boundary", ({ eliminated }) => {
   const game = new Game(createMatchConfig(940, 4));
   const order = game.snapshot.turnOrder;
-  let snapshot = { ...game.snapshot, activePlayerId: order.find((_, index) => !eliminated.includes(index))!,
+  let snapshot = { ...game.snapshot, turnPlayerId: order.find((_, index) => !eliminated.includes(index))!,
     players: game.snapshot.players.map((player) => ({ ...player, bankrupt: eliminated.includes(order.indexOf(player.id)) })) };
   const survivors = order.filter((_, index) => !eliminated.includes(index));
   for (let round = 0; round < 3; round += 1) {
     const seen = [];
     for (let turn = 0; turn < survivors.length; turn += 1) {
-      seen.push(snapshot.activePlayerId);
+      seen.push(snapshot.turnPlayerId);
       snapshot = { ...snapshot, ...nextTurn(snapshot) };
       expect(snapshot.completedRounds).toBe(round + (turn === survivors.length - 1 ? 1 : 0));
     }
@@ -47,10 +47,10 @@ it.each([3, 4])("waits for the %s-seat final purchase before ending, then ranks 
   const game = new Game(createMatchConfig(940, size), rules, map);
   const tail = game.snapshot.turnOrder.at(-1)!;
   for (let count = 0; count < 20; count += 1) {
-    if (game.snapshot.activePlayerId === tail && game.snapshot.decision.kind === "awaiting_purchase") break;
-    expect(game.apply(legalCommands(game.snapshot, game.snapshot.activePlayerId).at(-1)!).ok).toBe(true);
+    if (game.snapshot.turnPlayerId === tail && game.snapshot.decision.kind === "awaiting_purchase") break;
+    expect(game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!).ok).toBe(true);
   }
-  expect(game.snapshot.activePlayerId).toBe(tail);
+  expect(game.snapshot.turnPlayerId).toBe(tail);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
   expect(game.snapshot.completedRounds).toBe(0);
   expect(game.apply(legalCommands(game.snapshot, tail).at(-1)!).ok).toBe(true);
@@ -63,8 +63,8 @@ it("eliminates only the debtor, keeps multiple opponents playing and ends only w
   const game = new Game(createMatchConfig(6, 4), { ...QUICK_RULES, passStartBonus: 0 }, map);
   const order = game.snapshot.turnOrder;
   for (let index = 0; index < 3; index += 1) {
-    expect(game.snapshot.activePlayerId).toBe(order[index]);
-    expect(game.apply(legalCommands(game.snapshot, game.snapshot.activePlayerId)[0]!).ok).toBe(true);
+    expect(game.snapshot.turnPlayerId).toBe(order[index]);
+    expect(game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId)[0]!).ok).toBe(true);
     expect(game.snapshot.players.filter((player) => !player.bankrupt)).toHaveLength(3 - index);
     if (index < 2) expect(game.snapshot.decision.kind).toBe("awaiting_roll");
   }
@@ -86,7 +86,7 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
   const game = new Game(createMatchConfig(36, 3));
   for (const kind of ["roll", "buy"] as const) expect(game.apply(legalCommands(game.snapshot, "p1").find((command) => command.kind === kind)!).ok).toBe(true);
   const record = makeSave(game.snapshot, "00000000-0000-4000-8000-000000000004");
-  const restored = Game.restore({ ...record.state, activePlayerId: "p1", players: record.state.players.map((player) => player.id === "p1" ? {
+  const restored = Game.restore({ ...record.state, turnPlayerId: "p1", decision: { kind: "awaiting_roll", actorId: "p1" }, players: record.state.players.map((player) => player.id === "p1" ? {
     ...player, cash: 0, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash },
   } : player) });
   expect(restored.apply(legalCommands(restored.snapshot, "p1")[0]!).ok).toBe(true);

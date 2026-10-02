@@ -9,13 +9,14 @@ export function actionView(view: GameView, language: Language) {
   const property = pendingProperty(snapshot);
   const copy = messages(language).runtime;
   const action = view.presenting ? view.events.find((event) => event.kind !== "turn" && event.kind !== "ended") : null;
-  const actor = action?.kind === "rolled" ? action.result.playerId : action && "actor" in action ? action.actor : snapshot.activePlayerId;
+  const decisionActor = snapshot.decision.kind === "game_over" ? null : snapshot.decision.actorId;
+  const actor = action?.kind === "rolled" ? action.result.playerId : action && "actor" in action ? action.actor : decisionActor ?? snapshot.turnPlayerId;
   const ready = !view.presenting && view.save.kind !== "saving" && view.mode === "running" && view.attached && view.error !== "presentation_failed";
-  const commands = ready && playerConfig(snapshot.config, snapshot.activePlayerId).controller === "human" ? legalCommands(snapshot, snapshot.activePlayerId) : [];
+  const commands = ready && decisionActor === view.viewPlayerId && decisionActor !== null && playerConfig(snapshot.config, decisionActor).controller === "human" ? legalCommands(snapshot, decisionActor) : [];
   const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
     ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: property.rent })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
-    : formatMessage(playerConfig(snapshot.config, snapshot.activePlayerId).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, snapshot.activePlayerId, snapshot.config) });
+    : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
   return { commands, property, tile: currentTile(snapshot, actor), status };
 }

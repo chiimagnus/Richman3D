@@ -13,6 +13,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
   const [names, setNames] = useState(SEAT_IDS.map(() => ""));
   const [colors, setColors] = useState<string[]>([...SEAT_COLORS]);
   const [seats, setSeats] = useState(2);
+  const [humans, setHumans] = useState(1);
   const [version, setVersion] = useState(QUICK_RULES.version);
   const [error, setError] = useState(false);
   const rules = rulesFor(version);
@@ -23,15 +24,18 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
       event.preventDefault();
       try {
         const config = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, seats);
-        const players = config.players.map((player, index) => ({ ...player, name: normalizeName(names[index]!), color: colors[index]! }));
+        const players = config.players.map((player, index) => ({ ...player, controller: index < humans ? "human" as const : "bot" as const, name: normalizeName(names[index]!), color: colors[index]! }));
         void app.start({ ...config, players, rulesVersion: version });
         onClose();
       } catch { setError(true); }
     }}>
-      <label className={styles.row}>{copy.seats}<select data-seats value={seats} onChange={(event) => setSeats(Number(event.currentTarget.value))}>
-        {[2, 3, 4].map((count) => <option key={count} value={count}>{formatMessage(copy.seatOption, { count, bots: count - 1 })}</option>)}
+      <label className={styles.row}>{copy.seats}<select data-seats value={seats} onChange={(event) => { const count = Number(event.currentTarget.value); setSeats(count); setHumans(Math.min(humans, count)); }}>
+        {[2, 3, 4].map((count) => <option key={count} value={count}>{formatMessage(copy.seatOption, { count })}</option>)}
       </select></label>
-      {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{index === 0 ? copy.names.local : formatMessage(copy.computerSeat, { number: index })}
+      <label className={styles.row}>{copy.humans}<select data-humans value={humans} onChange={(event) => setHumans(Number(event.currentTarget.value))}>
+        {Array.from({ length: seats }, (_, index) => <option key={index} value={index + 1}>{formatMessage(copy.humanOption, { count: index + 1 })}</option>)}
+      </select></label>
+      {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(index < humans ? copy.humanSeat : copy.computerSeat, { number: index < humans ? index + 1 : index - humans + 1 })}
         <input data-name={id} value={names[index]} placeholder={messages(language).players[id]} onChange={(event) => { const next = [...names]; next[index] = event.currentTarget.value; setNames(next); setError(false); }} />
       </label>)}
       <label className={styles.row}>{copy.length}<select data-length value={version} onChange={(event) => setVersion(event.currentTarget.value)}>

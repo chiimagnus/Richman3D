@@ -11,11 +11,11 @@ export function ResultsScreen({ app, snapshot }: { app: GameApp; snapshot: GameS
   const preferences = app.getSnapshot().preferences;
   const language = preferences.language;
   const copy = messages(language);
-  const own = result.rankings.find((entry) => entry.playerId === observerId(snapshot.config))!;
+  const own = snapshot.config.players.filter((player) => player.controller === "human").length === 1 ? result.rankings.find((entry) => entry.playerId === observerId(snapshot.config))! : null;
   return <PanelHost title={resultTitle(language, result, snapshot.config)}>
     <p>{copy.setup[result.reason]}</p>
     {result.reason === "round_limit" && <p data-round>{formatMessage(copy.setup.round, { round: snapshot.completedRounds, limit: snapshot.rules.roundLimit })}</p>}
-    <p>{formatMessage(copy.results.yourResult, { rank: own.rank, assets: formatCash(language, own.netAssets) })}</p>
+    {own && <p>{formatMessage(copy.results.yourResult, { rank: own.rank, assets: formatCash(language, own.netAssets) })}</p>}
     <ol className={styles.rankings} aria-label={copy.results.rankings}>
       {result.rankings.map((entry) => <li key={entry.playerId} data-result-player={entry.playerId} value={entry.rank}>
         <span>{playerName(language, entry.playerId, snapshot.config)}</span><strong data-net-assets>{formatCash(language, entry.netAssets)}</strong>

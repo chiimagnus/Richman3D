@@ -6,7 +6,7 @@ import type { Command, RollResult } from "../../src/domain/types";
 
 function act(game: Game, kind: Command["kind"]) {
   const snapshot = game.snapshot;
-  const result = game.apply({ kind, actor: snapshot.activePlayerId, expectedRevision: snapshot.revision });
+  const result = game.apply({ kind, actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision });
   if (!result.ok) throw new Error(result.reason);
   return result;
 }
@@ -24,13 +24,13 @@ describe("Game", () => {
     act(game, "buy");
     expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
     expect(game.snapshot.players[0]?.cash).toBe(1320);
-    expect(game.snapshot.activePlayerId).toBe("p2");
+    expect(game.snapshot.turnPlayerId).toBe("p2");
     expect(roll(game).landing).toEqual({
       kind: "rent", propertyId: "neon-avenue", ownerId: "p1", amount: 32,
     });
     expect(game.snapshot.players[0]?.cash).toBe(1352);
     expect(game.snapshot.players[1]?.cash).toBe(1468);
-    expect(game.snapshot.activePlayerId).toBe("p1");
+    expect(game.snapshot.turnPlayerId).toBe("p1");
   });
 
   it("经过起点获得奖金，再结算落脚格", () => {
@@ -51,7 +51,7 @@ describe("Game", () => {
     expect(result.to).toBe(2);
     expect(result.landing).toEqual({ kind: "chance", amount: 120, cardId: "innovation-bonus" });
     expect(game.snapshot.players.find((player) => player.id === result.playerId)?.cash).toBe(1620);
-    expect(game.snapshot.activePlayerId).toBe("p2");
+    expect(game.snapshot.turnPlayerId).toBe("p2");
   });
 
   it("拒绝没有待购买地产时的购买", () => {

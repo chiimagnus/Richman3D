@@ -67,7 +67,8 @@ describe("i18n", () => {
   });
 
   it("loads Chinese and English locale data", () => {
-    expect(playerName("zh-CN", "p1", createMatchConfig())).toBe("你");
+    expect(playerName("zh-CN", "p1", createMatchConfig())).toBe("玩家一");
+    expect(playerName("en", "p1", createMatchConfig())).toBe("Player One");
     expect(messages("zh-CN").settings.title).toBe("设置");
     expect(playerName("en", "p2", createMatchConfig())).toBe("City Player");
     expect(chanceCardText("en", "innovation-bonus", 120)).toBe(

@@ -13,7 +13,7 @@ it("the actual fixed-seed game supports all five teaching steps, including a rea
   await session.dispatch(legalCommands(game.snapshot, "p1")[0]!);
   expect(tutorialStep(session.getSnapshot(), { started: true, inspected: false }).number).toBe(3);
   expect(tutorialStep(session.getSnapshot(), { started: true, inspected: true }).number).toBe(4);
-  expect(game.snapshot.decision).toEqual({ kind: "awaiting_purchase", propertyId: "neon-avenue" });
+  expect(game.snapshot.decision).toEqual({ kind: "awaiting_purchase", actorId: "p1", propertyId: "neon-avenue" });
   await session.dispatch(legalCommands(game.snapshot, "p1").find((command) => command.kind === "buy")!);
   expect(tutorialStep(session.getSnapshot(), { started: true, inspected: true })).toEqual({ number: 5, ready: true });
   expect(game.snapshot.owners["neon-avenue"]).toBe("p1");

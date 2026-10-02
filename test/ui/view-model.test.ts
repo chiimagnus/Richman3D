@@ -21,3 +21,14 @@ it("formats zero and names as text, not as fallback values", () => {
   expect(formatCash("en", 0)).toBe("¥0");
   expect(formatMessage("{name}: {cash}", { name: "<script>&中文", cash: 0 })).toBe("<script>&中文: 0");
 });
+
+it("projects only the confirmed decision actor, never the ordinary-turn identity alone", () => {
+  const base = createMatchConfig(940);
+  const session = new GameSession(new Game({ ...base, players: base.players.map((player) => ({ ...player, controller: "human" })) }));
+  session.bind({ sync() {}, stop() {}, async present() {} });
+  expect(actionView(session.getSnapshot(), "en").commands).toEqual([]);
+  session.confirmHandover("p1");
+  const view = session.getSnapshot();
+  expect(actionView(view, "en").commands).toMatchObject([{ actor: "p1", kind: "roll" }]);
+  expect(actionView({ ...view, viewPlayerId: "p2" }, "en").commands).toEqual([]);
+});

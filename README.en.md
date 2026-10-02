@@ -2,7 +2,7 @@
 
 [中文](README.md) | **English**
 
-A first-person 3D Richman-style browser board game built with **TypeScript + Three.js + WebGL + Vite**. Play against 1–3 computer-controlled rivals directly in the browser.
+A first-person 3D Richman-style browser board game built with **TypeScript + Three.js + WebGL + Vite**. Play 2–4 seats with local humans and computers on one device.
 
 **Play online: https://chiimagnus.github.io/Richman3D/**
 
@@ -14,7 +14,7 @@ A first-person 3D Richman-style browser board game built with **TypeScript + Thr
 - Two-dice movement and rewards for passing Start
 - Property purchasing, ownership, and rent settlement
 - Tax spaces, chance events, and bankruptcy rules
-- Single-player 2–4 seats against 1–3 computers, with a seeded fixed turn order
+- 2–4 seats with at least one local human, optional computers, seeded turn order and explicit hotseat handover
 - Live Chinese / English switching with saved language preference
 - Compact HUD, persistent settings, and keyboard shortcuts
 - Match setup, 20/40 full-round rankings and financial results
@@ -63,4 +63,4 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Browser tests build and start an isolated production preview, then shut down the server. Reports are in `test-results/`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use an existing Chromium executable with an isolated temporary profile, never your everyday browser session.
+Browser tests build and start an isolated production preview, then shut down the server. Reports are in `test-results/`. Two native Pointer Lock cases use a headed browser; the others run headless. On Linux without a desktop, use `xvfb-run -a npm run test:e2e`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use an existing Chromium executable with an isolated temporary profile, never your everyday browser session.

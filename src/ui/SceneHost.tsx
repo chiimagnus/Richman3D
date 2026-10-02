@@ -6,7 +6,7 @@ import { lookSensitivityScale, type GamePreferences } from "../settings/preferen
 import { messages } from "../i18n";
 import { useGameView } from "./useGameView";
 import styles from "./App.module.css";
-import { observerId, playerConfig } from "../domain/config";
+import { playerConfig } from "../domain/config";
 import type { CameraView } from "../rendering/CameraRig";
 
 export function SceneHost({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
@@ -27,6 +27,7 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
     try {
       const snapshot = session.getSnapshot().committed;
       world = new World(host.current!, settings.language, snapshot.config, snapshot.map, snapshot.rules, fail);
+      world.setObserver(session.getSnapshot().viewPlayerId, snapshot);
       const activeWorld = world;
       resources.current = { world };
       world.setLookSensitivity(lookSensitivityScale(settings.lookSensitivity));
@@ -58,7 +59,7 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
               case "purchased": audio.playPurchase(); break;
               case "skipped": break;
               case "turn": audio.playTurn(playerConfig(snapshot.config, event.actor).controller === "human"); break;
-              case "ended": activeWorld.unlockFirstPerson(); audio.playGameOver(event.result.winnerIds.includes(observerId(snapshot.config))); break;
+              case "ended": activeWorld.unlockFirstPerson(); audio.playGameOver(event.result.winnerIds.some((id) => playerConfig(snapshot.config, id).controller === "human")); break;
             }
           }
           await feedback();
@@ -83,15 +84,18 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
     resource.world.setLookSensitivity(lookSensitivityScale(preferences.lookSensitivity));
   }, [preferences]);
   useEffect(() => {
-    if (view.mode !== "running") resources.current?.world.unlockFirstPerson();
-  }, [view.mode]);
-  useEffect(() => { resources.current?.world.setView(cameraView); }, [cameraView]);
+    const world = resources.current?.world;
+    if (!world) return;
+    world.setObserver(view.viewPlayerId, view.committed);
+    world.setView(view.viewPlayerId === null ? "overview" : cameraView);
+    if (view.mode !== "running") world.unlockFirstPerson();
+  }, [view.viewPlayerId, view.mode, cameraView]);
   const copy = messages(preferences.language).runtime;
   return <>
     <div ref={host} className={styles.scene} />
-    {failed ? <div className={styles.failure} role="alert"><p>{copy.presentation_failed}</p><button onClick={() => app.leave()}>{copy.leave}</button></div> : <div className={styles.camera}>
-      <button data-view-toggle disabled={!view.attached || view.mode !== "running"} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "overview" ? messages(preferences.language).setup.firstPerson : messages(preferences.language).setup.overview}</button>
-      {cameraView === "first_person" && <button disabled={!view.attached || view.mode !== "running"} onClick={() => {
+    {!failed && <div className={styles.camera}>
+      <button data-view-toggle disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "overview" ? messages(preferences.language).setup.firstPerson : messages(preferences.language).setup.overview}</button>
+      {cameraView === "first_person" && <button disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => {
         const world = resources.current?.world;
         if (locked) world?.unlockFirstPerson();
         else { setPointerError(false); world?.lockFirstPerson(() => setPointerError(true)); }

@@ -131,7 +131,7 @@ test("four-seat fixture gives the second human input authority without treating 
   await page.getByRole("button", { name: "Start fixture", exact: true }).click();
   await expect(page.locator("[data-roll]")).toBeEnabled();
   const current = (await saved(page))!;
-  expect(current.state.activePlayerId).toBe("p2");
+  expect(current.state.turnPlayerId).toBe("p2");
   expect(current.state.owners["neon-avenue"]).toBe("p1");
   await expect(page.locator('[data-player="p2"] [data-human-cash]')).toHaveText("¥1,500");
   await expect(page.locator('[data-player="p1"] [data-bot-cash]')).toHaveText(expectedCash(current.state.players[0]!.cash));

@@ -24,11 +24,11 @@ it.each([2, 3, 4])("preserves %s configured seats and controller authority throu
       expect(snapshot.decision.result.rankings).toHaveLength(size);
       return;
     }
-    seen.add(snapshot.activePlayerId);
-    for (const player of config.players.filter((player) => player.id !== snapshot.activePlayerId)) {
+    seen.add(snapshot.turnPlayerId);
+    for (const player of config.players.filter((player) => player.id !== snapshot.turnPlayerId)) {
       expect(legalCommands(snapshot, player.id)).toEqual([]);
     }
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.activePlayerId).at(-1)!;
+    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.turnPlayerId).at(-1)!;
     expect(command).toBeDefined();
     const result = game.apply(command);
     expect(result.ok).toBe(true);

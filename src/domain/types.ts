@@ -38,8 +38,8 @@ export type PlayerState = {
 };
 
 export type Decision =
-  | { readonly kind: "awaiting_roll" }
-  | { readonly kind: "awaiting_purchase"; readonly propertyId: string }
+  | { readonly kind: "awaiting_roll"; readonly actorId: PlayerId }
+  | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
   | { readonly kind: "game_over"; readonly result: MatchResult };
 
 export type RandomState = {
@@ -57,7 +57,7 @@ export type GameSnapshot = {
   readonly completedRounds: number;
   readonly turnOrder: readonly PlayerId[];
   readonly players: readonly PlayerState[];
-  readonly activePlayerId: PlayerId;
+  readonly turnPlayerId: PlayerId;
   readonly decision: Decision;
   readonly owners: Readonly<Record<string, PlayerId>>;
   readonly lastRoll: readonly [number, number] | null;

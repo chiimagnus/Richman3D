@@ -15,7 +15,7 @@ test("real initial and purchase saves survive refresh, preserving state and the 
   await page.locator("[data-roll]").click();
   await expect(page.locator("[data-buy]")).toBeEnabled();
   const pending = (await saved(page))!;
-  expect(pending.state.decision).toEqual({ kind: "awaiting_purchase", propertyId: "neon-avenue" });
+  expect(pending.state.decision).toEqual({ kind: "awaiting_purchase", actorId: "p1", propertyId: "neon-avenue" });
   expect((await saved(page, "backup"))?.state).toEqual(initial.state);
   await page.reload();
   await expect(page.locator("canvas")).toHaveCount(0);

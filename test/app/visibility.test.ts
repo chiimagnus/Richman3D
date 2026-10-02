@@ -50,7 +50,7 @@ it("continuation finishing after the page becomes hidden cannot activate a saved
     visibility(false);
     expect(session.getSnapshot().mode).toBe("paused");
     await session.resume();
-    expect(session.getSnapshot().committed.activePlayerId).toBe("p1");
+    expect(session.getSnapshot().committed.turnPlayerId).toBe("p1");
     expect(session.getSnapshot().committed.revision).toBeGreaterThan(before.record.revision);
   } finally { app.dispose(); }
 });

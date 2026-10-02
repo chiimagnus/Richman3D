@@ -18,7 +18,7 @@ it.each([768, 940, 108])("restores every committed decision and RNG of a real ma
     expect(restored.snapshot).toBe(restored.snapshot);
     expect(Object.isFrozen(restored.snapshot.players[0]?.statistics)).toBe(true);
     if (game.snapshot.decision.kind === "game_over") return;
-    const command = chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.activePlayerId).at(-1)!;
+    const command = chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!;
     expect(restored.apply(command)).toEqual(game.apply(command));
     game = restored;
   }
@@ -47,7 +47,9 @@ it.each([
   (raw: any) => { raw.state.players[0].bankrupt = true; },
   (raw: any) => { raw.state.players[1].id = "p1"; },
   (raw: any) => { raw.state.config.players[1].id = "p1"; },
-  (raw: any) => { raw.state.activePlayerId = "p4"; },
+  (raw: any) => { raw.state.turnPlayerId = "p4"; },
+  (raw: any) => { raw.state.decision.actorId = "p2"; },
+  (raw: any) => { delete raw.state.decision.actorId; },
   (raw: any) => { raw.state.turnOrder = ["p1", "p1"]; },
   (raw: any) => { raw.state.turnOrder.reverse(); },
   (raw: any) => { delete raw.state.turnOrder; },
@@ -84,7 +86,7 @@ it("rejects an owned pending purchase and tampered final rankings", () => {
   game.apply(legalCommands(game.snapshot, "p1")[0]!);
   const pending = makeSave(game.snapshot, matchId);
   expect(() => readSave({ ...pending, state: { ...pending.state, owners: { "neon-avenue": "p2" } } })).toThrow();
-  for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) game.apply(chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.activePlayerId).at(-1)!);
+  for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) game.apply(chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!);
   const terminal = JSON.parse(JSON.stringify(makeSave(game.snapshot, matchId)));
   terminal.state.decision.result.rankings[0].netAssets += 1;
   expect(() => readSave(terminal)).toThrow();

@@ -80,10 +80,11 @@ document.querySelector("#hold-save")!.addEventListener("click", () => { holdNext
 document.querySelector("#release-save")!.addEventListener("click", () => { releaseSave?.(); releaseSave = null; });
 document.querySelector("#start")!.addEventListener("click", async () => {
   const size = Number(document.querySelector<HTMLSelectElement>("#seats")!.value);
-  const human = Number(document.querySelector<HTMLSelectElement>("#human")!.value);
+  const selected = document.querySelector<HTMLSelectElement>("#human")!.value;
+  const human = Number(selected);
   const config = createMatchConfig(940);
-  await app.start({ ...config, seed: size === 2 ? human === 0 ? 6 : 940 : size === 3 ? 1117 : 1209, players: SEAT_IDS.slice(0, size).map((id, index) => ({
-    id, defaultNameKey: id, controller: index === human ? "human" : "bot", name: null, color: SEAT_COLORS[index]!,
+  await app.start({ ...config, seed: selected === "all" ? 940 : size === 2 ? human === 0 ? 6 : 940 : size === 3 ? 1117 : 1209, players: SEAT_IDS.slice(0, size).map((id, index) => ({
+    id, defaultNameKey: id, controller: selected === "all" || index === human ? "human" : "bot", name: null, color: SEAT_COLORS[index]!,
   })) });
   await new Promise<void>((resolve) => {
     const check = () => { if (app.getSnapshot().session?.getSnapshot().attached) resolve(); else requestAnimationFrame(check); };

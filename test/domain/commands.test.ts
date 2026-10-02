@@ -36,7 +36,7 @@ describe("atomic commands", () => {
       if (bound === 4) throw new Error("failed chance calculation");
       return original.call(this, bound);
     });
-    const command = legalCommands(before, before.activePlayerId)[0]!;
+    const command = legalCommands(before, before.turnPlayerId)[0]!;
     expect(game.apply(command)).toEqual({ ok: false, reason: "calculation_failed" });
     expect(game.snapshot).toBe(before);
     vi.restoreAllMocks();
@@ -49,7 +49,7 @@ describe("atomic commands", () => {
   it("rolls back pass-start money, landing and RNG on integer overflow", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
     for (const kind of ["roll", "skip", "roll"] as const) {
-      expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+      expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
     expect(game.apply(legalCommands(before, "p1")[0]!).ok).toBe(false);
@@ -72,7 +72,7 @@ describe("atomic commands", () => {
   it("rejects a transient pass-start overflow even when tax would bring final cash back in range", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
     for (const kind of ["roll", "skip", "roll"] as const) {
-      expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+      expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
     const listener = vi.fn();
@@ -90,7 +90,7 @@ describe("atomic commands", () => {
     const command = chooseBotCommand(game.snapshot)!;
     expect(command.kind).toBe("skip");
     expect(game.apply(command).ok).toBe(true);
-    expect(game.snapshot.activePlayerId).toBe("p1");
+    expect(game.snapshot.turnPlayerId).toBe("p1");
     expect(game.snapshot.owners).toEqual({});
   });
 
@@ -98,7 +98,7 @@ describe("atomic commands", () => {
     const first = new Game(createMatchConfig(0));
     const second = new Game(createMatchConfig(0));
     for (let index = 0; index < 100; index += 1) {
-      const command = legalCommands(first.snapshot, first.snapshot.activePlayerId)[0];
+      const command = legalCommands(first.snapshot, first.snapshot.turnPlayerId)[0];
       if (!command) break;
       expect(first.apply(command)).toEqual(second.apply(command));
     }

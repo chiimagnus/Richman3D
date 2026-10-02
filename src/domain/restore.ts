@@ -29,7 +29,7 @@ export function sameData(first: unknown, second: unknown): boolean {
 }
 
 export function restoreSnapshot(value: unknown): GameSnapshot {
-  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "activePlayerId", "decision", "owners", "lastRoll", "random"]);
+  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "turnPlayerId", "decision", "owners", "lastRoll", "random"]);
   const configValue = record(state.config, ["players", "seed", "rulesVersion", "mapId", "mapVersion"]);
   if (!Array.isArray(configValue.players) || configValue.players.length < 2 || configValue.players.length > 4) throw new Error("席位数量无效");
   for (const player of configValue.players) record(player, ["id", "controller", "name", "defaultNameKey", "color"]);
@@ -71,9 +71,9 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   } else if (!sameData(random, initialRandom.snapshot) || state.revision !== 0) throw new Error("缺少骰子");
   const decision = record(state.decision);
   if (!["awaiting_roll", "awaiting_purchase", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
-  record(decision, decision.kind === "awaiting_purchase" ? ["kind", "propertyId"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind"]);
+  record(decision, decision.kind === "awaiting_purchase" ? ["kind", "actorId", "propertyId"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind", "actorId"]);
   const snapshot = { ...state, config, rules, map } as GameSnapshot;
-  const active = snapshot.players.find((player) => player.id === snapshot.activePlayerId);
+  const active = snapshot.players.find((player) => player.id === snapshot.turnPlayerId);
   if (!active) throw new Error("当前玩家不存在");
   const living = snapshot.players.filter((player) => !player.bankrupt).length;
   if (living === 0) throw new Error("无存活玩家");
@@ -82,7 +82,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     const reason = living === 1 ? "last_survivor" : "round_limit";
     if (result.reason !== reason || (reason === "round_limit" && snapshot.completedRounds !== rules.roundLimit) || !sameData(result, matchResult(snapshot, reason))) throw new Error("终局结果无效");
   } else {
-    if (living < 2 || active.bankrupt || snapshot.completedRounds >= rules.roundLimit) throw new Error("决策阶段无效");
+    if (living < 2 || active.bankrupt || snapshot.completedRounds >= rules.roundLimit || snapshot.decision.actorId !== snapshot.turnPlayerId) throw new Error("决策阶段无效");
     if (snapshot.decision.kind === "awaiting_purchase") {
       const tile = map.tiles[active.position]!;
       if (!snapshot.lastRoll || tile.type !== "property" || tile.id !== snapshot.decision.propertyId || Object.hasOwn(owners, tile.id)) throw new Error("待购地产无效");
@@ -94,7 +94,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     if (!player.bankrupt && purchased !== BigInt(player.statistics.purchases)) throw new Error("购地统计不平");
   }
   if (snapshot.players.reduce((total, player) => total + BigInt(player.statistics.rentReceived) - BigInt(player.statistics.rentPaid), 0n) !== 0n) throw new Error("租金统计不平");
-  if (snapshot.revision === 0 && (snapshot.completedRounds !== 0 || snapshot.activePlayerId !== snapshot.turnOrder[0] || decision.kind !== "awaiting_roll" || Object.keys(owners).length !== 0 ||
+  if (snapshot.revision === 0 && (snapshot.completedRounds !== 0 || snapshot.turnPlayerId !== snapshot.turnOrder[0] || decision.kind !== "awaiting_roll" || Object.keys(owners).length !== 0 ||
       !sameData(random, initialRandom.snapshot) || snapshot.players.some((player) => player.position !== 0 || player.cash !== rules.startingCash || Object.values(player.statistics).some((amount) => amount !== 0)))) throw new Error("初始状态无效");
   return {
     ...snapshot, config: { ...config, players: config.players.map((player) => ({ ...player })) },

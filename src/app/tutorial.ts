@@ -11,7 +11,7 @@ export function tutorialStep(view: GameView, progress: TutorialProgress): Tutori
   if (!progress.started) return { number: 1, ready };
   if (view.committed.revision === 0 || view.committed.revision === 1 && view.presenting) return { number: 2, ready };
   if (view.committed.revision === 1) return { number: progress.inspected ? 4 : 3, ready };
-  return { number: 5, ready: ready && view.committed.activePlayerId === "p1" && view.committed.revision >= 3 };
+  return { number: 5, ready: ready && view.committed.turnPlayerId === "p1" && view.committed.revision >= 3 };
 }
 
 export function loadTutorialCompleted(storage?: Pick<Storage, "getItem">): boolean {

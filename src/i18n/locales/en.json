@@ -1,7 +1,7 @@
 {
   "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. Saved data has not been erased.", "pause": "Pause" },
   "players": {
-    "p1": "You",
+    "p1": "Player One",
     "p2": "City Player",
     "p3": "Player 3",
     "p4": "Player 4"
@@ -81,8 +81,9 @@
     "traffic-fine": "Traffic fine {amount}"
   },
   "setup": {
-    "title": "New match", "names": { "local": "Your name" },
-    "seats": "Players", "seatOption": "{count} seats: you and {bots} computers", "computerSeat": "Computer {number} name",
+    "title": "New match",
+    "seats": "Players", "seatOption": "{count} seats", "computerSeat": "Computer {number} name",
+    "humans": "Local humans", "humanOption": "{count} local humans", "humanSeat": "Local player {number} name",
     "turnOrder": "Fixed turn order: {players}", "spectating": "You are eliminated. Watch the remaining players or return to Main Menu from Pause. Skip Animation only speeds presentation.",
     "length": "Match length", "quick": "Quick · {rounds} rounds", "standard": "Standard · {rounds} rounds",
     "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options", "city": "City · {spaces} spaces · Normal computer",
@@ -92,6 +93,7 @@
     "round_limit": "The full round limit was reached. Ranked by net assets, then cash; equal results share the win.",
     "last_survivor": "Only one player remains solvent.", "overview": "Board overview", "firstPerson": "Your first-person view"
   },
+  "handover": { "title": "Pass the device", "instruction": "Pass the device to the next player. Confirm only when they are ready; game shortcuts stay blocked until then.", "pawn": "Next player and pawn:", "seat": "Seat {number}", "confirm": "I have the device" },
   "results": {
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
@@ -111,8 +113,8 @@
   "help": {
     "title": "How to play", "close": "Close help",
     "sections": {
-      "goal": { "title": "Winning and rounds", "body": "Play one human against 1–3 normal computers. The seed fixes turn order once; Pause shows it. Eliminated seats are skipped without moving the round boundary. Quick matches last {quick} full rounds; standard matches last {standard}. The final seat must finish its decision before the round counts. Rank by cash plus property book value, then cash; equal results tie. Only the last solvent player wins early. If eliminated, watch or leave from Pause." },
-      "turn": { "title": "Your turn", "body": "Roll two dice, move by their total and resolve the landing. Buy an available property or skip it. The computer then acts. Doubles do not grant another turn." },
+      "goal": { "title": "Winning and rounds", "body": "Play 2–4 seats with at least one local human and optional normal computers. Multiple humans confirm Pass the device before playing; restoration requires confirmation again. The seed fixes turn order once; Pause shows it. Eliminated seats are skipped without moving the round boundary. Quick matches last {quick} full rounds; standard matches last {standard}. The final seat must finish its decision before the round counts. Rank by cash plus property book value, then cash; equal results tie. Only the last solvent player wins early. If eliminated, watch or leave from Pause." },
+      "turn": { "title": "Your turn", "body": "Roll two dice, move by their total and resolve the landing. Buy an available property or skip it. The fixed order selects the next player; computers act automatically. Doubles do not grant another turn." },
       "property": { "title": "Property and rent", "body": "Buying costs the displayed price. Landing on an opponent’s property pays its displayed rent. Your own property costs nothing. There are no buildings, mortgages, auctions, trades or held items yet." },
       "money": { "title": "Money and events", "body": "Initial cash is ¥{cash}; passing Start earns ¥{bonus}. Tax spaces charge their displayed fee. Chance gives an immediate random gain or expense. Cash below zero currently means bankruptcy: properties return to the bank and stop collecting rent; historical purchase costs remain. There is no debt-rescue phase yet." },
       "view": { "title": "View and controls", "body": "Board overview shows the whole board and all pawns. Return to your first-person view for optional mouse look; mouse lock is never automatic. Touch starts in overview. Roll, buy and skip also have screen buttons." },

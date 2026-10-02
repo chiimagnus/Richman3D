@@ -24,7 +24,7 @@ describe("session lifecycle and visible order", () => {
     expect(game.snapshot.revision).toBe(0);
     session.bind({ sync() {}, stop() {}, async present() {} });
     await activation;
-    expect(game.snapshot.activePlayerId).toBe("p2");
+    expect(game.snapshot.turnPlayerId).toBe("p2");
     expect(game.snapshot.revision).toBe(2);
     expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
     expect(game.snapshot.players[0]?.cash).toBe(1320);
@@ -78,9 +78,9 @@ describe("session lifecycle and visible order", () => {
     const mid = session.getSnapshot();
     expect(mid.presenting).toBe(true);
     expect(mid.displayed.players[0]?.cash).toBe(1500);
-    expect(mid.displayed.activePlayerId).toBe("p1");
+    expect(mid.displayed.turnPlayerId).toBe("p1");
     expect(mid.committed.players[0]?.cash).toBe(1420);
-    expect(mid.committed.activePlayerId).toBe("p2");
+    expect(mid.committed.turnPlayerId).toBe("p2");
     await session.dispatch({ kind: "roll", actor: "p2", expectedRevision: 1 });
     expect(game.snapshot.revision).toBe(1);
     session.pause();
@@ -145,7 +145,7 @@ describe("session lifecycle and visible order", () => {
     const port: PresentationPort = { sync: vi.fn(), stop: vi.fn(), present: vi.fn(async () => {}) };
     session.bind(port);
     await session.dispatch(legalCommands(game.snapshot, "p1")[0]!);
-    expect(game.snapshot.activePlayerId).toBe("p1");
+    expect(game.snapshot.turnPlayerId).toBe("p1");
     expect(game.snapshot.revision).toBeGreaterThanOrEqual(2);
     expect(game.snapshot.players[0]?.cash).toBe(1420);
     expect(session.getSnapshot().displayed).toBe(game.snapshot);

@@ -8,19 +8,19 @@ export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   return tile?.type === "property" ? tile : null;
 }
 
-export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.activePlayerId) {
+export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.turnPlayerId) {
   const player = snapshot.players.find((candidate) => candidate.id === actor);
   if (!player) throw new Error("当前玩家不存在");
   return tileAt(snapshot.map, player.position);
 }
 
 export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Command[] {
-  if (actor !== snapshot.activePlayerId || snapshot.decision.kind === "game_over" || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
+  if (snapshot.decision.kind === "game_over" || actor !== snapshot.decision.actorId || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
   const base = { actor, expectedRevision: snapshot.revision };
   if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }];
   const property = pendingProperty(snapshot);
   const player = snapshot.players.find((candidate) => candidate.id === actor);
-  if (!property || !player || property.id !== currentTile(snapshot).id || snapshot.owners[property.id]) return [];
+  if (!property || !player || property.id !== currentTile(snapshot, actor).id || snapshot.owners[property.id]) return [];
   return [
     ...(player.cash >= property.price ? [{ ...base, kind: "buy" as const }] : []),
     { ...base, kind: "skip" },

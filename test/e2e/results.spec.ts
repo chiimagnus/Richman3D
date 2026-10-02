@@ -11,7 +11,7 @@ function expectedMatch() {
   for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) {
     const snapshot = game.snapshot;
     const kind = snapshot.decision.kind === "awaiting_purchase" ? count === 1 ? "buy" : "skip" : "roll";
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.activePlayerId).find((action) => action.kind === kind)!;
+    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.turnPlayerId).find((action) => action.kind === kind)!;
     const result = game.apply(command);
     if (!result.ok) throw new Error(result.reason);
   }

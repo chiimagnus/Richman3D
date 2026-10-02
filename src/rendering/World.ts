@@ -20,7 +20,7 @@ export class World {
   private readonly board: BoardView;
   private readonly players = new Map<PlayerId, PlayerView>();
   private readonly cameraRig: CameraRig;
-  private readonly observer: PlayerId;
+  private observer: PlayerId | null;
   private readonly clock = new MotionClock();
   private lastTime: number | null = null;
   private disposed = false;
@@ -84,6 +84,16 @@ export class World {
     this.board.syncOwnership(snapshot);
   }
 
+  setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
+    this.canvas.dataset.observer = id ?? "";
+    if (id === this.observer) return;
+    this.unlockFirstPerson();
+    this.observer = id;
+    const player = snapshot.players.find((candidate) => candidate.id === id);
+    if (player) this.cameraRig.firstPerson.setPosition(player.position);
+    this.setView(id === null ? "overview" : this.cameraRig.mode);
+  }
+
   async movePlayer(id: PlayerId, path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
     await Promise.all([
       this.players.get(id)?.moveAlong(path, onStep, signal),
@@ -93,7 +103,7 @@ export class World {
 
   setView(view: CameraView): void {
     this.cameraRig.setView(view);
-    this.players.get(this.observer)?.setVisible(view === "overview");
+    for (const [id, player] of this.players) player.setVisible(view === "overview" || id !== this.observer);
     this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0x07111a, 0.016);
     this.canvas.dataset.view = view;
   }

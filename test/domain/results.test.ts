@@ -9,7 +9,7 @@ import { eventText } from "../../src/ui/eventText";
 
 it("one actual buy and rent payment reconcile cash, ranking and both sides of the financial statement", () => {
   const game = new Game(createMatchConfig(940), { ...QUICK_RULES, roundLimit: 1 });
-  for (const kind of ["roll", "buy", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  for (const kind of ["roll", "buy", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const snapshot = game.snapshot;
   expect(snapshot.players[0]).toMatchObject({ cash: 1352, statistics: { purchases: 180, rentReceived: 32, rentPaid: 0 } });
   expect(snapshot.players[1]).toMatchObject({ cash: 1468, statistics: { rentPaid: 32, rentReceived: 0 } });
@@ -30,7 +30,7 @@ it("all real event transfers reconcile with each committed cash balance through 
     };
     for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) {
       const before = game.snapshot;
-      const command = chooseBotCommand(before) ?? legalCommands(before, before.activePlayerId).find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : "roll"))!;
+      const command = chooseBotCommand(before) ?? legalCommands(before, before.turnPlayerId).find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : "roll"))!;
       const result = game.apply(command);
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.reason);
@@ -67,7 +67,7 @@ it("all real event transfers reconcile with each committed cash balance through 
 
 it("failed candidate money calculation cannot commit any statistic", () => {
   const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
-  for (const kind of ["roll", "skip", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  for (const kind of ["roll", "skip", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const before = game.snapshot;
   expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: before.revision })).toEqual({ ok: false, reason: "calculation_failed" });
   expect(game.snapshot).toBe(before);
