@@ -38,7 +38,7 @@ export function Hud({ session, language }: { session: GameSession; language: Lan
           {!model.commands.some((action) => action.kind === "buy") && <span>{copy.status.insufficientFunds}</span>}
         </> : <button data-roll disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}</button>}
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
-        {view.mode === "paused" && !view.error && <button onClick={() => void session.resume()}>{copy.runtime.resume}</button>}
+        {view.mode === "paused" && view.error !== "presentation_failed" && <button onClick={() => void session.resume()}>{copy.runtime.resume}</button>}
       </div>
     </footer>
   </>;

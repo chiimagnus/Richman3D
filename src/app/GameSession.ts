@@ -63,10 +63,10 @@ export class GameSession {
   }
 
   async resume(): Promise<void> {
-    if (this.view.mode !== "paused" || !this.port || this.view.error) return;
+    if (this.getSnapshot().mode !== "paused" || !this.port || this.getSnapshot().error === "presentation_failed") return;
     await this.work;
-    if (this.view.mode !== "paused" || !this.port) return;
-    this.publish({ mode: "running" });
+    if (this.view.mode !== "paused" || !this.port || this.view.error === "presentation_failed") return;
+    this.publish({ mode: "running", error: null });
     const command = chooseBotCommand(this.game.snapshot);
     if (command) await this.dispatch(command);
   }

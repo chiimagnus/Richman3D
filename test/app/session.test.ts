@@ -106,7 +106,31 @@ describe("session lifecycle and visible order", () => {
     await session.dispatch(legalCommands(game.snapshot, "human")[0]!);
     expect(session.getSnapshot().mode).toBe("paused");
     expect(session.getSnapshot().error).toBe("presentation_failed");
+    await session.resume();
+    expect(session.getSnapshot().mode).toBe("paused");
+    expect(session.getSnapshot().error).toBe("presentation_failed");
     expect(game.snapshot.players[0]?.cash).toBe(1420);
     expect(game.snapshot.revision).toBe(1);
+  });
+
+  it("can resume after rejected stale input, then execute a real roll and purchase once", async () => {
+    const game = new Game({ seed: 341 });
+    const session = new GameSession(game);
+    session.bind({ sync() {}, stop() {}, async present() {} });
+    const before = game.snapshot;
+    await session.dispatch({ kind: "roll", actor: "human", expectedRevision: 1 });
+    expect(session.getSnapshot().error).toBe("command_rejected");
+    expect(game.snapshot).toBe(before);
+    session.pause();
+    await session.resume();
+    expect(session.getSnapshot().mode).toBe("running");
+    expect(session.getSnapshot().error).toBeNull();
+    expect(game.snapshot).toBe(before);
+    await session.dispatch(legalCommands(game.snapshot, "human")[0]!);
+    expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
+    await session.dispatch(legalCommands(game.snapshot, "human").find((command) => command.kind === "buy")!);
+    expect(game.snapshot.owners["neon-avenue"]).toBe("human");
+    expect(game.snapshot.players[0]?.cash).toBe(1352);
+    expect(game.snapshot.revision).toBe(3);
   });
 });
