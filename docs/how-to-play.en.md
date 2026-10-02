@@ -61,7 +61,7 @@ A normal match saves its initial state and every accepted action before presenta
 
 Only the current match and its previous valid snapshot are stored. Starting or restarting replaces the current match. Saving failure offers **Retry saving** or **Continue without saving**, with a persistent unsaved indicator. Retrying does not execute the action again. If another page changed the save, this page pauses; explicitly load the latest match or discard this page’s unsaved progress instead of silently overwriting it. Damaged or unsupported saves are preserved, not automatically erased.
 
-Storage is local to this browser profile and site, not a cloud backup. Browser cleanup, private mode or device failure may lose it. File import/export and manual backup recovery are not available yet.
+Storage is local to this browser profile and site, not a cloud backup. Browser cleanup, private mode or device failure may lose it. **Export match file** in Pause or a saving-problem panel downloads the current memory state as `.richman.json`, even if local saving is refused. It includes player names and the full state; consider privacy before sharing. File import and manual backup recovery are not available yet.
 
 ## Keyboard
 

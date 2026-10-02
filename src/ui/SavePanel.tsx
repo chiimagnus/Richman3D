@@ -2,6 +2,7 @@ import type { GameApp } from "../app/GameApp";
 import type { GameSession } from "../app/GameSession";
 import { messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
+import { downloadSave } from "../storage/transfer";
 
 export function SavePanel({ app, session }: { app: GameApp; session: GameSession }) {
   const copy = messages(app.getSnapshot().preferences.language).storage;
@@ -13,6 +14,8 @@ export function SavePanel({ app, session }: { app: GameApp; session: GameSession
       <button data-save-retry onClick={() => void session.retrySave()}>{copy.retry}</button>
       <button data-unsaved-continue disabled={!session.getSnapshot().attached} onClick={() => void session.continueUnsaved()}>{copy.continueUnsaved}</button>
     </>}
+    <p>{copy.exportWarning}</p>
+    <button data-save-export onClick={() => downloadSave(session.exportRecord())}>{copy.export}</button>
     <p>{copy.discardWarning}</p>
     <button data-unsaved-discard onClick={() => void app.leave(true)}>{copy.discard}</button>
   </PanelHost>;

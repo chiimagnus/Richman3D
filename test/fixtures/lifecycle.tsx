@@ -41,6 +41,20 @@ const roll = GameAudio.prototype.playRoll;
 GameAudio.prototype.playRoll = function () { audio = this; roll.call(this); };
 
 const app = new GameApp();
+let holdNextSave = false;
+let releaseSave: (() => void) | null = null;
+const save = app.store.save.bind(app.store);
+app.store.save = async (record, expected) => {
+  if (holdNextSave) {
+    holdNextSave = false;
+    await new Promise<void>((resolve) => { releaseSave = resolve; });
+  }
+  return save(record, expected);
+};
+document.addEventListener("keydown", (event) => {
+  if (event.code === "F8") { event.preventDefault(); void app.start(createMatchConfig(1)); }
+  if (event.code === "F10") { event.preventDefault(); releaseSave?.(); releaseSave = null; }
+});
 const root = createRoot(document.querySelector<HTMLDivElement>("#app")!);
 root.render(<StrictMode><App app={app} /></StrictMode>);
 const output = document.querySelector<HTMLOutputElement>("#stats")!;
@@ -49,10 +63,13 @@ const baseline = listeners();
 function report() {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const session = app.getSnapshot().session;
-    output.textContent = JSON.stringify({ world: world?.resourceInfo, audioNodes: app.audio.activeNodeCount, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, matchId: session?.matchId, revision: session?.getSnapshot().committed.revision, state: session?.getSnapshot().committed });
+    output.textContent = JSON.stringify({ world: world?.resourceInfo, audioNodes: app.audio.activeNodeCount, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, matchId: session?.matchId, revision: session?.getSnapshot().committed.revision, state: session?.getSnapshot().committed, save: session?.getSnapshot().save });
   }));
 }
-app.subscribe(report);
+let unwatch = () => {};
+app.subscribe(() => { unwatch(); unwatch = app.getSnapshot().session?.subscribe(report) ?? (() => {}); report(); });
+document.querySelector("#hold-save")!.addEventListener("click", () => { holdNextSave = true; });
+document.querySelector("#release-save")!.addEventListener("click", () => { releaseSave?.(); releaseSave = null; });
 document.querySelector("#start")!.addEventListener("click", async () => {
   await app.start(createMatchConfig(1));
   await new Promise<void>((resolve) => {

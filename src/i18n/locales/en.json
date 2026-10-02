@@ -119,6 +119,7 @@
     }
   },
   "storage": {
+    "export": "Export match file", "exportWarning": "The file includes player names and the full match state. Keep it private unless you intend to share it.",
     "continue": "Continue saved match", "results": "View saved results", "problemTitle": "Match saving",
     "unsaved": "This match has unsaved progress. The previous saved data is preserved.",
     "conflict": "Another page changed the saved match. This page is paused and cannot overwrite it.",
