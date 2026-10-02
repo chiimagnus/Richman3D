@@ -412,15 +412,6 @@ kbd {
   transition: opacity 180ms ease;
 }
 
-.hud[data-pointer-locked="true"] .action-dock {
-  width: min(400px, calc(100vw - 28px));
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.hud[data-pointer-locked="true"] .action-buttons {
-  display: none;
-}
-
 .hud[data-pointer-locked="true"] .look-hint {
   color: rgb(226 240 246 / 82%);
   opacity: 1;
