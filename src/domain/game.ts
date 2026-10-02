@@ -2,11 +2,16 @@ import { BOARD, tileAt, type PropertyTile } from "./board";
 
 export type PlayerId = "human" | "bot";
 
+export type ChanceCardId =
+  | "innovation-bonus"
+  | "maintenance-cost"
+  | "community-event"
+  | "traffic-fine";
+
 export type GamePhase = "awaiting_roll" | "awaiting_purchase" | "game_over";
 
 export type PlayerState = {
   readonly id: PlayerId;
-  readonly name: string;
   readonly cash: number;
   readonly position: number;
 };
@@ -39,7 +44,7 @@ export type LandingResult =
   | {
       readonly kind: "chance";
       readonly amount: number;
-      readonly message: string;
+      readonly cardId: ChanceCardId;
     };
 
 export type RollResult = {
@@ -55,7 +60,6 @@ export type RollResult = {
 
 type MutablePlayer = {
   id: PlayerId;
-  name: string;
   cash: number;
   position: number;
 };
@@ -68,11 +72,11 @@ type GameOptions = {
 const PASS_START_BONUS = 200;
 
 const CHANCE_CARDS = [
-  { amount: 120, message: "城市创新奖金 +120" },
-  { amount: -90, message: "临时维修支出 -90" },
-  { amount: 60, message: "社区活动收益 +60" },
-  { amount: -50, message: "交通违章罚款 -50" },
-] as const;
+  { id: "innovation-bonus", amount: 120 },
+  { id: "maintenance-cost", amount: -90 },
+  { id: "community-event", amount: 60 },
+  { id: "traffic-fine", amount: -50 },
+] as const satisfies readonly { id: ChanceCardId; amount: number }[];
 
 export class Game {
   private readonly random: () => number;
@@ -90,13 +94,11 @@ export class Game {
     this.players = [
       {
         id: "human",
-        name: "你",
         cash: startingCash,
         position: 0,
       },
       {
         id: "bot",
-        name: "城市玩家",
         cash: startingCash,
         position: 0,
       },
@@ -222,7 +224,7 @@ export class Game {
         return {
           kind: "chance",
           amount: card.amount,
-          message: card.message,
+          cardId: card.id,
         };
       }
     }

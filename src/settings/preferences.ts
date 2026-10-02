@@ -1,8 +1,10 @@
 export type LookSensitivity = "low" | "standard" | "high";
+export type Language = "zh-CN" | "en";
 
 export type GamePreferences = {
   readonly soundEnabled: boolean;
   readonly lookSensitivity: LookSensitivity;
+  readonly language: Language;
 };
 
 type PreferencesStorage = Pick<Storage, "getItem" | "setItem">;
@@ -12,6 +14,7 @@ const STORAGE_KEY = "richman3d.preferences.v1";
 export const DEFAULT_PREFERENCES: GamePreferences = {
   soundEnabled: true,
   lookSensitivity: "standard",
+  language: "zh-CN",
 };
 
 export function loadPreferences(
@@ -36,6 +39,9 @@ export function loadPreferences(
       lookSensitivity: isLookSensitivity(value.lookSensitivity)
         ? value.lookSensitivity
         : DEFAULT_PREFERENCES.lookSensitivity,
+      language: isLanguage(value.language)
+        ? value.language
+        : DEFAULT_PREFERENCES.language,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };
@@ -68,6 +74,10 @@ export function lookSensitivityScale(
 
 function isLookSensitivity(value: unknown): value is LookSensitivity {
   return value === "low" || value === "standard" || value === "high";
+}
+
+export function isLanguage(value: unknown): value is Language {
+  return value === "zh-CN" || value === "en";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,6 +1,8 @@
 import * as THREE from "three";
 
 import type { GameSnapshot, LandingResult } from "../domain/game";
+import { messages } from "../i18n";
+import type { Language } from "../settings/preferences";
 import { BoardView } from "./BoardView";
 import { FirstPersonRig } from "./FirstPersonRig";
 import { PlayerView } from "./PlayerView";
@@ -15,7 +17,7 @@ export class World {
   private readonly bot: PlayerView;
   private readonly firstPerson: FirstPersonRig;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, language: Language) {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
@@ -23,7 +25,7 @@ export class World {
     this.canvas = this.renderer.domElement;
     this.canvas.className = "game-canvas";
     this.canvas.tabIndex = 0;
-    this.canvas.setAttribute("aria-label", "3D 大富翁棋盘");
+    this.canvas.setAttribute("aria-label", messages(language).worldAria);
     container.append(this.canvas);
 
     this.scene.background = new THREE.Color(0x07111a);
@@ -37,7 +39,7 @@ export class World {
     this.renderer.toneMappingExposure = 1.05;
 
     this.addEnvironment();
-    this.board = new BoardView(this.scene);
+    this.board = new BoardView(this.scene, language);
     this.bot = new PlayerView(this.scene, "#ffb75e");
     this.firstPerson = new FirstPersonRig(this.camera, this.canvas);
 
@@ -79,6 +81,11 @@ export class World {
 
   setLookSensitivity(pointerSpeed: number): void {
     this.firstPerson.setPointerSpeed(pointerSpeed);
+  }
+
+  setLanguage(language: Language): void {
+    this.canvas.setAttribute("aria-label", messages(language).worldAria);
+    this.board.setLanguage(language);
   }
 
   lockFirstPerson(): void {

@@ -83,7 +83,7 @@ describe("Game", () => {
     expect(result.landing).toEqual({
       kind: "chance",
       amount: 120,
-      message: "城市创新奖金 +120",
+      cardId: "innovation-bonus",
     });
     expect(game.snapshot.players[0]?.cash).toBe(1620);
     expect(game.snapshot.activePlayerId).toBe("bot");

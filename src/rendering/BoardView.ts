@@ -2,6 +2,8 @@ import * as THREE from "three";
 
 import { BOARD, type BoardTile } from "../domain/board";
 import type { GameSnapshot, LandingResult, PlayerId } from "../domain/game";
+import { messages, tileName } from "../i18n";
+import type { Language } from "../settings/preferences";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 
 const GROUP_COLORS = {
@@ -21,14 +23,36 @@ export class BoardView {
 
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
   private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
+  private readonly tileLabels = new Map<number, THREE.Mesh>();
   private readonly tilePulses = new Map<number, number>();
   private readonly markerPops = new Map<THREE.Mesh, number>();
 
-  constructor(scene: THREE.Scene) {
+  constructor(
+    scene: THREE.Scene,
+    private language: Language,
+  ) {
     this.object.name = "board";
     this.buildTiles();
     this.buildCenter();
     scene.add(this.object);
+  }
+
+  setLanguage(language: Language): void {
+    if (language === this.language) {
+      return;
+    }
+
+    this.language = language;
+    BOARD.forEach((tile, index) => {
+      const label = this.tileLabels.get(index);
+      if (!label || !(label.material instanceof THREE.MeshBasicMaterial)) {
+        return;
+      }
+
+      label.material.map?.dispose();
+      label.material.map = createTileLabelTexture(tile, language);
+      label.material.needsUpdate = true;
+    });
   }
 
   syncOwnership(snapshot: GameSnapshot): void {
@@ -155,9 +179,10 @@ export class BoardView {
       inset.receiveShadow = true;
       tileGroup.add(inset);
 
-      const label = createTileLabel(tile);
+      const label = createTileLabel(tile, this.language);
       label.position.set(0, 0.205, 0);
       label.rotation.x = -Math.PI / 2;
+      this.tileLabels.set(index, label);
       tileGroup.add(label);
 
       this.object.add(tileGroup);
@@ -273,7 +298,21 @@ function tileColor(tile: BoardTile): number {
   }
 }
 
-function createTileLabel(tile: BoardTile): THREE.Mesh {
+function createTileLabel(tile: BoardTile, language: Language): THREE.Mesh {
+  return new THREE.Mesh(
+    new THREE.PlaneGeometry(3.1, 1.55),
+    new THREE.MeshBasicMaterial({
+      map: createTileLabelTexture(tile, language),
+      transparent: true,
+      depthWrite: false,
+    }),
+  );
+}
+
+function createTileLabelTexture(
+  tile: BoardTile,
+  language: Language,
+): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 256;
@@ -292,36 +331,30 @@ function createTileLabel(tile: BoardTile): THREE.Mesh {
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.font = "700 48px system-ui, sans-serif";
-  context.fillText(tile.name, 256, 105, 420);
+  context.fillText(tileName(language, tile), 256, 105, 420);
 
   context.fillStyle = "rgba(224, 241, 249, 0.72)";
   context.font = "600 28px system-ui, sans-serif";
-  context.fillText(tileDetail(tile), 256, 166, 420);
+  context.fillText(tileDetail(tile, language), 256, 166, 420);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
-
-  return new THREE.Mesh(
-    new THREE.PlaneGeometry(3.1, 1.55),
-    new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      depthWrite: false,
-    }),
-  );
+  return texture;
 }
 
-function tileDetail(tile: BoardTile): string {
+function tileDetail(tile: BoardTile, language: Language): string {
+  const copy = messages(language).board;
+
   switch (tile.type) {
     case "start":
-      return "+200 / 圈";
+      return copy.startDetail;
     case "chance":
-      return "随机事件";
+      return copy.chanceDetail;
     case "tax":
       return `-${tile.amount}`;
     case "property":
-      return `售价 ${tile.price} · 租金 ${tile.rent}`;
+      return copy.propertyDetail(tile.price, tile.rent);
   }
 }
 

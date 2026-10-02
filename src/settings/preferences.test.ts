@@ -31,12 +31,29 @@ describe("game preferences", () => {
       JSON.stringify({
         soundEnabled: false,
         lookSensitivity: "high",
+        language: "en",
       }),
     );
 
     expect(loadPreferences(storage)).toEqual({
       soundEnabled: false,
       lookSensitivity: "high",
+      language: "en",
+    });
+  });
+
+  it("keeps older saved preferences and adds the default language", () => {
+    const storage = memoryStorage(
+      JSON.stringify({
+        soundEnabled: false,
+        lookSensitivity: "high",
+      }),
+    );
+
+    expect(loadPreferences(storage)).toEqual({
+      soundEnabled: false,
+      lookSensitivity: "high",
+      language: "zh-CN",
     });
   });
 
@@ -45,6 +62,7 @@ describe("game preferences", () => {
       JSON.stringify({
         soundEnabled: "yes",
         lookSensitivity: "turbo",
+        language: "fr",
       }),
     );
 
@@ -61,6 +79,7 @@ describe("game preferences", () => {
       {
         soundEnabled: false,
         lookSensitivity: "low",
+        language: "en",
       },
       storage,
     );
@@ -68,6 +87,7 @@ describe("game preferences", () => {
     expect(JSON.parse(storage.read() ?? "null")).toEqual({
       soundEnabled: false,
       lookSensitivity: "low",
+      language: "en",
     });
   });
 

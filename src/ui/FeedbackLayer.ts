@@ -1,5 +1,12 @@
-import { tileAt } from "../domain/board";
+import { tileAt, type PropertyTile } from "../domain/board";
 import type { PlayerId, RollResult } from "../domain/game";
+import {
+  chanceCardText,
+  messages,
+  playerName,
+  tileName,
+} from "../i18n";
+import type { Language } from "../settings/preferences";
 
 type FeedbackTone = "neutral" | "positive" | "negative" | "chance" | "property";
 
@@ -27,16 +34,20 @@ export class FeedbackLayer {
   private turnTimer: number | null = null;
   private eventTimer: number | null = null;
 
-  constructor(container: HTMLElement, restart: () => void) {
+  constructor(
+    container: HTMLElement,
+    private language: Language,
+    restart: () => void,
+  ) {
     this.root.className = "feedback-layer";
     this.root.innerHTML = `
       <div class="turn-banner" data-feedback-turn hidden>
-        <span class="feedback-kicker" data-turn-kicker>TURN</span>
-        <strong data-turn-title>你的回合</strong>
+        <span class="feedback-kicker" data-turn-kicker></span>
+        <strong data-turn-title></strong>
       </div>
 
       <div class="dice-stage" data-feedback-dice hidden>
-        <span class="feedback-kicker" data-dice-actor>你掷骰</span>
+        <span class="feedback-kicker" data-dice-actor></span>
         <div class="dice-pair" aria-hidden="true">
           <span class="feedback-die" data-die-left>⚀</span>
           <span class="feedback-die" data-die-right>⚀</span>
@@ -45,17 +56,17 @@ export class FeedbackLayer {
       </div>
 
       <div class="event-card" data-feedback-event hidden aria-live="polite">
-        <span class="feedback-kicker" data-event-kicker>EVENT</span>
-        <strong data-event-title>事件</strong>
+        <span class="feedback-kicker" data-event-kicker></span>
+        <strong data-event-title></strong>
         <span data-event-detail></span>
       </div>
 
       <div class="game-over-layer" data-feedback-game-over hidden role="dialog" aria-modal="true" aria-labelledby="game-over-title">
         <div class="game-over-card">
-          <span class="feedback-kicker" data-game-over-kicker>GAME OVER</span>
-          <strong id="game-over-title" data-game-over-title>游戏结束</strong>
+          <span class="feedback-kicker" data-game-over-kicker></span>
+          <strong id="game-over-title" data-game-over-title></strong>
           <p data-game-over-detail></p>
-          <button type="button" data-restart>再来一局</button>
+          <button type="button" data-restart></button>
         </div>
       </div>
     `;
@@ -81,6 +92,12 @@ export class FeedbackLayer {
     this.restartButton = requiredElement<HTMLButtonElement>(this.root, "[data-restart]");
 
     this.restartButton.addEventListener("click", restart);
+    this.setLanguage(language);
+  }
+
+  setLanguage(language: Language): void {
+    this.language = language;
+    this.restartButton.textContent = messages(language).feedback.restart;
   }
 
   showTurn(playerId: PlayerId): void {
@@ -89,8 +106,13 @@ export class FeedbackLayer {
     }
 
     const humanTurn = playerId === "human";
-    this.turnKicker.textContent = humanTurn ? "YOUR TURN" : "RIVAL TURN";
-    this.turnTitle.textContent = humanTurn ? "轮到你了" : "城市玩家行动";
+    const copy = messages(this.language).feedback;
+    this.turnKicker.textContent = humanTurn
+      ? copy.yourTurnKicker
+      : copy.rivalTurnKicker;
+    this.turnTitle.textContent = humanTurn
+      ? copy.yourTurnTitle
+      : copy.rivalTurnTitle;
     this.turnBanner.dataset.player = playerId;
     this.turnBanner.hidden = false;
     restartAnimation(this.turnBanner, "is-showing");
@@ -103,9 +125,11 @@ export class FeedbackLayer {
 
   async showDice(
     dice: readonly [number, number],
-    actor: string,
+    actorId: PlayerId,
   ): Promise<void> {
-    this.diceActor.textContent = `${actor}掷骰`;
+    const copy = messages(this.language).feedback;
+    const actor = playerName(this.language, actorId);
+    this.diceActor.textContent = copy.diceActor(actor);
     this.diceAnnouncement.textContent = "";
     this.diceStage.hidden = false;
     this.diceStage.classList.add("is-rolling");
@@ -121,7 +145,12 @@ export class FeedbackLayer {
     }
 
     this.setDice(dice[0], dice[1]);
-    this.diceAnnouncement.textContent = `${actor}掷出 ${dice[0]} 加 ${dice[1]}，共 ${dice[0] + dice[1]}`;
+    this.diceAnnouncement.textContent = copy.diceAnnouncement(
+      actor,
+      dice[0],
+      dice[1],
+      dice[0] + dice[1],
+    );
     this.diceStage.classList.remove("is-rolling");
     this.diceStage.classList.add("is-settled");
     await wait(reducedMotion() ? 360 : 260);
@@ -129,79 +158,92 @@ export class FeedbackLayer {
     this.diceStage.hidden = true;
   }
 
-  showRollResult(actor: string, result: RollResult): void {
+  showRollResult(actorId: PlayerId, result: RollResult): void {
+    const copy = messages(this.language).feedback;
+    const actor = playerName(this.language, actorId);
     const tile = tileAt(result.to);
-    const passStart = result.passedStart ? "经过起点 +¥200 · " : "";
+    const localizedTileName = tileName(this.language, tile);
+    const passStart = result.passedStart ? copy.passedStart : "";
     let tone: FeedbackTone = "neutral";
-    let kicker = tile.name;
-    let title = `${actor}移动 ${result.steps} 格`;
+    let kicker = localizedTileName;
+    let title = copy.moved(actor, result.steps);
     let detail = passStart;
 
     switch (result.landing.kind) {
       case "property_available":
         tone = "property";
-        title = `「${tile.name}」待售`;
-        detail += `售价 ¥${result.landing.price}`;
+        title = copy.propertyAvailable(localizedTileName);
+        detail += copy.salePrice(result.landing.price);
         break;
       case "property_owned":
         tone = "positive";
-        title = `回到「${tile.name}」`;
-        detail += "这是自己的地产";
+        title = copy.propertyOwned(localizedTileName);
+        detail += copy.ownProperty;
         break;
       case "rent":
         tone = "negative";
-        title = `支付租金 -¥${result.landing.amount}`;
-        detail += `停在「${tile.name}」`;
+        title = copy.rentPaid(result.landing.amount);
+        detail += copy.landedOn(localizedTileName);
         break;
       case "tax":
         tone = "negative";
-        title = `支付费用 -¥${result.landing.amount}`;
-        detail += tile.name;
+        title = copy.feePaid(result.landing.amount);
+        detail += localizedTileName;
         break;
       case "chance":
         tone = result.landing.amount >= 0 ? "positive" : "chance";
-        title = result.landing.message;
-        detail += result.landing.amount >= 0
-          ? `资金 +¥${result.landing.amount}`
-          : `资金 -¥${Math.abs(result.landing.amount)}`;
+        title = chanceCardText(this.language, result.landing.cardId);
+        detail +=
+          result.landing.amount >= 0
+            ? copy.fundsGain(result.landing.amount)
+            : copy.fundsLoss(Math.abs(result.landing.amount));
         break;
       case "start":
         tone = "positive";
-        title = "回到中央起点";
-        detail += "继续下一回合";
+        title = copy.backToStart;
+        detail += copy.continueNextTurn;
         break;
     }
 
-    this.showEvent(kicker, title, detail || `${actor}完成移动`, tone);
+    this.showEvent(kicker, title, detail || copy.moveCompleted(actor), tone);
   }
 
-  showPurchase(actor: string, propertyName: string, price: number): void {
+  showPurchase(actorId: PlayerId, property: PropertyTile, price: number): void {
+    const copy = messages(this.language).feedback;
+    const actor = playerName(this.language, actorId);
     this.showEvent(
-      "PROPERTY ACQUIRED",
-      `${actor}买下「${propertyName}」`,
-      `成交价 ¥${price}`,
+      copy.propertyAcquiredKicker,
+      copy.bought(actor, tileName(this.language, property)),
+      copy.dealPrice(price),
       "property",
     );
   }
 
-  showSkipped(actor: string, propertyName: string): void {
+  showSkipped(actorId: PlayerId, property: PropertyTile): void {
+    const copy = messages(this.language).feedback;
+    const actor = playerName(this.language, actorId);
     this.showEvent(
-      "PROPERTY",
-      `${actor}跳过「${propertyName}」`,
-      "地产保持无主状态",
+      copy.propertyKicker,
+      copy.skipped(actor, tileName(this.language, property)),
+      copy.propertyUnowned,
       "neutral",
     );
   }
 
   showGameOver(winnerId: PlayerId | null): void {
+    const copy = messages(this.language).feedback;
     const humanWon = winnerId === "human";
-    this.gameOverKicker.textContent = humanWon ? "VICTORY" : "GAME OVER";
-    this.gameOverTitle.textContent = humanWon ? "你赢了" : "城市玩家获胜";
+    this.gameOverKicker.textContent = humanWon
+      ? copy.victoryKicker
+      : copy.gameOverKicker;
+    this.gameOverTitle.textContent = humanWon
+      ? copy.humanWonTitle
+      : copy.botWonTitle;
     this.gameOverDetail.textContent = humanWon
-      ? "对手已经破产。"
+      ? copy.humanWonDetail
       : winnerId === "bot"
-        ? "你的资金已经跌破 0。"
-        : "本局已经结束。";
+        ? copy.botWonDetail
+        : copy.gameOverDetail;
     this.gameOver.dataset.result = humanWon ? "win" : "lose";
     this.gameOver.hidden = false;
     this.restartButton.focus({ preventScroll: true });

@@ -1,12 +1,19 @@
 import { GameAudio } from "../audio/GameAudio";
 import { tileAt, type PropertyTile } from "../domain/board";
-import { Game, type GameSnapshot, type RollResult } from "../domain/game";
+import {
+  Game,
+  type GameSnapshot,
+  type PlayerId,
+  type RollResult,
+} from "../domain/game";
+import { chanceCardText, messages, playerName, tileName } from "../i18n";
 import { World } from "../rendering/World";
 import {
   loadPreferences,
   lookSensitivityScale,
   savePreferences,
   type GamePreferences,
+  type Language,
   type LookSensitivity,
 } from "../settings/preferences";
 import { FeedbackLayer } from "../ui/FeedbackLayer";
@@ -14,6 +21,8 @@ import { Hud } from "../ui/Hud";
 import { SettingsPanel } from "../ui/SettingsPanel";
 
 const BOT_CASH_RESERVE = 260;
+
+type StatusText = (language: Language) => string;
 
 export class GameApp {
   private readonly game = new Game();
@@ -25,9 +34,10 @@ export class GameApp {
   private readonly feedback: FeedbackLayer;
   private busy = false;
   private pointerLocked = false;
-  private status = "你的回合，掷骰开始。";
+  private status: StatusText = (language) => messages(language).status.initial;
 
   constructor(private readonly root: HTMLElement) {
+    document.documentElement.lang = this.preferences.language;
     this.root.className = "game-root";
     this.root.replaceChildren();
 
@@ -35,7 +45,7 @@ export class GameApp {
     worldLayer.className = "world-layer";
     this.root.append(worldLayer);
 
-    this.world = new World(worldLayer);
+    this.world = new World(worldLayer, this.preferences.language);
     this.world.setLookSensitivity(
       lookSensitivityScale(this.preferences.lookSensitivity),
     );
@@ -48,8 +58,13 @@ export class GameApp {
       setSoundEnabled: (enabled) => this.setSoundEnabled(enabled),
       setLookSensitivity: (sensitivity) =>
         this.setLookSensitivity(sensitivity),
+      setLanguage: (language) => this.setLanguage(language),
     });
-    this.feedback = new FeedbackLayer(this.root, () => window.location.reload());
+    this.feedback = new FeedbackLayer(
+      this.root,
+      this.preferences.language,
+      () => window.location.reload(),
+    );
 
     this.world.sync(this.game.snapshot);
     this.world.canvas.addEventListener("click", this.enterFirstPerson);
@@ -111,13 +126,13 @@ export class GameApp {
     }
 
     this.busy = true;
-    this.status = "正在掷骰…";
+    this.status = (language) => messages(language).status.rolling;
     this.render();
 
     this.audio.playRoll();
     const result = this.game.roll();
-    await this.feedback.showDice(result.dice, "你");
-    this.status = rollStatus("你", result);
+    await this.feedback.showDice(result.dice, "human");
+    this.status = (language) => rollStatus(language, "human", result);
     await this.world.moveHuman(result.path, () => this.audio.playStep());
     this.world.landOnTile(result.to, result.landing);
     this.audio.playLanding(result.landing);
@@ -125,7 +140,7 @@ export class GameApp {
 
     this.busy = false;
     this.render();
-    this.feedback.showRollResult("你", result);
+    this.feedback.showRollResult("human", result);
 
     if (this.game.snapshot.phase === "game_over") {
       this.finishGame();
@@ -152,17 +167,18 @@ export class GameApp {
 
     const human = snapshot.players.find((player) => player.id === "human");
     if (!human || human.cash < property.price) {
-      this.status = "资金不足，无法购买这块地产。";
+      this.status = (language) => messages(language).status.insufficientFunds;
       this.render();
       return;
     }
 
     this.game.buyCurrentProperty();
     this.world.syncOwnership(this.game.snapshot);
-    this.status = `已购买「${property.name}」。`;
+    this.status = (language) =>
+      messages(language).status.purchased(tileName(language, property));
     this.render();
     this.audio.playPurchase();
-    this.feedback.showPurchase("你", property.name, property.price);
+    this.feedback.showPurchase("human", property, property.price);
     void this.runBotTurn();
   }
 
@@ -180,9 +196,10 @@ export class GameApp {
     }
 
     this.game.skipPurchase();
-    this.status = `已跳过「${property.name}」。`;
+    this.status = (language) =>
+      messages(language).status.skipped(tileName(language, property));
     this.render();
-    this.feedback.showSkipped("你", property.name);
+    this.feedback.showSkipped("human", property);
     void this.runBotTurn();
   }
 
@@ -197,7 +214,7 @@ export class GameApp {
     }
 
     this.busy = true;
-    this.status = "城市玩家正在行动…";
+    this.status = (language) => messages(language).status.botActing;
     this.render();
     this.feedback.showTurn("bot");
     this.audio.playTurn("bot");
@@ -205,12 +222,12 @@ export class GameApp {
 
     this.audio.playRoll();
     const result = this.game.roll();
-    await this.feedback.showDice(result.dice, "城市玩家");
+    await this.feedback.showDice(result.dice, "bot");
     await this.world.moveBot(result.path, () => this.audio.playStep());
     this.world.landOnTile(result.to, result.landing);
     this.audio.playLanding(result.landing);
     this.world.syncOwnership(this.game.snapshot);
-    this.feedback.showRollResult("城市玩家", result);
+    this.feedback.showRollResult("bot", result);
 
     if (
       this.game.snapshot.phase === "awaiting_purchase" &&
@@ -226,7 +243,7 @@ export class GameApp {
       return;
     }
 
-    this.status = "轮到你了。";
+    this.status = (language) => messages(language).status.yourTurn;
     this.render();
     this.feedback.showTurn("human");
     this.audio.playTurn("human");
@@ -248,13 +265,15 @@ export class GameApp {
     if (bot.cash - property.price >= BOT_CASH_RESERVE) {
       this.game.buyCurrentProperty();
       this.world.syncOwnership(this.game.snapshot);
-      this.status = `城市玩家购买了「${property.name}」。`;
+      this.status = (language) =>
+        messages(language).status.botPurchased(tileName(language, property));
       this.audio.playPurchase();
-      this.feedback.showPurchase("城市玩家", property.name, property.price);
+      this.feedback.showPurchase("bot", property, property.price);
     } else {
       this.game.skipPurchase();
-      this.status = `城市玩家跳过了「${property.name}」。`;
-      this.feedback.showSkipped("城市玩家", property.name);
+      this.status = (language) =>
+        messages(language).status.botSkipped(tileName(language, property));
+      this.feedback.showSkipped("bot", property);
     }
   }
 
@@ -289,7 +308,10 @@ export class GameApp {
     this.preferences = { ...this.preferences, soundEnabled };
     this.audio.setEnabled(soundEnabled);
     savePreferences(this.preferences);
-    this.status = soundEnabled ? "声音已开启。" : "声音已关闭。";
+    this.status = (language) =>
+      soundEnabled
+        ? messages(language).status.soundEnabled
+        : messages(language).status.soundDisabled;
     this.render();
 
     if (soundEnabled) {
@@ -305,7 +327,20 @@ export class GameApp {
     this.preferences = { ...this.preferences, lookSensitivity };
     this.world.setLookSensitivity(lookSensitivityScale(lookSensitivity));
     savePreferences(this.preferences);
-    this.status = "鼠标灵敏度已更新。";
+    this.status = (language) => messages(language).status.sensitivityUpdated;
+    this.render();
+  }
+
+  private setLanguage(language: Language): void {
+    if (language === this.preferences.language) {
+      return;
+    }
+
+    this.preferences = { ...this.preferences, language };
+    savePreferences(this.preferences);
+    document.documentElement.lang = language;
+    this.world.setLanguage(language);
+    this.feedback.setLanguage(language);
     this.render();
   }
 
@@ -314,20 +349,22 @@ export class GameApp {
     this.world.unlockFirstPerson();
 
     const snapshot = this.game.snapshot;
-    const winner = snapshot.players.find(
-      (player) => player.id === snapshot.winnerId,
-    );
-    this.status = winner ? `${winner.name} 获胜。` : "游戏结束。";
+    const winnerId = snapshot.winnerId;
+    this.status = (language) =>
+      winnerId
+        ? messages(language).status.winner(playerName(language, winnerId))
+        : messages(language).status.gameOver;
     this.render();
-    this.audio.playGameOver(snapshot.winnerId);
-    this.feedback.showGameOver(snapshot.winnerId);
+    this.audio.playGameOver(winnerId);
+    this.feedback.showGameOver(winnerId);
   }
 
   private render(): void {
     this.hud.render(this.game.snapshot, {
       busy: this.busy,
       pointerLocked: this.pointerLocked,
-      status: this.status,
+      status: this.status(this.preferences.language),
+      language: this.preferences.language,
     });
     this.settings.render({
       preferences: this.preferences,
@@ -337,22 +374,32 @@ export class GameApp {
   }
 }
 
-function rollStatus(actor: string, result: RollResult): string {
+function rollStatus(
+  language: Language,
+  actorId: PlayerId,
+  result: RollResult,
+): string {
+  const copy = messages(language).status;
+  const actor = playerName(language, actorId);
   const landing = result.landing;
 
   switch (landing.kind) {
     case "property_available":
-      return `${actor}移动 ${result.steps} 格，这块地产可以购买。`;
+      return copy.rollPropertyAvailable(actor, result.steps);
     case "rent":
-      return `${actor}移动 ${result.steps} 格，支付租金 ${landing.amount}。`;
+      return copy.rollRent(actor, result.steps, landing.amount);
     case "tax":
-      return `${actor}移动 ${result.steps} 格，支付费用 ${landing.amount}。`;
+      return copy.rollTax(actor, result.steps, landing.amount);
     case "chance":
-      return `${actor}移动 ${result.steps} 格：${landing.message}`;
+      return copy.rollChance(
+        actor,
+        result.steps,
+        chanceCardText(language, landing.cardId),
+      );
     case "property_owned":
-      return `${actor}移动 ${result.steps} 格，回到自己的地产。`;
+      return copy.rollOwned(actor, result.steps);
     case "start":
-      return `${actor}移动 ${result.steps} 格，回到起点。`;
+      return copy.rollStart(actor, result.steps);
   }
 }
 

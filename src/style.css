@@ -287,6 +287,10 @@ button:focus-visible,
   background: rgb(31 137 161 / 28%);
 }
 
+.settings-language-segments {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .settings-note {
   margin: 14px 0 0;
 }
