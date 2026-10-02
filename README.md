@@ -42,6 +42,10 @@ npm run dev
 npm run typecheck
 npm test -- --run
 npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
+
+浏览器回归自动构建并启动独立的生产预览，测试后关闭服务器，报告位于 `test-results/`。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定已有 Chromium 内核的可执行文件；测试使用独立临时配置，不连接日常浏览器。
 
 玩家规则、界面操作或快捷键发生变化时，以 `docs/how-to-play.md` 为用户文档真源并同步更新。

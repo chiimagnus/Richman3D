@@ -8,12 +8,14 @@
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --passWithNoTests"
+    "test": "vitest --config test/vitest.config.ts",
+    "test:e2e": "playwright test --config test/playwright.config.ts"
   },
   "dependencies": {
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.5.2",
     "@types/three": "^0.180.0",
     "typescript": "^5.9.2",

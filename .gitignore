@@ -4,3 +4,5 @@ dist/
 *.local
 coverage/
 .codegraph/
+test-results/
+playwright-report/

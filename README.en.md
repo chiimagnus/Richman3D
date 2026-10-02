@@ -52,4 +52,8 @@ Open the local address shown by Vite in a modern desktop browser.
 npm run typecheck
 npm test -- --run
 npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
+
+Browser tests build and start an isolated production preview, then shut down the server. Reports are in `test-results/`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to use an existing Chromium executable with an isolated temporary profile, never your everyday browser session.
