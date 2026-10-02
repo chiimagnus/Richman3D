@@ -39,6 +39,7 @@ export class FeedbackLayer {
     container: HTMLElement,
     private language: Language,
     restart: () => void,
+    private readonly wait: (duration: number, signal: AbortSignal) => Promise<boolean>,
   ) {
     this.root.className = "feedback-layer";
     this.root.innerHTML = `
@@ -127,6 +128,7 @@ export class FeedbackLayer {
   async showDice(
     dice: readonly [number, number],
     actorId: PlayerId,
+    signal: AbortSignal,
   ): Promise<void> {
     const copy = messages(this.language).feedback;
     const actor = playerName(this.language, actorId);
@@ -141,7 +143,7 @@ export class FeedbackLayer {
           ((dice[0] + frame * 2) % 6) + 1,
           ((dice[1] + frame * 3 + 1) % 6) + 1,
         );
-        await wait(78);
+        if (!await this.wait(78, signal)) return;
       }
     }
 
@@ -154,7 +156,7 @@ export class FeedbackLayer {
     });
     this.diceStage.classList.remove("is-rolling");
     this.diceStage.classList.add("is-settled");
-    await wait(reducedMotion() ? 360 : 260);
+    if (!await this.wait(reducedMotion() ? 0 : 260, signal)) return;
     this.diceStage.classList.remove("is-settled");
     this.diceStage.hidden = true;
   }
@@ -299,6 +301,18 @@ export class FeedbackLayer {
     this.diceLeft.textContent = diceFace(left);
     this.diceRight.textContent = diceFace(right);
   }
+
+  stop(): void {
+    this.diceStage.hidden = true;
+    this.diceStage.classList.remove("is-rolling", "is-settled");
+  }
+
+  dispose(): void {
+    this.stop();
+    if (this.turnTimer !== null) window.clearTimeout(this.turnTimer);
+    if (this.eventTimer !== null) window.clearTimeout(this.eventTimer);
+    this.root.remove();
+  }
 }
 
 function diceFace(value: number): string {
@@ -313,12 +327,6 @@ function restartAnimation(element: HTMLElement, className: string): void {
 
 function reducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-}
-
-function wait(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
 }
 
 function requiredElement<T extends Element = HTMLElement>(

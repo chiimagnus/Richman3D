@@ -5,6 +5,7 @@ import type { GameSnapshot, LandingResult, PlayerId } from "../domain/types";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../settings/preferences";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
+import { disposeObject } from "./disposeObject";
 
 const GROUP_COLORS = {
   cyan: 0x1da9c5,
@@ -67,7 +68,7 @@ export class BoardView {
       if (!ownerId) {
         if (existing) {
           this.markerPops.delete(existing);
-          existing.removeFromParent();
+          disposeObject(existing);
         }
         this.ownerMarkers.delete(tile.id);
         continue;
@@ -105,15 +106,6 @@ export class BoardView {
 
     material.emissive.setHex(pulseColor(landing));
 
-    if (reducedMotion()) {
-      material.emissiveIntensity = 0.6;
-      window.setTimeout(() => {
-        material.emissiveIntensity = 0;
-        material.emissive.setHex(0x000000);
-      }, 120);
-      return;
-    }
-
     this.tilePulses.set(index, performance.now());
   }
 
@@ -125,7 +117,7 @@ export class BoardView {
         continue;
       }
 
-      const progress = Math.min((now - startedAt) / 720, 1);
+      const progress = Math.min((now - startedAt) / (reducedMotion() ? 120 : 720), 1);
       material.emissiveIntensity = Math.sin(Math.PI * progress) * 1.25;
 
       if (progress >= 1) {
@@ -187,6 +179,15 @@ export class BoardView {
 
       this.object.add(tileGroup);
     });
+  }
+
+  dispose(): void {
+    disposeObject(this.object);
+    this.ownerMarkers.clear();
+    this.tileMaterials.clear();
+    this.tileLabels.clear();
+    this.tilePulses.clear();
+    this.markerPops.clear();
   }
 
   private buildCenter(): void {

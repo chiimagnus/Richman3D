@@ -161,6 +161,8 @@ export class SettingsPanel {
     return this.dialog.open;
   }
 
+  dispose(): void { this.root.remove(); }
+
   open(): void {
     if (!this.dialog.open) {
       this.dialog.showModal();

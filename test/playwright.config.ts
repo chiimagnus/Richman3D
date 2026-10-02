@@ -17,11 +17,16 @@ export default defineConfig({
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
       : {},
   },
-  webServer: {
+  webServer: [{
     command: "npm run build && npm run preview -- --port 4317 --strictPort",
     cwd: "..",
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,
-  },
+  }, {
+    command: "npm run dev -- --port 4318 --strictPort",
+    cwd: "..",
+    url: "http://127.0.0.1:4318/Richman3D/",
+    reuseExistingServer: false,
+  }],
 });

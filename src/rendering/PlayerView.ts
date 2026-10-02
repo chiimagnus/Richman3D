@@ -2,13 +2,15 @@ import * as THREE from "three";
 
 import { boardPosition, worldPath } from "./boardGeometry";
 import { animatePositions } from "./motion";
+import { MotionClock } from "./MotionClock";
+import { disposeObject } from "./disposeObject";
 
 const PAWN_OFFSET = new THREE.Vector3(0.72, 0.18, -0.72);
 
 export class PlayerView {
   private readonly object = new THREE.Group();
 
-  constructor(scene: THREE.Scene, color: string) {
+  constructor(scene: THREE.Scene, color: string, private readonly clock: MotionClock) {
     const body = new THREE.Mesh(
       new THREE.CylinderGeometry(0.48, 0.62, 1.25, 20),
       new THREE.MeshStandardMaterial({
@@ -53,6 +55,7 @@ export class PlayerView {
   async moveAlong(
     path: readonly number[],
     onStep?: () => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     const points = [
       this.object.position.clone(),
@@ -62,12 +65,15 @@ export class PlayerView {
     ];
 
     await animatePositions(
+      this.clock,
       points,
       (position, frame) => {
         this.object.position.copy(position);
         this.object.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.24;
       },
-      { onSegment: () => onStep?.() },
+      { onSegment: () => onStep?.(), signal },
     );
   }
+
+  dispose(): void { disposeObject(this.object); }
 }

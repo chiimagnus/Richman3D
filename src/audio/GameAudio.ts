@@ -2,11 +2,38 @@ import type { LandingResult, PlayerId } from "../domain/types";
 
 export class GameAudio {
   private context: AudioContext | null = null;
+  private master: GainNode | null = null;
+  private readonly nodes = new Map<OscillatorNode, GainNode>();
+  private disposed = false;
 
   constructor(private enabled = true) {}
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+    if (!enabled) this.stop();
+    if (this.master && this.context) this.master.gain.setValueAtTime(enabled ? 1 : 0, this.context.currentTime);
+  }
+
+  get activeNodeCount(): number { return this.nodes.size; }
+
+  stop(): void {
+    for (const [oscillator, gain] of this.nodes) {
+      oscillator.onended = null;
+      try { oscillator.stop(); } catch { }
+      oscillator.disconnect();
+      gain.disconnect();
+    }
+    this.nodes.clear();
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stop();
+    this.master?.disconnect();
+    if (this.context) void this.context.close().catch(() => undefined);
+    this.context = null;
+    this.master = null;
   }
 
   playRoll(): void {
@@ -135,18 +162,28 @@ export class GameAudio {
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
     oscillator.connect(gain);
-    gain.connect(context.destination);
+    gain.connect(this.master!);
+    this.nodes.set(oscillator, gain);
+    oscillator.onended = () => {
+      this.nodes.delete(oscillator);
+      oscillator.disconnect();
+      gain.disconnect();
+    };
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
   }
 
   private audioContext(): AudioContext | null {
-    if (!this.enabled) {
+    if (!this.enabled || this.disposed) {
       return null;
     }
 
     try {
-      this.context ??= new AudioContext();
+      if (!this.context) {
+        this.context = new AudioContext();
+        this.master = this.context.createGain();
+        this.master.connect(this.context.destination);
+      }
       if (this.context.state === "suspended") {
         void this.context.resume().catch(() => undefined);
       }

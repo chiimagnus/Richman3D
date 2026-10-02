@@ -1,119 +1,36 @@
 import * as THREE from "three";
+import { MotionClock } from "./MotionClock";
 
-export type MotionFrame = {
-  readonly segmentIndex: number;
-  readonly segmentProgress: number;
-};
-
-type PositionWriter = (position: THREE.Vector3, frame: MotionFrame) => void;
-
+export type MotionFrame = { readonly segmentIndex: number; readonly segmentProgress: number };
 type MotionOptions = {
   readonly durationPerSegment?: number;
   readonly onSegment?: (segmentIndex: number) => void;
+  readonly signal?: AbortSignal | undefined;
 };
 
 export function animatePositions(
+  clock: MotionClock,
   points: readonly THREE.Vector3[],
-  write: PositionWriter,
+  write: (position: THREE.Vector3, frame: MotionFrame) => void,
   options: MotionOptions = {},
-): Promise<void> {
-  const firstPoint = points[0];
+): Promise<boolean> {
   const lastPoint = points.at(-1);
-
-  if (!firstPoint || !lastPoint) {
-    return Promise.resolve();
-  }
-
-  const segmentCount = Math.max(points.length - 1, 0);
-  const durationPerSegment = options.durationPerSegment ?? 220;
-
-  if (
-    segmentCount === 0 ||
-    prefersReducedMotion() ||
-    durationPerSegment <= 0
-  ) {
-    write(lastPoint, {
-      segmentIndex: Math.max(segmentCount - 1, 0),
-      segmentProgress: 1,
-    });
-    return Promise.resolve();
-  }
-
-  const totalDuration = segmentCount * durationPerSegment;
-
-  return new Promise((resolve) => {
-    const startedAt = performance.now();
-    const current = new THREE.Vector3();
-    let finished = false;
-    let lastSegment = -1;
-
-    const finish = (): void => {
-      if (finished) {
-        return;
-      }
-
-      finished = true;
-      write(lastPoint, {
-        segmentIndex: segmentCount - 1,
-        segmentProgress: 1,
-      });
-      resolve();
-    };
-
-    const fallbackTimer = window.setTimeout(finish, totalDuration + 120);
-
-    const frame = (now: number): void => {
-      if (finished) {
-        return;
-      }
-
-      const elapsed = Math.min(now - startedAt, totalDuration);
-      const pathProgress = elapsed / durationPerSegment;
-      const segmentIndex = Math.min(
-        Math.floor(pathProgress),
-        segmentCount - 1,
-      );
-      const from = points[segmentIndex];
-      const to = points[segmentIndex + 1];
-
-      if (!from || !to) {
-        window.clearTimeout(fallbackTimer);
-        finish();
-        return;
-      }
-
-      if (segmentIndex !== lastSegment) {
-        lastSegment = segmentIndex;
-        options.onSegment?.(segmentIndex);
-      }
-
-      const linearProgress =
-        elapsed >= totalDuration ? 1 : pathProgress - segmentIndex;
-      const eased =
-        linearProgress * linearProgress * (3 - 2 * linearProgress);
-
-      current.lerpVectors(from, to, eased);
-      write(current, {
-        segmentIndex,
-        segmentProgress: linearProgress,
-      });
-
-      if (elapsed < totalDuration) {
-        requestAnimationFrame(frame);
-      } else {
-        window.clearTimeout(fallbackTimer);
-        finish();
-      }
-    };
-
-    requestAnimationFrame(frame);
-  });
-}
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+  if (!lastPoint) return Promise.resolve(true);
+  const segments = Math.max(points.length - 1, 0);
+  const duration = options.durationPerSegment ?? 220;
+  const current = new THREE.Vector3();
+  let lastSegment = -1;
+  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  return clock.animate(segments === 0 || reduced ? 0 : segments * duration, (progress) => {
+    const pathProgress = progress * segments;
+    const segmentIndex = Math.min(Math.floor(pathProgress), Math.max(segments - 1, 0));
+    const linear = progress >= 1 ? 1 : pathProgress - segmentIndex;
+    for (let index = lastSegment + 1; index <= segmentIndex; index += 1) options.onSegment?.(index);
+    lastSegment = segmentIndex;
+    const from = points[segmentIndex];
+    const to = points[segmentIndex + 1];
+    if (from && to) current.lerpVectors(from, to, linear * linear * (3 - 2 * linear));
+    else current.copy(lastPoint);
+    write(current, { segmentIndex, segmentProgress: linear });
+  }, options.signal);
 }

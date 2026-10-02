@@ -41,6 +41,7 @@ export class Hud {
   private readonly skipLabel: HTMLElement;
   private readonly previousCash = new Map<PlayerId, number>();
   private commands: readonly Command[] = [];
+  private readonly timers = new Set<number>();
 
   constructor(container: HTMLElement, actions: HudActions) {
     this.root.className = "hud";
@@ -189,9 +190,17 @@ export class Hud {
     badge.setAttribute("aria-hidden", "true");
     container.append(badge);
 
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
+      this.timers.delete(timer);
       badge.remove();
     }, 1_100);
+    this.timers.add(timer);
+  }
+
+  dispose(): void {
+    for (const timer of this.timers) window.clearTimeout(timer);
+    this.timers.clear();
+    this.root.remove();
   }
 }
 

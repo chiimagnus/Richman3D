@@ -1,454 +1,146 @@
-import { GameAudio } from "../audio/GameAudio";
-import { tileAt, type PropertyTile } from "../domain/board";
 import { Game } from "../domain/game";
-import type { GameSnapshot, PlayerId, RollResult, Command } from "../domain/types";
-import { chooseBotCommand } from "../domain/bot";
-import { pendingProperty, legalCommands } from "../domain/selectors";
-import {
-  chanceCardText,
-  formatMessage,
-  messages,
-  playerName,
-  tileName,
-} from "../i18n";
+import { legalCommands } from "../domain/selectors";
+import type { Command, GameEvent } from "../domain/types";
+import { GameAudio } from "../audio/GameAudio";
 import { World } from "../rendering/World";
-import {
-  loadPreferences,
-  lookSensitivityScale,
-  savePreferences,
-  type GamePreferences,
-  type Language,
-  type LookSensitivity,
-} from "../settings/preferences";
-import { FeedbackLayer } from "../ui/FeedbackLayer";
+import { BOARD } from "../domain/board";
+import { messages } from "../i18n";
+import { loadPreferences, savePreferences, lookSensitivityScale, type GamePreferences } from "../settings/preferences";
 import { Hud } from "../ui/Hud";
 import { SettingsPanel } from "../ui/SettingsPanel";
-
-type StatusText = (language: Language) => string;
+import { FeedbackLayer } from "../ui/FeedbackLayer";
+import { eventText } from "../ui/eventText";
+import { GameSession } from "./GameSession";
 
 export class GameApp {
-  private readonly game = new Game({ seed: crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 });
-  private displayedSnapshot = this.game.snapshot;
-  private preferences: GamePreferences = loadPreferences();
+  readonly session = new GameSession(new Game({ seed: crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 }));
+  private preferences = loadPreferences();
   private readonly audio = new GameAudio(this.preferences.soundEnabled);
   private readonly world: World;
   private readonly hud: Hud;
   private readonly settings: SettingsPanel;
   private readonly feedback: FeedbackLayer;
-  private busy = false;
+  private readonly cleanups: (() => void)[] = [];
   private pointerLocked = false;
-  private status: StatusText = (language) => messages(language).status.initial;
+  private disposed = false;
+
+  get resourceInfo() {
+    return { world: this.world.resourceInfo, audioNodes: this.audio.activeNodeCount };
+  }
 
   constructor(private readonly root: HTMLElement) {
-    document.documentElement.lang = this.preferences.language;
-    this.root.className = "game-root";
-    this.root.replaceChildren();
-
+    root.className = "game-root";
     const worldLayer = document.createElement("div");
     worldLayer.className = "world-layer";
-    this.root.append(worldLayer);
-
+    root.replaceChildren(worldLayer);
     this.world = new World(worldLayer, this.preferences.language);
-    this.world.setLookSensitivity(
-      lookSensitivityScale(this.preferences.lookSensitivity),
-    );
-    this.hud = new Hud(this.root, {
-      roll: (command) => void this.rollHuman(command),
-      buy: (command) => this.buyHumanProperty(command),
-      skip: (command) => this.skipHumanProperty(command),
-    });
-    this.settings = new SettingsPanel(this.root, {
-      setSoundEnabled: (enabled) => this.setSoundEnabled(enabled),
-      setLookSensitivity: (sensitivity) =>
-        this.setLookSensitivity(sensitivity),
-      setLanguage: (language) => this.setLanguage(language),
-      returnToGame: () => this.returnToGame(),
+    this.world.setLookSensitivity(lookSensitivityScale(this.preferences.lookSensitivity));
+    const dispatch = (command: Command) => { void this.session.dispatch(command); };
+    this.hud = new Hud(root, { roll: dispatch, buy: dispatch, skip: dispatch });
+    this.settings = new SettingsPanel(root, {
+      setSoundEnabled: (soundEnabled) => this.setPreferences({ ...this.preferences, soundEnabled }),
+      setLookSensitivity: (lookSensitivity) => this.setPreferences({ ...this.preferences, lookSensitivity }),
+      setLanguage: (language) => this.setPreferences({ ...this.preferences, language }),
+      returnToGame: () => { this.settings.close(); void this.session.resume(); },
       focusGame: () => this.world.canvas.focus(),
     });
-    this.feedback = new FeedbackLayer(
-      this.root,
-      this.preferences.language,
-      () => window.location.reload(),
-    );
-
-    this.world.sync(this.game.snapshot);
+    this.feedback = new FeedbackLayer(root, this.preferences.language, () => { this.dispose(); new GameApp(root); }, (duration, signal) => this.world.wait(duration, signal));
+    this.cleanups.push(this.session.bind({
+      sync: (snapshot) => this.world.sync(snapshot),
+      present: (events, signal) => this.present(events, signal),
+      stop: () => { this.world.cancelPresentation(); this.feedback.stop(); this.audio.stop(); },
+    }));
+    this.cleanups.push(this.session.subscribe(() => this.render()));
+    this.cleanups.push(this.world.onPointerLockChange((locked) => { this.pointerLocked = locked; this.render(); }));
     this.world.canvas.addEventListener("click", this.enterFirstPerson);
-    this.world.onPointerLockChange((locked) => {
-      this.pointerLocked = locked;
-
-      if (locked) {
-        this.settings.close();
-      }
-
-      this.render();
-
-      if (!locked) {
-        window.setTimeout(() => {
-          if (
-            !this.pointerLocked &&
-            this.game.snapshot.decision.kind !== "game_over"
-          ) {
-            this.settings.open();
-          }
-        }, 120);
-      }
-    });
-    window.addEventListener("keydown", this.handleKeydown);
-
+    window.addEventListener("keydown", this.keydown);
+    document.addEventListener("visibilitychange", this.visibility);
     this.render();
-    this.feedback.showTurn("human");
   }
 
-  private readonly enterFirstPerson = (): void => {
-    this.world.lockFirstPerson();
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.session.dispose();
+    for (const cleanup of this.cleanups.splice(0)) cleanup();
+    window.removeEventListener("keydown", this.keydown);
+    document.removeEventListener("visibilitychange", this.visibility);
+    this.world.canvas.removeEventListener("click", this.enterFirstPerson);
+    this.feedback.dispose();
+    this.settings.dispose();
+    this.hud.dispose();
+    this.audio.dispose();
+    this.world.dispose();
+    this.root.replaceChildren();
+  }
+
+  private readonly enterFirstPerson = () => this.world.lockFirstPerson();
+  private readonly visibility = () => {
+    if (document.hidden) { this.session.pause(); this.world.unlockFirstPerson(); }
+    else if (this.session.getSnapshot().mode === "paused") this.settings.open();
+  };
+  private readonly keydown = (event: KeyboardEvent) => {
+    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || this.settings.isOpen ||
+        (event.target instanceof HTMLElement && event.target.closest("button,input,select,textarea,a[href],[contenteditable='true']"))) return;
+    const kind = ({ Space: "roll", KeyB: "buy", KeyN: "skip" } as const)[event.code as "Space" | "KeyB" | "KeyN"];
+    const view = this.session.getSnapshot();
+    if (kind && !view.presenting) {
+      const command = legalCommands(view.displayed, "human").find((action) => action.kind === kind);
+      if (command) { event.preventDefault(); void this.session.dispatch(command); }
+    } else if (event.code === "KeyM") this.setPreferences({ ...this.preferences, soundEnabled: !this.preferences.soundEnabled });
   };
 
-  private returnToGame(): void {
-    if (this.game.snapshot.decision.kind !== "game_over") {
-      this.world.canvas.focus();
-      this.world.lockFirstPerson();
-    }
-  }
-
-  private readonly handleKeydown = (event: KeyboardEvent): void => {
-    if (
-      event.repeat ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.altKey ||
-      this.settings.isOpen ||
-      isNativeInteractiveTarget(event.target)
-    ) {
-      return;
-    }
-
-    if (event.code === "Space") {
-      event.preventDefault();
-      void this.rollHuman();
-      return;
-    }
-
-    if (event.code === "KeyB") {
-      this.buyHumanProperty();
-      return;
-    }
-
-    if (event.code === "KeyN") {
-      this.skipHumanProperty();
-      return;
-    }
-
-    if (event.code === "KeyM") {
-      this.toggleSound();
-    }
-  };
-
-  private async rollHuman(command = this.humanCommand("roll")): Promise<void> {
-    const snapshot = this.game.snapshot;
-    if (
-      !command || this.busy ||
-      snapshot.decision.kind !== "awaiting_roll" ||
-      snapshot.activePlayerId !== "human"
-    ) {
-      return;
-    }
-
-    this.busy = true;
-    this.status = (language) => messages(language).status.rolling;
-    this.render();
-
-    this.audio.playRoll();
-    const result = this.applyRoll(command);
-    await this.feedback.showDice(result.dice, "human");
-    this.status = (language) => rollStatus(language, "human", result);
-    await this.world.moveHuman(result.path, () => this.audio.playStep());
-    this.world.landOnTile(result.to, result.landing);
-    this.audio.playLanding(result.landing);
-    this.world.syncOwnership(this.game.snapshot);
-
-    this.busy = false;
-    this.render();
-    this.feedback.showRollResult("human", result);
-
-    if (this.game.snapshot.decision.kind === "game_over") {
-      this.finishGame();
-      return;
-    }
-
-    if (this.game.snapshot.activePlayerId === "bot") {
-      await this.runBotTurn();
-    }
-  }
-
-  private buyHumanProperty(command = this.humanCommand("buy")): void {
-    const snapshot = this.game.snapshot;
-    const property = pendingProperty(snapshot);
-
-    if (
-      !command || this.busy ||
-      snapshot.decision.kind !== "awaiting_purchase" ||
-      snapshot.activePlayerId !== "human" ||
-      !property
-    ) {
-      return;
-    }
-
-    const human = snapshot.players.find((player) => player.id === "human");
-    if (!human || human.cash < property.price) {
-      this.status = (language) => messages(language).status.insufficientFunds;
-      this.render();
-      return;
-    }
-
-    this.applyCommand(command);
-    this.world.syncOwnership(this.game.snapshot);
-    this.status = (language) =>
-      formatMessage(messages(language).status.purchased, {
-        propertyName: tileName(language, property),
-      });
-    this.render();
-    this.audio.playPurchase();
-    this.feedback.showPurchase("human", property, property.price);
-    void this.runBotTurn();
-  }
-
-  private skipHumanProperty(command = this.humanCommand("skip")): void {
-    const snapshot = this.game.snapshot;
-    const property = pendingProperty(snapshot);
-
-    if (
-      !command || this.busy ||
-      snapshot.decision.kind !== "awaiting_purchase" ||
-      snapshot.activePlayerId !== "human" ||
-      !property
-    ) {
-      return;
-    }
-
-    this.applyCommand(command);
-    this.status = (language) =>
-      formatMessage(messages(language).status.skipped, {
-        propertyName: tileName(language, property),
-      });
-    this.render();
-    this.feedback.showSkipped("human", property);
-    void this.runBotTurn();
-  }
-
-  private async runBotTurn(): Promise<void> {
-    const before = this.game.snapshot;
-    if (
-      this.busy ||
-      before.decision.kind === "game_over" ||
-      before.activePlayerId !== "bot"
-    ) {
-      return;
-    }
-
-    this.busy = true;
-    this.status = (language) => messages(language).status.botActing;
-    this.render();
-    this.feedback.showTurn("bot");
-    this.audio.playTurn("bot");
-    await pause(620);
-
-    this.audio.playRoll();
-    const result = this.applyRoll();
-    await this.feedback.showDice(result.dice, "bot");
-    await this.world.moveBot(result.path, () => this.audio.playStep());
-    this.world.landOnTile(result.to, result.landing);
-    this.audio.playLanding(result.landing);
-    this.world.syncOwnership(this.game.snapshot);
-    this.feedback.showRollResult("bot", result);
-
-    if (
-      this.game.snapshot.decision.kind === "awaiting_purchase" &&
-      this.game.snapshot.activePlayerId === "bot"
-    ) {
-      this.resolveBotPurchase();
-    }
-
-    this.busy = false;
-
-    if (this.game.snapshot.decision.kind === "game_over") {
-      this.finishGame();
-      return;
-    }
-
-    this.status = (language) => messages(language).status.yourTurn;
-    this.render();
-    this.feedback.showTurn("human");
-    this.audio.playTurn("human");
-  }
-
-  private resolveBotPurchase(): void {
-    const snapshot = this.game.snapshot;
-    const property = pendingProperty(snapshot);
-    const command = chooseBotCommand(snapshot);
-    if (!property || !command) throw new Error("电脑购买阶段缺少合法动作");
-    this.applyCommand(command);
-    this.world.syncOwnership(this.game.snapshot);
-    if (command.kind === "buy") {
-      this.audio.playPurchase();
-      this.feedback.showPurchase("bot", property, property.price);
-    } else {
-      this.feedback.showSkipped("bot", property);
-    }
-  }
-
-  private applyCommand(command: Command) {
-    const result = this.game.apply(command);
-    if (!result.ok) throw new Error(result.reason);
-    return result;
-  }
-
-  private applyRoll(input?: Command): RollResult {
-    const snapshot = this.game.snapshot;
-    const command = input ?? (snapshot.activePlayerId === "bot"
-      ? chooseBotCommand(snapshot)
-      : this.humanCommand("roll"));
-    if (!command) throw new Error("没有合法掷骰动作");
-    const event = this.applyCommand(command).events.find((entry) => entry.kind === "rolled");
-    if (!event || event.kind !== "rolled") throw new Error("缺少掷骰结果");
-    return event.result;
-  }
-
-  private humanCommand(kind: Command["kind"]): Command | undefined {
-    return legalCommands(this.displayedSnapshot, "human").find((action) => action.kind === kind);
-  }
-
-  private toggleSound(): void {
-    this.setSoundEnabled(!this.preferences.soundEnabled);
-  }
-
-  private setSoundEnabled(soundEnabled: boolean): void {
-    if (soundEnabled === this.preferences.soundEnabled) {
-      return;
-    }
-
-    this.preferences = { ...this.preferences, soundEnabled };
-    this.audio.setEnabled(soundEnabled);
-    savePreferences(this.preferences);
+  private setPreferences(preferences: GamePreferences): void {
+    this.preferences = preferences;
+    this.audio.setEnabled(preferences.soundEnabled);
+    savePreferences(preferences);
+    document.documentElement.lang = preferences.language;
+    this.world.setLanguage(preferences.language);
+    this.world.setLookSensitivity(lookSensitivityScale(preferences.lookSensitivity));
+    this.feedback.setLanguage(preferences.language);
     this.render();
   }
 
-  private setLookSensitivity(lookSensitivity: LookSensitivity): void {
-    if (lookSensitivity === this.preferences.lookSensitivity) {
-      return;
+  private async present(events: readonly GameEvent[], signal: AbortSignal): Promise<void> {
+    for (const event of events) {
+      if (signal.aborted) return;
+      switch (event.kind) {
+        case "rolled": {
+          this.audio.playRoll();
+          await this.feedback.showDice(event.result.dice, event.result.playerId, signal);
+          if (signal.aborted) return;
+          const move = event.result.playerId === "human" ? this.world.moveHuman.bind(this.world) : this.world.moveBot.bind(this.world);
+          await move(event.result.path, () => this.audio.playStep(), signal);
+          if (signal.aborted) return;
+          this.world.landOnTile(event.result.to, event.result.landing);
+          this.audio.playLanding(event.result.landing);
+          this.feedback.showRollResult(event.result.playerId, event.result);
+          break;
+        }
+        case "purchased":
+        case "skipped": {
+          const tile = BOARD.find((candidate) => candidate.id === event.propertyId);
+          if (!tile || tile.type !== "property") throw new Error("事件地产不存在");
+          if (event.kind === "purchased") { this.audio.playPurchase(); this.feedback.showPurchase(event.actor, tile, event.price); }
+          else this.feedback.showSkipped(event.actor, tile);
+          break;
+        }
+        case "turn": this.feedback.showTurn(event.actor); this.audio.playTurn(event.actor); break;
+        case "ended": this.world.unlockFirstPerson(); this.audio.playGameOver(event.winnerId); this.feedback.showGameOver(event.winnerId); break;
+      }
     }
-
-    this.preferences = { ...this.preferences, lookSensitivity };
-    this.world.setLookSensitivity(lookSensitivityScale(lookSensitivity));
-    savePreferences(this.preferences);
-    this.render();
-  }
-
-  private setLanguage(language: Language): void {
-    if (language === this.preferences.language) {
-      return;
-    }
-
-    this.preferences = { ...this.preferences, language };
-    savePreferences(this.preferences);
-    document.documentElement.lang = language;
-    this.world.setLanguage(language);
-    this.feedback.setLanguage(language);
-    this.render();
-  }
-
-  private finishGame(): void {
-    this.busy = false;
-    this.world.unlockFirstPerson();
-
-    const snapshot = this.game.snapshot;
-    const winnerId = snapshot.decision.kind === "game_over" ? snapshot.decision.winnerId : null;
-    this.status = (language) =>
-      winnerId
-        ? formatMessage(messages(language).status.winner, {
-            playerName: playerName(language, winnerId),
-          })
-        : messages(language).status.gameOver;
-    this.render();
-    this.audio.playGameOver(winnerId);
-    this.feedback.showGameOver(winnerId);
   }
 
   private render(): void {
-    this.displayedSnapshot = this.game.snapshot;
-    this.hud.render(this.game.snapshot, {
-      busy: this.busy,
+    if (this.disposed) return;
+    const view = this.session.getSnapshot();
+    const event = view.events.find((entry) => entry.kind !== "turn");
+    this.hud.render(view.displayed, {
+      busy: view.presenting || view.mode !== "running" || !view.attached,
       pointerLocked: this.pointerLocked,
-      status: this.status(this.preferences.language),
+      status: view.presenting ? messages(this.preferences.language).status.rolling : event ? eventText(this.preferences.language, event) : messages(this.preferences.language).status.initial,
       language: this.preferences.language,
     });
-    this.settings.render({
-      preferences: this.preferences,
-      pointerLocked: this.pointerLocked,
-    });
+    this.settings.render({ preferences: this.preferences, pointerLocked: this.pointerLocked });
   }
-}
-
-function rollStatus(
-  language: Language,
-  actorId: PlayerId,
-  result: RollResult,
-): string {
-  const copy = messages(language).status;
-  const actor = playerName(language, actorId);
-  const landing = result.landing;
-
-  switch (landing.kind) {
-    case "property_available":
-      return formatMessage(copy.rollPropertyAvailable, {
-        actor,
-        steps: result.steps,
-      });
-    case "rent":
-      return formatMessage(copy.rollRent, {
-        actor,
-        steps: result.steps,
-        amount: landing.amount,
-      });
-    case "tax":
-      return formatMessage(copy.rollTax, {
-        actor,
-        steps: result.steps,
-        amount: landing.amount,
-      });
-    case "chance":
-      return formatMessage(copy.rollChance, {
-        actor,
-        steps: result.steps,
-        message: chanceCardText(language, landing.cardId),
-      });
-    case "property_owned":
-      return formatMessage(copy.rollOwned, {
-        actor,
-        steps: result.steps,
-      });
-    case "start":
-      return formatMessage(copy.rollStart, {
-        actor,
-        steps: result.steps,
-      });
-  }
-}
-
-function isNativeInteractiveTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    target.closest(
-      "button, input, select, textarea, a[href], [contenteditable='true']",
-    ) !== null
-  );
-}
-
-function pause(milliseconds: number): Promise<void> {
-  const reduceMotion =
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  const duration = reduceMotion ? Math.min(milliseconds, 80) : milliseconds;
-
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, duration);
-  });
 }

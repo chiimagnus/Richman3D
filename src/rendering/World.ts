@@ -6,6 +6,8 @@ import type { Language } from "../settings/preferences";
 import { BoardView } from "./BoardView";
 import { FirstPersonRig } from "./FirstPersonRig";
 import { PlayerView } from "./PlayerView";
+import { MotionClock } from "./MotionClock";
+import { disposeObject } from "./disposeObject";
 
 export class World {
   readonly canvas: HTMLCanvasElement;
@@ -16,6 +18,9 @@ export class World {
   private readonly board: BoardView;
   private readonly bot: PlayerView;
   private readonly firstPerson: FirstPersonRig;
+  private readonly clock = new MotionClock();
+  private lastTime: number | null = null;
+  private disposed = false;
 
   constructor(container: HTMLElement, language: Language) {
     this.renderer = new THREE.WebGLRenderer({
@@ -40,8 +45,8 @@ export class World {
 
     this.addEnvironment();
     this.board = new BoardView(this.scene, language);
-    this.bot = new PlayerView(this.scene, "#ffb75e");
-    this.firstPerson = new FirstPersonRig(this.camera, this.canvas);
+    this.bot = new PlayerView(this.scene, "#ffb75e", this.clock);
+    this.firstPerson = new FirstPersonRig(this.camera, this.canvas, this.clock);
 
     this.resize();
     window.addEventListener("resize", this.resize);
@@ -67,12 +72,12 @@ export class World {
     this.board.syncOwnership(snapshot);
   }
 
-  moveHuman(path: readonly number[], onStep?: () => void): Promise<void> {
-    return this.firstPerson.moveAlong(path, onStep);
+  moveHuman(path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
+    return this.firstPerson.moveAlong(path, onStep, signal);
   }
 
-  moveBot(path: readonly number[], onStep?: () => void): Promise<void> {
-    return this.bot.moveAlong(path, onStep);
+  moveBot(path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
+    return this.bot.moveAlong(path, onStep, signal);
   }
 
   landOnTile(index: number, landing: LandingResult): void {
@@ -100,7 +105,37 @@ export class World {
     return this.firstPerson.onLockChange(listener);
   }
 
+  wait(duration: number, signal?: AbortSignal): Promise<boolean> {
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    return this.clock.animate(reduced ? 0 : duration, () => {}, signal);
+  }
+
+  cancelPresentation(): void { this.clock.cancel(); }
+
+  get resourceInfo() {
+    return { ...this.renderer.info.memory, activeAnimations: this.clock.activeCount, canvases: this.canvas.isConnected ? 1 : 0, disposed: this.disposed };
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.renderer.setAnimationLoop(null);
+    window.removeEventListener("resize", this.resize);
+    this.clock.cancel();
+    this.firstPerson.dispose();
+    this.bot.dispose();
+    this.board.dispose();
+    disposeObject(this.scene);
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.canvas.remove();
+  }
+
   private readonly render = (time: number): void => {
+    if (this.disposed) return;
+    const delta = this.lastTime === null ? 0 : Math.max(time - this.lastTime, 0);
+    this.lastTime = time;
+    this.clock.update(delta);
     this.board.update(time);
     this.renderer.render(this.scene, this.camera);
   };

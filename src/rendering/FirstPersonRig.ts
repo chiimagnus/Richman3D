@@ -3,6 +3,7 @@ import { PointerLockControls } from "three/addons/controls/PointerLockControls.j
 
 import { boardDirection, boardPosition, worldPath } from "./boardGeometry";
 import { animatePositions } from "./motion";
+import { MotionClock } from "./MotionClock";
 
 const EYE_HEIGHT = 1.72;
 
@@ -12,6 +13,7 @@ export class FirstPersonRig {
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     canvas: HTMLCanvasElement,
+    private readonly clock: MotionClock,
   ) {
     this.controls = new PointerLockControls(camera, canvas);
   }
@@ -25,6 +27,7 @@ export class FirstPersonRig {
   async moveAlong(
     path: readonly number[],
     onStep?: () => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     const points = [
       this.camera.position.clone(),
@@ -34,7 +37,8 @@ export class FirstPersonRig {
     const movement = new THREE.Vector3();
     const lookTarget = new THREE.Vector3();
 
-    await animatePositions(
+    const finished = await animatePositions(
+      this.clock,
       points,
       (position, frame) => {
         this.camera.position.copy(position);
@@ -53,17 +57,22 @@ export class FirstPersonRig {
 
         previous.copy(position);
       },
-      { onSegment: () => onStep?.() },
+      { onSegment: () => onStep?.(), signal },
     );
 
     const destination = path.at(-1);
-    if (destination !== undefined && !this.controls.isLocked) {
+    if (finished && destination !== undefined && !this.controls.isLocked) {
       this.faceBoardDirection(destination);
     }
   }
 
   setPointerSpeed(pointerSpeed: number): void {
     this.controls.pointerSpeed = pointerSpeed;
+  }
+
+  dispose(): void {
+    this.unlock();
+    this.controls.dispose();
   }
 
   lock(): void {
