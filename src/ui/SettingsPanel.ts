@@ -132,6 +132,7 @@ export class SettingsPanel {
 
     this.openButton.addEventListener("click", () => this.open());
     this.returnButton.addEventListener("click", actions.returnToGame);
+    this.dialog.addEventListener("cancel", (event) => event.preventDefault());
     this.dialog.addEventListener("close", actions.focusGame);
     this.soundInput.addEventListener("change", () => {
       actions.setSoundEnabled(this.soundInput.checked);
