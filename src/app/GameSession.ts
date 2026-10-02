@@ -3,6 +3,11 @@ import { chooseBotCommand } from "../domain/bot";
 import { playerConfig } from "../domain/config";
 import type { Command, GameEvent, GameSnapshot } from "../domain/types";
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
+import { GameStore } from "../storage/GameStore";
+import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
+
+export type SaveView = { readonly kind: "disabled" | "saving" } | { readonly kind: "saved"; readonly savedAt: number }
+  | { readonly kind: "unsaved"; readonly acknowledged: boolean; readonly error: SaveError["kind"] } | { readonly kind: "conflict" };
 
 export type GameView = {
   readonly committed: GameSnapshot;
@@ -13,6 +18,7 @@ export type GameView = {
   readonly events: readonly GameEvent[];
   readonly error: "presentation_failed" | "command_rejected" | null;
   readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
+  readonly save: SaveView;
 };
 
 export class GameSession {
@@ -22,12 +28,70 @@ export class GameSession {
   private work: Promise<void> | null = null;
   private announcedNoticeId = 0;
   private view: GameView;
+  private saving: Promise<boolean> | null = null;
+  private expected: SaveIdentity | null;
+  private allowUnsaved = false;
 
-  constructor(private readonly game: Game, readonly matchId = "local", readonly purpose: "match" | "tutorial" = "match") {
-    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null };
+  constructor(private readonly game: Game, readonly matchId = "local", readonly purpose: "match" | "tutorial" = "match",
+    private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
+    this.expected = persistence?.expected ?? null;
+    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" } };
   }
 
   getSnapshot = (): GameView => this.view;
+
+  async initializeSave(): Promise<void> { await this.persist(); }
+
+  async flush(): Promise<boolean> {
+    await this.work;
+    await this.saving;
+    const saved = !this.persistence || this.view.save.kind === "saved";
+    if (!saved && this.view.mode !== "disposed") {
+      if (this.view.save.kind === "unsaved") this.publish({ save: { ...this.view.save, acknowledged: false } });
+      this.pause();
+    }
+    return saved;
+  }
+
+  async retrySave(): Promise<void> {
+    await this.work;
+    if (this.view.mode === "disposed" || this.view.save.kind === "conflict") return;
+    await this.persist();
+  }
+
+  async continueUnsaved(): Promise<void> {
+    await this.work;
+    if (this.view.mode === "disposed" || this.view.save.kind !== "unsaved") return;
+    this.allowUnsaved = true;
+    this.publish({ save: { ...this.view.save, acknowledged: true } });
+    await this.resume();
+  }
+
+  exportRecord(): SaveRecord { return makeSave(this.game.snapshot, this.matchId, this.persistence?.source ?? "local"); }
+
+  private persist(): Promise<boolean> {
+    if (!this.persistence) return Promise.resolve(true);
+    if (this.saving) return this.saving;
+    const { store, source } = this.persistence;
+    const snapshot = this.game.snapshot;
+    this.publish({ save: { kind: "saving" } });
+    this.saving = Promise.resolve().then(async () => {
+      try {
+        const saved = await store.save(makeSave(snapshot, this.matchId, source), this.expected);
+        this.expected = { matchId: saved.matchId, revision: saved.revision };
+        if (this.view.mode !== "disposed") this.publish({ save: { kind: "saved", savedAt: saved.savedAt } });
+        return true;
+      } catch (cause) {
+        const error = cause instanceof SaveError ? cause : new SaveError("unavailable", { cause });
+        if (this.view.mode !== "disposed") {
+          this.publish({ save: error.kind === "conflict" ? { kind: "conflict" } : { kind: "unsaved", acknowledged: this.allowUnsaved, error: error.kind } });
+          if (error.kind === "conflict" || !this.allowUnsaved) this.pause();
+        }
+        return false;
+      }
+    }).finally(() => { this.saving = null; });
+    return this.saving;
+  }
 
   async activate(): Promise<void> {
     if (!this.view.attached && this.view.mode !== "disposed" && !this.view.error) await new Promise<void>((resolve) => {
@@ -64,7 +128,7 @@ export class GameSession {
   }
 
   dispatch(command: Command): Promise<void> {
-    if (this.work || this.view.presenting || !this.port || this.view.mode !== "running") return Promise.resolve();
+    if (this.work || this.view.presenting || this.view.save.kind === "saving" || !this.port || this.view.mode !== "running") return Promise.resolve();
     this.work = Promise.resolve().then(() => this.run(command)).finally(() => { this.work = null; });
     return this.work;
   }
@@ -80,7 +144,7 @@ export class GameSession {
   }
 
   async resume(): Promise<void> {
-    if (this.getSnapshot().mode !== "paused" || !this.port || this.getSnapshot().error === "presentation_failed") return;
+    if (this.getSnapshot().mode !== "paused" || !this.port || this.getSnapshot().error === "presentation_failed" || this.view.save.kind === "saving" || this.view.save.kind === "conflict" || this.view.save.kind === "unsaved" && !this.view.save.acknowledged) return;
     await this.work;
     if (this.view.mode !== "paused" || !this.port || this.view.error === "presentation_failed") return;
     this.publish({ mode: "running", error: null });
@@ -121,6 +185,7 @@ export class GameSession {
         }
         const port = this.port;
         this.publish({ committed: result.snapshot, displayed: before, events: result.events, presenting: true, error: null });
+        if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
         const event = result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
         const meaningful = event && !(event.kind === "purchased" && playerConfig(before.config, event.actor).controller === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");

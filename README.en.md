@@ -18,7 +18,8 @@ A first-person 3D Richman-style browser board game built with **TypeScript + Thr
 - Live Chinese / English switching with saved language preference
 - Compact HUD, persistent settings, and keyboard shortcuts
 - Match setup, 20/40 full-round rankings and financial results
-- Independent five-step practice and bilingual in-game help (no match saving yet)
+- Independent five-step practice and bilingual in-game help
+- Local automatic match saving, refresh continuation and visible saving failures
 
 Full current rules and controls: **[How to play](docs/how-to-play.en.md)**.
 

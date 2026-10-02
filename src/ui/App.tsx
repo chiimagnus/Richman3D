@@ -13,6 +13,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { FeedbackLayer } from "./FeedbackLayer";
 import { ResultsScreen } from "./ResultsScreen";
 import { HelpPanel } from "./HelpPanel";
+import { SavePanel } from "./SavePanel";
 import { tutorialStep, type TutorialProgress } from "../app/tutorial";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
@@ -50,6 +51,7 @@ function GamePlay({ app, session, preferences, onTutorialExit }: { app: GameApp;
     return () => window.removeEventListener("keydown", keydown);
   }, [app, session, preferences, panel, view, tutorial?.number]);
   const ended = view.displayed.decision.kind === "game_over" && !view.presenting;
+  const saveProblem = view.save.kind === "conflict" || view.save.kind === "unsaved" && !view.save.acknowledged;
   const closeSettings = () => { setPanel(null); void session.resume(); };
   return <main className={styles.game} data-match-id={session.matchId} data-seed={view.committed.config.seed} data-purpose={session.purpose}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={<div role="alert">{copy.runtime.presentation_failed}<button onClick={() => app.leave()}>{copy.runtime.leave}</button></div>}>
@@ -59,6 +61,6 @@ function GamePlay({ app, session, preferences, onTutorialExit }: { app: GameApp;
     <ErrorBoundary onError={() => session.failPresentation()} fallback={<p role="alert">{copy.runtime.presentation_failed}</p>}>
       {!ended && <><Hud session={session} language={preferences.language} tutorial={tutorial} onTutorialNext={() => setProgress(tutorial?.number === 1 ? { ...progress, started: true } : { ...progress, inspected: true })} onTutorialExit={onTutorialExit} /><FeedbackLayer session={session} language={preferences.language} /></>}
     </ErrorBoundary>
-    {ended ? <ResultsScreen app={app} snapshot={view.displayed} /> : panel === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : panel === "help" ? <HelpPanel language={preferences.language} rules={view.committed.rules} onClose={closeSettings} /> : (panel === "pause" || view.mode === "paused" && !view.error) && <PauseMenu app={app} onResume={closeSettings} />}
+    {saveProblem ? <SavePanel app={app} session={session} /> : ended ? <ResultsScreen app={app} snapshot={view.displayed} /> : panel === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : panel === "help" ? <HelpPanel language={preferences.language} rules={view.committed.rules} onClose={closeSettings} /> : (panel === "pause" || view.mode === "paused" && !view.error) && <PauseMenu app={app} onResume={closeSettings} />}
   </main>;
 }

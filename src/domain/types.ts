@@ -63,6 +63,8 @@ export type GameSnapshot = {
   readonly random: RandomState;
 };
 
+export type SavedGameState = Omit<GameSnapshot, "rules" | "map">;
+
 export type LandingResult =
   | { readonly kind: "start" }
   | { readonly kind: "property_available"; readonly propertyId: string; readonly price: number }

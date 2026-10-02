@@ -45,6 +45,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
         <ul>{rules.chanceCards.map((card) => <li key={card.id}>{chanceCardText(language, card.id, card.amount)}</li>)}</ul>
       </details>
       {error && <p role="alert">{copy.nameError}</p>}
+      {app.getSnapshot().stored.kind === "valid" && <p>{messages(language).storage.replaceWarning}</p>}
       <button data-launch type="submit">{copy.launch}</button><button type="button" onClick={onClose}>{copy.cancel}</button>
     </form>
   </PanelHost>;

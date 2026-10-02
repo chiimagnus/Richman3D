@@ -5,6 +5,7 @@ import { createMatchConfig, validateConfig } from "./config";
 import { nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
+import { restoreSnapshot } from "./restore";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
 
 function cashAfterChange(cash: number, amount: number): number {
@@ -47,6 +48,13 @@ export class Game {
   }
 
   get snapshot(): GameSnapshot { return this.state; }
+
+  static restore(value: unknown): Game {
+    const snapshot = restoreSnapshot(value);
+    const game = new Game(snapshot.config);
+    game.state = freeze(snapshot);
+    return game;
+  }
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);

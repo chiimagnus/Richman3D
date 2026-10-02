@@ -10,7 +10,7 @@ export function actionView(view: GameView, language: Language) {
   const copy = messages(language).runtime;
   const action = view.presenting ? view.events.find((event) => event.kind !== "turn" && event.kind !== "ended") : null;
   const actor = action?.kind === "rolled" ? action.result.playerId : action && "actor" in action ? action.actor : snapshot.activePlayerId;
-  const ready = !view.presenting && view.mode === "running" && view.attached && view.error !== "presentation_failed";
+  const ready = !view.presenting && view.save.kind !== "saving" && view.mode === "running" && view.attached && view.error !== "presentation_failed";
   const commands = ready && playerConfig(snapshot.config, snapshot.activePlayerId).controller === "human" ? legalCommands(snapshot, snapshot.activePlayerId) : [];
   const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
     ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })

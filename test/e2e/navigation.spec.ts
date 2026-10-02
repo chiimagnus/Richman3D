@@ -26,7 +26,7 @@ test("menu is light, audio unlock is in the click, one context survives match na
   const first = await page.locator("[data-match-id]").getAttribute("data-match-id");
   expect(await page.evaluate(() => Reflect.get(window, "audioAudit"))).toMatchObject({ contexts: 1, activeAtCreate: true });
   await page.locator("[data-pause]").click();
-  await expect(page.getByRole("dialog")).toContainText("当前尚未保存");
+  await expect(page.getByRole("dialog")).toContainText("已保存在本地");
   await page.getByRole("button", { name: "继续", exact: true }).click();
   await expect(page.locator("[data-roll]")).toBeEnabled();
   await page.locator("[data-pause]").click();

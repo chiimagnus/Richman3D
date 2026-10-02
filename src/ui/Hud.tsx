@@ -34,6 +34,7 @@ export function Hud({ session, language, tutorial, onTutorialNext, onTutorialExi
     <footer className={styles.dock} data-revision={view.displayed.revision} data-presenting={view.presenting}>
       <div className={styles.copy}><strong data-tile>{tileName(language, model.tile)}</strong><span data-status>{model.status}</span></div>
       <span data-dice aria-label={copy.hud.recentDiceAria}>{view.displayed.lastRoll ? view.displayed.lastRoll.join(" + ") : "— + —"}</span>
+      {view.save.kind === "unsaved" && view.save.acknowledged && <span data-save-status role="status">{copy.storage.unsaved}</span>}
       <div ref={actions} className={styles.actions}>
         {tutorial && (tutorial.number === 1 || tutorial.number === 3) ? <button data-tutorial-next disabled={!tutorial.ready} onClick={onTutorialNext}>{copy.tutorial.next}</button> : tutorial?.number === 5 ? <button data-tutorial-finish disabled={!tutorial.ready} onClick={() => onTutorialExit?.(true)}>{copy.tutorial.finish}</button> : buying ? <>
           <button data-buy disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: model.property.price }) : copy.hud.buy}</button>

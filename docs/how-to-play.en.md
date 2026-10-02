@@ -10,7 +10,7 @@ Choose **Start Game** in the main menu, enter the two names and match length, th
 
 **Practice tutorial** is a real, separate fixed-seed match with five steps: find your cash, roll, inspect the landing, buy or skip, and watch the computer’s turn. Hints stay in the action area. The guaranteed purchasing decision uses the real rules, not a pretend click or scripted balance.
 
-Use **Skip tutorial** at any step, including with Tab and Enter. Changing language or opening help preserves your step. Finishing returns to match setup; the normal match starts with a fresh seed and no practice property or money. Only completing all five steps stores the separate tutorial-completion marker. Use **Replay tutorial** to practice again. There is no permanent match history yet.
+Use **Skip tutorial** at any step, including with Tab and Enter. Changing language or opening help preserves your step. Finishing returns to match setup; the normal match starts with a fresh seed and no practice property or money. Only completing all five steps stores the separate tutorial-completion marker. Practice never replaces the saved normal match or records a win. Use **Replay tutorial** to practice again. There is no permanent match history yet.
 
 ## Goal and match length
 
@@ -53,7 +53,15 @@ Choose **Look around** to explicitly lock the mouse and move it to look around. 
 
 Choose **Done** or press Esc to close Settings and restore focus to its trigger. Settings and help pause the match. Mouse lock is not reacquired automatically. If sound is refused, play remains available; switch sound off and back on during the match to retry. Muting stops current notes immediately. The menu does not create a scene or audio context until a match starts, and the application reuses one audio context across matches.
 
-**Pause** offers Resume, Play Again and Main Menu. Returning to the menu or restarting discards the current unfinished match: **there is no match saving or Continue Game yet**. Going to the background also pauses; Resume shows the already committed result without rerolling or paying twice.
+**Pause** offers Resume, Play Again and Main Menu. Going to the background also pauses; Resume shows the already committed result without rerolling or paying twice.
+
+## Local saving and continuation
+
+A normal match saves its initial state and every accepted action before presentation. **Main Menu** waits for saving; **Continue saved match** restores the last successfully saved positions, cash, ownership, decision and random state after leaving or refreshing. It does not repeat payments or Start rewards. A pending computer turn begins only after your explicit Continue action. Ended matches offer **View saved results**, not another turn.
+
+Only the current match and its previous valid snapshot are stored. Starting or restarting replaces the current match. Saving failure offers **Retry saving** or **Continue without saving**, with a persistent unsaved indicator. Retrying does not execute the action again. If another page changed the save, this page pauses; explicitly load the latest match or discard this page’s unsaved progress instead of silently overwriting it. Damaged or unsupported saves are preserved, not automatically erased.
+
+Storage is local to this browser profile and site, not a cloud backup. Browser cleanup, private mode or device failure may lose it. File import/export and manual backup recovery are not available yet.
 
 ## Keyboard
 

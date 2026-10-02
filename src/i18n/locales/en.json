@@ -1,5 +1,5 @@
 {
-  "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. No match has started.", "pause": "Pause", "discard": "Restarting or returning to the menu discards this game. It has not been saved." },
+  "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. Saved data has not been erased.", "pause": "Pause" },
   "players": {
     "p1": "You",
     "p2": "City Player",
@@ -115,8 +115,19 @@
       "money": { "title": "Money and events", "body": "Initial cash is ¥{cash}; passing Start earns ¥{bonus}. Tax spaces charge their displayed fee. Chance gives an immediate random gain or expense. Cash below zero currently means bankruptcy, without a debt-rescue phase." },
       "view": { "title": "View and controls", "body": "Board overview shows the whole board and both pawns. Return to your first-person view for optional mouse look; mouse lock is never automatic. Touch starts in overview. Roll, buy and skip also have screen buttons." },
       "keys": { "title": "Keyboard", "body": "Space rolls, B buys, N skips and M toggles sound when available. Shortcuts do not activate inside forms or help. Esc first exits mouse lock or the current panel; otherwise it opens Pause. There is no WASD free movement." },
-      "navigation": { "title": "Pause, settings and results", "body": "Settings changes language, sound and mouse sensitivity. Pause offers Resume, Play Again and Main Menu. Leaving or restarting discards an unfinished match: match saving is not available yet. Results explain the winner and expand into cash, property and financial details; replaying the original seed is optional." }
+      "navigation": { "title": "Pause, settings and results", "body": "Settings changes language, sound and mouse sensitivity. Accepted actions save locally before presentation. Main Menu preserves the saved match; Continue saved match restores its committed state without repeating payments. Play Again replaces the current save. Saving failures offer retry or explicit unsaved play; browser data may be cleared. Practice does not replace your saved match. Results explain the winner and financial details; original-seed replay is optional." }
     }
+  },
+  "storage": {
+    "continue": "Continue saved match", "results": "View saved results", "problemTitle": "Match saving",
+    "unsaved": "This match has unsaved progress. The previous saved data is preserved.",
+    "conflict": "Another page changed the saved match. This page is paused and cannot overwrite it.",
+    "loadLatest": "Load latest saved match", "retry": "Retry saving", "continueUnsaved": "Continue without saving",
+    "discard": "Discard unsaved progress and return", "discardWarning": "Discarding loses only this page’s unsaved progress; it does not erase the saved match.",
+    "preserved": "The committed match is saved locally. Main Menu preserves it; playing again replaces it.",
+    "replaceWarning": "Starting this match replaces the current saved match. The previous valid snapshot is kept as a backup.",
+    "unavailable": "Local match storage is unavailable. You may start a match and choose to play without saving.",
+    "invalid": "The saved data is damaged or uses an unsupported version. It has not been erased."
   },
   "runtime": {
     "title": "Richman 3D",
