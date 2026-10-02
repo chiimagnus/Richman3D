@@ -1,8 +1,10 @@
 {
   "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. No match has started.", "pause": "Pause", "discard": "Restarting or returning to the menu discards this game. It has not been saved." },
   "players": {
-    "human": "You",
-    "bot": "City Player"
+    "p1": "You",
+    "p2": "City Player",
+    "p3": "Player 3",
+    "p4": "Player 4"
   },
   "worldAria": "3D Richman board",
   "hud": {
@@ -29,12 +31,10 @@
   },
   "status": {
     "insufficientFunds": "Not enough cash to buy this property.",
-    "purchased": "Purchased “{propertyName}”.",
-    "skipped": "Skipped “{propertyName}”.",
-    "botActing": "City Player is taking a turn…",
-    "yourTurn": "Your turn.",
-    "botPurchased": "City Player bought “{propertyName}”.",
-    "botSkipped": "City Player skipped “{propertyName}”.",
+    "purchased": "{actor} bought “{propertyName}”.",
+    "skipped": "{actor} skipped “{propertyName}”.",
+    "botActing": "{actor} is taking a turn…",
+    "yourTurn": "{actor}'s turn.",
     "winner": "{playerName} won.",
     "rollPropertyAvailable": "{actor} moved {steps} spaces. This property is available to buy.",
     "rollRent": "{actor} moved {steps} spaces and paid ¥{amount} rent.",
@@ -80,6 +80,16 @@
     "maintenance-cost": "Emergency maintenance {amount}",
     "community-event": "Community event income +{amount}",
     "traffic-fine": "Traffic fine {amount}"
+  },
+  "setup": {
+    "title": "New match", "names": { "local": "Your name", "computer": "Computer name" },
+    "length": "Match length", "quick": "Quick · {rounds} rounds", "standard": "Standard · {rounds} rounds",
+    "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options", "city": "City · {spaces} spaces · Normal computer",
+    "color": "{player} · Pawn color", "colors": { "cyan": "Cyan", "amber": "Amber", "violet": "Violet", "emerald": "Emerald" },
+    "launch": "Start match", "cancel": "Cancel", "nameError": "Use 1–16 visible characters, or leave the name blank for the default.",
+    "round": "Round {round} / {limit}", "tied": "{playerName} tied for the win.", "nameSeparator": " & ",
+    "round_limit": "The full round limit was reached. Ranked by net assets, then cash; equal results share the win.",
+    "last_survivor": "Only one player remains solvent.", "overview": "Board overview", "firstPerson": "Your first-person view"
   },
   "runtime": {
     "title": "Richman 3D",

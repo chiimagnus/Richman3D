@@ -6,6 +6,7 @@ test("denied localStorage getter does not prevent starting or changing preferenc
   });
   await page.goto("./");
   await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
   await expect(page.locator("[data-roll]")).toBeEnabled();
   await page.locator("[data-settings-open]").click();
   await page.getByRole("dialog").getByRole("button", { name: "English" }).click();
@@ -22,6 +23,7 @@ test("WebGL initialization failure has a readable exit and no playable ghost ses
   });
   await page.goto("./");
   await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
   await expect(page.getByRole("alert")).toContainText("3D 画面不可用");
   await expect(page.locator("[data-roll]")).toBeDisabled();
   await page.getByRole("alert").getByRole("button", { name: "主菜单" }).click();
@@ -37,6 +39,7 @@ test("Pointer Lock rejection is caught and ordinary buttons remain usable", asyn
   });
   await page.goto("./");
   await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
   await page.getByRole("button", { name: "环视", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("鼠标锁定被拒绝");
   await expect(page.locator("[data-roll]")).toBeEnabled();

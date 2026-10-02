@@ -4,6 +4,7 @@ for (const entry of ["http://127.0.0.1:4317/Richman3D/", "http://127.0.0.1:4318/
   test(`real settings, focus and keyboard interaction: ${entry}`, async ({ page }) => {
     await page.goto(entry);
     await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
     await expect(page.locator("[data-roll]")).toBeEnabled();
     const matchId = await page.locator("[data-match-id]").getAttribute("data-match-id");
     await expect(page.locator("[data-revision]")).toHaveAttribute("data-revision", "0");
@@ -38,6 +39,7 @@ test("normal settlement shows its cause before the bot and changes language with
   });
   await page.goto("./");
   await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
   await page.locator("[data-roll]").click();
   await expect(page.locator("[data-human-cash]")).toHaveText("¥1,420");
   await expect(page.locator("[data-feedback-event]")).toContainText("支付费用 80");

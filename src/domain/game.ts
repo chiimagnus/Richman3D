@@ -1,15 +1,11 @@
-import { BOARD, tileAt } from "./board";
+import { tileAt, validateMap, type MapDefinition } from "./board";
+import { mapFor } from "./maps";
+import { rulesFor, validateRules, type RuleSet } from "./rules";
+import { createMatchConfig, validateConfig } from "./config";
+import { nextTurn } from "./turns";
 import { RuleRandom } from "./random";
-import { legalCommands, pendingProperty } from "./selectors";
-import type { ApplyResult, ChanceCardId, Command, Decision, GameEvent, GameSnapshot, LandingResult, PlayerId } from "./types";
-
-export const PASS_START_BONUS = 200;
-const CHANCE_CARDS = [
-  { id: "innovation-bonus", amount: 120 },
-  { id: "maintenance-cost", amount: -90 },
-  { id: "community-event", amount: 60 },
-  { id: "traffic-fine", amount: -50 },
-] as const satisfies readonly { id: ChanceCardId; amount: number }[];
+import { legalCommands, matchResult, pendingProperty } from "./selectors";
+import type { ApplyResult, Command, Decision, GameEvent, GameSnapshot, LandingResult, MatchConfig } from "./types";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -29,16 +25,22 @@ export class Game {
   private state: GameSnapshot;
   private readonly listeners = new Set<() => void>();
 
-  constructor(options: { seed?: number; startingCash?: number } = {}) {
-    const cash = options.startingCash ?? 1500;
-    if (!Number.isSafeInteger(cash) || cash < 0) throw new RangeError("初始资金无效");
+  constructor(config: MatchConfig = createMatchConfig(), rules: RuleSet = rulesFor(config.rulesVersion), map: MapDefinition = mapFor(config.mapId, config.mapVersion)) {
+    validateConfig(config);
+    validateRules(rules);
+    validateMap(map);
+    if (config.rulesVersion !== rules.version || config.mapId !== map.id || config.mapVersion !== map.version) throw new Error("配置版本不匹配");
     this.state = freeze({
       revision: 0,
-      players: [{ id: "human", cash, position: 0 }, { id: "bot", cash, position: 0 }],
-      activePlayerId: "human",
+      config: { ...config, players: config.players.map((player) => ({ ...player })) },
+      rules: { ...rules, chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
+      map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
+      completedRounds: 0,
+      players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false })),
+      activePlayerId: config.players[0]!.id,
       decision: { kind: "awaiting_roll" },
       owners: {}, lastRoll: null,
-      random: new RuleRandom(options.seed ?? 1).snapshot,
+      random: new RuleRandom(config.seed).snapshot,
     });
   }
 
@@ -50,7 +52,7 @@ export class Game {
   };
 
   apply(command: Command): ApplyResult {
-    if (!command || !["human", "bot"].includes(command.actor) ||
+    if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
         !["roll", "buy", "skip"].includes(command.kind) ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
@@ -69,7 +71,8 @@ export class Game {
       const player = players.find((candidate) => candidate.id === command.actor);
       if (!player) throw new Error("玩家不存在");
       let decision: Decision = { kind: "awaiting_roll" };
-      let activePlayerId: PlayerId = before.activePlayerId;
+      let activePlayerId = before.activePlayerId;
+      let completedRounds = before.completedRounds;
       let lastRoll = before.lastRoll;
       const events: GameEvent[] = [];
 
@@ -77,14 +80,15 @@ export class Game {
         const dice = [random.integer(6) + 1, random.integer(6) + 1] as const;
         const steps = dice[0] + dice[1];
         const from = player.position;
-        const path = Array.from({ length: steps }, (_, offset) => (from + offset + 1) % BOARD.length);
+        const path = Array.from({ length: steps }, (_, offset) => (from + offset + 1) % before.map.tiles.length);
         const to = path.at(-1);
         if (to === undefined) throw new Error("移动路径为空");
         const passedStart = path.includes(0);
-        if (passedStart) player.cash = cashAfterChange(player.cash, PASS_START_BONUS);
+        const startBonus = passedStart ? before.rules.passStartBonus : 0;
+        if (passedStart) player.cash = cashAfterChange(player.cash, startBonus);
         player.position = to;
         lastRoll = dice;
-        const tile = tileAt(to);
+        const tile = tileAt(before.map, to);
         let landing: LandingResult;
         switch (tile.type) {
           case "start": landing = { kind: "start" }; break;
@@ -93,7 +97,7 @@ export class Game {
             landing = { kind: "tax", amount: tile.amount };
             break;
           case "chance": {
-            const card = CHANCE_CARDS[random.integer(CHANCE_CARDS.length)];
+            const card = before.rules.chanceCards[random.integer(before.rules.chanceCards.length)];
             if (!card) throw new Error("机会卡无效");
             player.cash = cashAfterChange(player.cash, card.amount);
             landing = { kind: "chance", amount: card.amount, cardId: card.id };
@@ -116,7 +120,7 @@ export class Game {
             break;
           }
         }
-        events.push({ kind: "rolled", result: { playerId: player.id, dice, steps, from, to, path, passedStart, landing } });
+        events.push({ kind: "rolled", result: { playerId: player.id, dice, steps, from, to, path, passedStart, startBonus, landing } });
       } else {
         const property = pendingProperty(before);
         if (!property) throw new Error("待购地产不存在");
@@ -129,19 +133,22 @@ export class Game {
         }
       }
 
-      if (player.cash < 0) {
-        const winnerId = players.find((candidate) => candidate.id !== player.id)?.id;
-        if (!winnerId) throw new Error("胜者不存在");
-        decision = { kind: "game_over", winnerId };
-        events.push({ kind: "ended", winnerId });
+      if (player.cash < 0) { player.bankrupt = true; decision = { kind: "awaiting_roll" }; }
+      const candidate = { ...before, players, owners, decision, lastRoll, random: random.snapshot };
+      if (players.filter((entry) => !entry.bankrupt).length === 1) {
+        const result = matchResult(candidate, "last_survivor");
+        decision = { kind: "game_over", result };
+        events.push({ kind: "ended", result });
       } else if (decision.kind === "awaiting_roll") {
-        const next = players[(players.findIndex((candidate) => candidate.id === player.id) + 1) % players.length];
-        if (!next) throw new Error("下一玩家不存在");
-        activePlayerId = next.id;
-        events.push({ kind: "turn", actor: next.id });
+        ({ activePlayerId, completedRounds } = nextTurn(candidate));
+        if (completedRounds >= before.rules.roundLimit) {
+          const result = matchResult(candidate, "round_limit");
+          decision = { kind: "game_over", result };
+          events.push({ kind: "ended", result });
+        } else events.push({ kind: "turn", actor: activePlayerId });
       }
       if (!Number.isSafeInteger(before.revision + 1) || !Number.isSafeInteger(random.snapshot.draws)) throw new RangeError("版本超出整数范围");
-      const snapshot = freeze({ revision: before.revision + 1, players, owners, activePlayerId, decision, lastRoll, random: random.snapshot });
+      const snapshot = freeze({ ...before, revision: before.revision + 1, players, owners, activePlayerId, completedRounds, decision, lastRoll, random: random.snapshot });
       result = freeze({ ok: true, snapshot, events });
     } catch {
       return { ok: false, reason: "calculation_failed" };

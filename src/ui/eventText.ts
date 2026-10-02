@@ -1,22 +1,19 @@
-import type { GameEvent, PlayerId, RollResult } from "../domain/types";
-import { BOARD } from "../domain/board";
-import { PASS_START_BONUS } from "../domain/game";
-import { chanceCardText, formatMessage, messages, playerName, tileName } from "../i18n";
+import type { GameEvent, GameSnapshot, PlayerId, RollResult } from "../domain/types";
+import { chanceCardText, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 
-export function eventText(language: Language, event: GameEvent): string {
+export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
-    case "rolled": return rollStatus(language, event.result.playerId, event.result) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: PASS_START_BONUS }) : "");
+    case "rolled": return rollStatus(language, event.result.playerId, event.result, snapshot) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: event.result.startBonus }) : "");
     case "purchased":
     case "skipped": {
-      const tile = BOARD.find((candidate) => candidate.id === event.propertyId);
+      const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId);
       if (!tile) throw new Error("事件地块不存在");
-      const template = event.actor === "human" ? (event.kind === "purchased" ? copy.purchased : copy.skipped) : (event.kind === "purchased" ? copy.botPurchased : copy.botSkipped);
-      return formatMessage(template, { propertyName: tileName(language, tile) });
+      return formatMessage(event.kind === "purchased" ? copy.purchased : copy.skipped, { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile) });
     }
-    case "turn": return event.actor === "human" ? copy.yourTurn : copy.botActing;
-    case "ended": return formatMessage(copy.winner, { playerName: playerName(language, event.winnerId) });
+    case "turn": return formatMessage(copy.yourTurn, { actor: playerName(language, event.actor, snapshot.config) });
+    case "ended": return resultTitle(language, event.result, snapshot.config);
   }
 }
 
@@ -24,9 +21,10 @@ function rollStatus(
   language: Language,
   actorId: PlayerId,
   result: RollResult,
+  snapshot: GameSnapshot,
 ): string {
   const copy = messages(language).status;
-  const actor = playerName(language, actorId);
+  const actor = playerName(language, actorId, snapshot.config);
   const landing = result.landing;
 
   switch (landing.kind) {

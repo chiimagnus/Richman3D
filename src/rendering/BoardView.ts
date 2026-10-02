@@ -1,8 +1,9 @@
 import * as THREE from "three";
 
-import { BOARD, type BoardTile } from "../domain/board";
-import { PASS_START_BONUS } from "../domain/game";
-import type { GameSnapshot, LandingResult, PlayerId } from "../domain/types";
+import type { BoardTile, MapDefinition } from "../domain/board";
+import type { RuleSet } from "../domain/rules";
+import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
+import { playerConfig } from "../domain/config";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
@@ -14,11 +15,6 @@ const GROUP_COLORS = {
   violet: 0x8d64d8,
   emerald: 0x30a874,
 } as const;
-
-const PLAYER_COLORS: Record<PlayerId, number> = {
-  human: 0x57d4ff,
-  bot: 0xffb75e,
-};
 
 export class BoardView {
   private readonly object = new THREE.Group();
@@ -32,6 +28,9 @@ export class BoardView {
   constructor(
     scene: THREE.Scene,
     private language: Language,
+    private readonly map: MapDefinition,
+    private readonly config: MatchConfig,
+    private readonly rules: RuleSet,
   ) {
     this.object.name = "board";
     scene.add(this.object);
@@ -45,20 +44,20 @@ export class BoardView {
     }
 
     this.language = language;
-    BOARD.forEach((tile, index) => {
+    this.map.tiles.forEach((tile, index) => {
       const label = this.tileLabels.get(index);
       if (!label || !(label.material instanceof THREE.MeshBasicMaterial)) {
         return;
       }
 
       label.material.map?.dispose();
-      label.material.map = createTileLabelTexture(tile, language);
+      label.material.map = createTileLabelTexture(tile, language, this.rules);
       label.material.needsUpdate = true;
     });
   }
 
   syncOwnership(snapshot: GameSnapshot): void {
-    for (const tile of BOARD) {
+    for (const tile of this.map.tiles) {
       if (tile.type !== "property") {
         continue;
       }
@@ -78,13 +77,13 @@ export class BoardView {
       if (existing) {
         const material = existing.material;
         if (material instanceof THREE.MeshStandardMaterial) {
-          material.color.setHex(PLAYER_COLORS[ownerId]);
+          material.color.set(playerConfig(this.config, ownerId).color);
         }
         continue;
       }
 
       const marker = this.createOwnerMarker(ownerId);
-      const position = boardPosition(BOARD.indexOf(tile));
+      const position = boardPosition(this.map, this.map.tiles.indexOf(tile));
       marker.position.set(
         position.x + TILE_SIZE * 0.32,
         0.72,
@@ -141,8 +140,8 @@ export class BoardView {
   }
 
   private buildTiles(): void {
-    BOARD.forEach((tile, index) => {
-      const position = boardPosition(index);
+    this.map.tiles.forEach((tile, index) => {
+      const position = boardPosition(this.map, index);
       const tileGroup = new THREE.Group();
       this.object.add(tileGroup);
       tileGroup.position.copy(position);
@@ -173,7 +172,7 @@ export class BoardView {
       inset.receiveShadow = true;
       tileGroup.add(inset);
 
-      const label = createTileLabel(tile, this.language);
+      const label = createTileLabel(tile, this.language, this.rules);
       label.position.set(0, 0.205, 0);
       label.rotation.x = -Math.PI / 2;
       this.tileLabels.set(index, label);
@@ -253,8 +252,8 @@ export class BoardView {
     const marker = new THREE.Mesh(
       new THREE.CylinderGeometry(0.18, 0.28, 1.2, 8),
       new THREE.MeshStandardMaterial({
-        color: PLAYER_COLORS[ownerId],
-        emissive: PLAYER_COLORS[ownerId],
+        color: playerConfig(this.config, ownerId).color,
+        emissive: playerConfig(this.config, ownerId).color,
         emissiveIntensity: 0.18,
         roughness: 0.45,
       }),
@@ -300,11 +299,11 @@ function tileColor(tile: BoardTile): number {
   }
 }
 
-function createTileLabel(tile: BoardTile, language: Language): THREE.Mesh {
+function createTileLabel(tile: BoardTile, language: Language, rules: RuleSet): THREE.Mesh {
   return new THREE.Mesh(
     new THREE.PlaneGeometry(3.1, 1.55),
     new THREE.MeshBasicMaterial({
-      map: createTileLabelTexture(tile, language),
+      map: createTileLabelTexture(tile, language, rules),
       transparent: true,
       depthWrite: false,
     }),
@@ -314,6 +313,7 @@ function createTileLabel(tile: BoardTile, language: Language): THREE.Mesh {
 function createTileLabelTexture(
   tile: BoardTile,
   language: Language,
+  rules: RuleSet,
 ): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
@@ -337,7 +337,7 @@ function createTileLabelTexture(
 
   context.fillStyle = "rgba(224, 241, 249, 0.72)";
   context.font = "600 28px system-ui, sans-serif";
-  context.fillText(tileDetail(tile, language), 256, 166, 420);
+  context.fillText(tileDetail(tile, language, rules), 256, 166, 420);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -345,12 +345,12 @@ function createTileLabelTexture(
   return texture;
 }
 
-function tileDetail(tile: BoardTile, language: Language): string {
+export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet): string {
   const copy = messages(language).board;
 
   switch (tile.type) {
     case "start":
-      return formatMessage(copy.startDetail, { amount: PASS_START_BONUS });
+      return formatMessage(copy.startDetail, { amount: rules.passStartBonus });
     case "chance":
       return copy.chanceDetail;
     case "tax":

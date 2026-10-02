@@ -1,4 +1,4 @@
-import type { LandingResult, PlayerId } from "../domain/types";
+import type { LandingResult } from "../domain/types";
 
 export class GameAudio {
   private context: AudioContext | null = null;
@@ -91,8 +91,8 @@ export class GameAudio {
     ]);
   }
 
-  playTurn(playerId: PlayerId): void {
-    if (playerId === "human") {
+  playTurn(isLocal: boolean): void {
+    if (isLocal) {
       this.sequence([
         [440, 0, 0.025],
         [660, 0.09, 0.03],
@@ -105,8 +105,8 @@ export class GameAudio {
     }
   }
 
-  playGameOver(winnerId: PlayerId | null): void {
-    if (winnerId === "human") {
+  playGameOver(localWon: boolean): void {
+    if (localWon) {
       this.sequence([
         [440, 0, 0.04],
         [554, 0.12, 0.045],

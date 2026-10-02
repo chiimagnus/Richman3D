@@ -1,6 +1,7 @@
+import { createMatchConfig } from "../src/domain/config";
 import { describe, expect, it } from "vitest";
 
-import { BOARD } from "../src/domain/board";
+import { CITY } from "../src/domain/maps/city";
 import {
   chanceCardText,
   formatMessage,
@@ -59,16 +60,16 @@ describe("i18n", () => {
   });
 
   it("has localized names for every board tile", () => {
-    for (const tile of BOARD) {
+    for (const tile of CITY.tiles) {
       expect(tileName("zh-CN", tile).length).toBeGreaterThan(0);
       expect(tileName("en", tile).length).toBeGreaterThan(0);
     }
   });
 
   it("loads Chinese and English locale data", () => {
-    expect(playerName("zh-CN", "human")).toBe("你");
+    expect(playerName("zh-CN", "p1", createMatchConfig())).toBe("你");
     expect(messages("zh-CN").settings.title).toBe("设置");
-    expect(playerName("en", "bot")).toBe("City Player");
+    expect(playerName("en", "p2", createMatchConfig())).toBe("City Player");
     expect(chanceCardText("en", "innovation-bonus", 120)).toBe(
       "City innovation bonus +120",
     );
@@ -77,8 +78,8 @@ describe("i18n", () => {
   it("formats JSON message templates", () => {
     expect(
       formatMessage(messages("en").status.purchased, {
-        propertyName: "Harbor Walk",
+        actor: "You", propertyName: "Harbor Walk",
       }),
-    ).toBe("Purchased “Harbor Walk”.");
+    ).toBe("You bought “Harbor Walk”.");
   });
 });

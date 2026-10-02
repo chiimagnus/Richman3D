@@ -1,8 +1,10 @@
 {
   "navigation": { "loading": "正在载入对局…", "retry": "重新加载菜单", "loadFailed": "对局加载失败。重新加载菜单后可重试下载，尚未创建对局。", "pause": "暂停", "discard": "重开或返回菜单会丢弃本局，当前尚未保存。" },
   "players": {
-    "human": "你",
-    "bot": "城市玩家"
+    "p1": "你",
+    "p2": "城市玩家",
+    "p3": "玩家3",
+    "p4": "玩家4"
   },
   "worldAria": "3D 大富翁棋盘",
   "hud": {
@@ -29,12 +31,10 @@
   },
   "status": {
     "insufficientFunds": "资金不足，无法购买这块地产。",
-    "purchased": "已购买「{propertyName}」。",
-    "skipped": "已跳过「{propertyName}」。",
-    "botActing": "城市玩家正在行动…",
-    "yourTurn": "轮到你了。",
-    "botPurchased": "城市玩家购买了「{propertyName}」。",
-    "botSkipped": "城市玩家跳过了「{propertyName}」。",
+    "purchased": "{actor}购买了「{propertyName}」。",
+    "skipped": "{actor}跳过了「{propertyName}」。",
+    "botActing": "{actor}行动中…",
+    "yourTurn": "轮到{actor}了。",
     "winner": "{playerName}获胜。",
     "rollPropertyAvailable": "{actor}移动 {steps} 格，这块地产可以购买。",
     "rollRent": "{actor}移动 {steps} 格，支付租金 {amount}。",
@@ -80,6 +80,16 @@
     "maintenance-cost": "临时维修支出 {amount}",
     "community-event": "社区活动收益 +{amount}",
     "traffic-fine": "交通违章罚款 {amount}"
+  },
+  "setup": {
+    "title": "新对局", "names": { "local": "你的名字", "computer": "电脑名字" },
+    "length": "对局长度", "quick": "快速 · {rounds}轮", "standard": "标准 · {rounds}轮",
+    "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项", "city": "城市 · {spaces}格 · 普通电脑",
+    "color": "{player} · 棋子颜色", "colors": { "cyan": "青色", "amber": "琥珀", "violet": "紫色", "emerald": "绿色" },
+    "launch": "开始对局", "cancel": "取消", "nameError": "名字需为1–16个可见字符，留空则使用默认名。",
+    "round": "第{round} / {limit}轮", "tied": "{playerName}并列获胜。", "nameSeparator": "、",
+    "round_limit": "已完成整轮上限。按净资产、再按现金排名；仍相同则并列。",
+    "last_survivor": "只剩一名未破产玩家。", "overview": "棋盘总览", "firstPerson": "本人第一人称"
   },
   "runtime": {
     "title": "Richman 3D",

@@ -1,5 +1,6 @@
 import type { BoardTile } from "../domain/board";
-import type { ChanceCardId, PlayerId } from "../domain/types";
+import type { ChanceCardId, MatchConfig, MatchResult, PlayerId } from "../domain/types";
+import { playerConfig } from "../domain/config";
 import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
 import type { Language } from "./language";
@@ -29,12 +30,19 @@ export function formatMessage(
   });
 }
 
-export function playerName(language: Language, playerId: PlayerId): string {
-  return messages(language).players[playerId];
+export function playerName(language: Language, playerId: PlayerId, config: MatchConfig): string {
+  const player = playerConfig(config, playerId);
+  return player.name ?? messages(language).players[player.defaultNameKey];
+}
+
+export function resultTitle(language: Language, result: MatchResult, config: MatchConfig): string {
+  return formatMessage(result.winnerIds.length > 1 ? messages(language).setup.tied : messages(language).status.winner, {
+    playerName: result.winnerIds.map((id) => playerName(language, id, config)).join(messages(language).setup.nameSeparator),
+  });
 }
 
 export function tileName(language: Language, tile: BoardTile): string {
-  const name = messages(language).board.tiles[tile.id];
+  const name = (messages(language).board.tiles as Record<string, string>)[tile.id];
   if (!name) {
     throw new Error(`缺少地块翻译: ${tile.id}`);
   }

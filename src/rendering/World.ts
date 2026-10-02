@@ -1,10 +1,13 @@
 import * as THREE from "three";
 
-import type { GameSnapshot, LandingResult } from "../domain/types";
+import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
+import type { MapDefinition } from "../domain/board";
+import type { RuleSet } from "../domain/rules";
+import { observerId } from "../domain/config";
 import { messages } from "../i18n";
 import type { Language } from "../i18n/language";
 import { BoardView } from "./BoardView";
-import { FirstPersonRig } from "./FirstPersonRig";
+import { CameraRig, type CameraView } from "./CameraRig";
 import { PlayerView } from "./PlayerView";
 import { MotionClock } from "./MotionClock";
 import { disposeObject } from "./disposeObject";
@@ -13,16 +16,17 @@ export class World {
   readonly canvas: HTMLCanvasElement;
 
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(68, 1, 0.08, 180);
   private readonly renderer: THREE.WebGLRenderer;
   private readonly board: BoardView;
-  private readonly bot: PlayerView;
-  private readonly firstPerson: FirstPersonRig;
+  private readonly players = new Map<PlayerId, PlayerView>();
+  private readonly cameraRig: CameraRig;
+  private readonly observer: PlayerId;
   private readonly clock = new MotionClock();
   private lastTime: number | null = null;
   private disposed = false;
 
-  constructor(container: HTMLElement, language: Language, private readonly onFailure: () => void = () => {}) {
+  constructor(container: HTMLElement, language: Language, config: MatchConfig, map: MapDefinition, rules: RuleSet, private readonly onFailure: () => void = () => {}) {
+    this.observer = observerId(config);
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
@@ -47,10 +51,11 @@ export class World {
     this.renderer.toneMappingExposure = 1.05;
 
     this.addEnvironment();
-    this.board = new BoardView(this.scene, language);
-    this.bot = new PlayerView(this.scene, "#ffb75e", this.clock);
-    this.firstPerson = new FirstPersonRig(this.camera, this.canvas, this.clock);
-    disconnectControls = () => this.firstPerson.dispose();
+    this.board = new BoardView(this.scene, language, map, config, rules);
+    config.players.forEach((player, index) => this.players.set(player.id, new PlayerView(this.scene, player.color, this.clock, map, index)));
+    this.cameraRig = new CameraRig(map, this.canvas, this.clock);
+    disconnectControls = () => this.cameraRig.dispose();
+    this.setView(window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
 
     this.resize();
     window.addEventListener("resize", this.resize);
@@ -69,15 +74,9 @@ export class World {
   sync(snapshot: GameSnapshot): void {
     this.board.syncOwnership(snapshot);
 
-    const human = snapshot.players.find((player) => player.id === "human");
-    const bot = snapshot.players.find((player) => player.id === "bot");
-
-    if (human) {
-      this.firstPerson.setPosition(human.position);
-    }
-
-    if (bot) {
-      this.bot.setPosition(bot.position);
+    for (const player of snapshot.players) {
+      this.players.get(player.id)?.setPosition(player.position);
+      if (player.id === this.observer) this.cameraRig.firstPerson.setPosition(player.position);
     }
   }
 
@@ -85,12 +84,18 @@ export class World {
     this.board.syncOwnership(snapshot);
   }
 
-  moveHuman(path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
-    return this.firstPerson.moveAlong(path, onStep, signal);
+  async movePlayer(id: PlayerId, path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
+    await Promise.all([
+      this.players.get(id)?.moveAlong(path, onStep, signal),
+      id === this.observer ? this.cameraRig.firstPerson.moveAlong(path, undefined, signal) : undefined,
+    ]);
   }
 
-  moveBot(path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
-    return this.bot.moveAlong(path, onStep, signal);
+  setView(view: CameraView): void {
+    this.cameraRig.setView(view);
+    this.players.get(this.observer)?.setVisible(view === "overview");
+    this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0x07111a, 0.016);
+    this.canvas.dataset.view = view;
   }
 
   landOnTile(index: number, landing: LandingResult): void {
@@ -98,7 +103,7 @@ export class World {
   }
 
   setLookSensitivity(pointerSpeed: number): void {
-    this.firstPerson.setPointerSpeed(pointerSpeed);
+    this.cameraRig.firstPerson.setPointerSpeed(pointerSpeed);
   }
 
   setLanguage(language: Language): void {
@@ -107,15 +112,15 @@ export class World {
   }
 
   lockFirstPerson(onFailure: () => void): void {
-    this.firstPerson.lock(onFailure);
+    this.cameraRig.firstPerson.lock(onFailure);
   }
 
   unlockFirstPerson(): void {
-    this.firstPerson.unlock();
+    this.cameraRig.firstPerson.unlock();
   }
 
   onPointerLockChange(listener: (locked: boolean) => void): () => void {
-    return this.firstPerson.onLockChange(listener);
+    return this.cameraRig.firstPerson.onLockChange(listener);
   }
 
   wait(duration: number, signal?: AbortSignal): Promise<boolean> {
@@ -135,8 +140,9 @@ export class World {
     this.renderer.setAnimationLoop(null);
     window.removeEventListener("resize", this.resize);
     this.clock.cancel();
-    this.firstPerson.dispose();
-    this.bot.dispose();
+    this.cameraRig.dispose();
+    for (const player of this.players.values()) player.dispose();
+    this.players.clear();
     this.board.dispose();
     disposeObject(this.scene);
     this.renderer.dispose();
@@ -151,7 +157,7 @@ export class World {
     this.lastTime = time;
     this.clock.update(delta);
     this.board.update(time);
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.cameraRig.camera);
     } catch {
       this.renderer.setAnimationLoop(null);
       this.clock.cancel();
@@ -166,8 +172,7 @@ export class World {
       1,
     );
 
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    this.cameraRig.resize(width / height);
     this.renderer.setSize(width, height, false);
   };
 

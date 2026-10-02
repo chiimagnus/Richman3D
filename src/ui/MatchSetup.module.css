@@ -1,0 +1,2 @@
+.row { display: grid; gap: 8px; margin: 16px 0; }
+.row input, .row select { width: 100%; min-width: 0; padding: 8px; }

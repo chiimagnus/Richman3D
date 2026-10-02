@@ -5,6 +5,7 @@ import { actionView } from "./viewModel";
 import { formatCash, formatMessage, messages, playerName, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import styles from "./Hud.module.css";
+import { playerConfig } from "../domain/config";
 
 export function Hud({ session, language }: { session: GameSession; language: Language }) {
   const view = useGameView(session);
@@ -21,12 +22,13 @@ export function Hud({ session, language }: { session: GameSession; language: Lan
     const command = model.commands.find((action) => action.kind === kind);
     if (command) void session.dispatch(command);
   };
-  const buying = view.displayed.decision.kind === "awaiting_purchase" && view.displayed.activePlayerId === "human" && !view.presenting;
+  const buying = view.displayed.decision.kind === "awaiting_purchase" && playerConfig(view.displayed.config, view.displayed.activePlayerId).controller === "human" && !view.presenting;
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
       {view.displayed.players.map((player) => <span key={player.id} data-player={player.id}>
-        {playerName(language, player.id)} <strong {...(player.id === "human" ? { "data-human-cash": true } : { "data-bot-cash": true })}>{formatCash(language, player.cash)}</strong>
+        {playerName(language, player.id, view.displayed.config)} <strong {...(playerConfig(view.displayed.config, player.id).controller === "human" ? { "data-human-cash": true } : { "data-bot-cash": true })}>{formatCash(language, player.cash)}</strong>
       </span>)}
+      <span data-round>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
     </aside>
     <footer className={styles.dock} data-revision={view.displayed.revision} data-presenting={view.presenting}>
       <div className={styles.copy}><strong data-tile>{tileName(language, model.tile)}</strong><span data-status>{model.status}</span></div>

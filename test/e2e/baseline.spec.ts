@@ -9,6 +9,7 @@ test("first screen, cash, board and a real roll reach a legal decision", async (
   const started = Date.now();
   await page.goto("./");
   await page.locator("[data-start]").click();
+    await page.locator("[data-launch]").click();
   await expect(page.locator("canvas")).toBeVisible();
   const roll = page.locator("[data-roll]");
   await expect(roll).toBeEnabled();

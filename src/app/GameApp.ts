@@ -1,6 +1,8 @@
 import { GameAudio } from "../audio/GameAudio";
 import { loadPreferences, savePreferences, type GamePreferences } from "../settings/preferences";
 import type { GameSession } from "./GameSession";
+import { createMatchConfig } from "../domain/config";
+import type { MatchConfig } from "../domain/types";
 
 export type AppView = {
   readonly preferences: GamePreferences;
@@ -26,7 +28,7 @@ export class GameApp {
     return () => this.listeners.delete(listener);
   };
 
-  async start(seed = crypto.getRandomValues(new Uint32Array(1))[0] ?? 1): Promise<void> {
+  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1)): Promise<void> {
     if (this.view.loading) return;
     this.audio.unlock();
     const request = ++this.request;
@@ -36,11 +38,17 @@ export class GameApp {
     try {
       const [{ Game }, { GameSession }] = await Promise.all([import("../domain/game"), import("./GameSession"), import("../ui/SceneHost")]);
       if (request !== this.request) return;
-      const session = new GameSession(new Game({ seed }), crypto.randomUUID());
+      const session = new GameSession(new Game(config), crypto.randomUUID());
       this.publish({ ...this.view, session, loading: false });
+      await session.activate();
     } catch {
       if (request === this.request) this.publish({ ...this.view, loading: false, loadFailed: true });
     }
+  }
+
+  restart(replay = false): Promise<void> {
+    const config = this.view.session?.getSnapshot().committed.config;
+    return this.start(config ? { ...config, seed: replay ? config.seed : crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 } : undefined);
   }
 
   leave(): void {

@@ -1,5 +1,6 @@
 import { Game } from "../domain/game";
 import { chooseBotCommand } from "../domain/bot";
+import { playerConfig } from "../domain/config";
 import type { Command, GameEvent, GameSnapshot } from "../domain/types";
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
 
@@ -27,6 +28,16 @@ export class GameSession {
   }
 
   getSnapshot = (): GameView => this.view;
+
+  async activate(): Promise<void> {
+    if (!this.view.attached && this.view.mode !== "disposed" && !this.view.error) await new Promise<void>((resolve) => {
+      const unsubscribe = this.subscribe(() => {
+        if (this.view.attached || this.view.mode === "disposed" || this.view.error) { unsubscribe(); resolve(); }
+      });
+    });
+    const command = chooseBotCommand(this.game.snapshot);
+    if (command) await this.dispatch(command);
+  }
   claimAnnouncement(id: number): boolean {
     if (id <= this.announcedNoticeId || this.view.notice?.id !== id || this.view.notice.expiresAt <= Date.now()) return false;
     this.announcedNoticeId = id;
@@ -112,7 +123,7 @@ export class GameSession {
         this.publish({ committed: result.snapshot, displayed: before, events: result.events, presenting: true, error: null });
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
         const event = result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
-        const meaningful = event && !(event.kind === "purchased" && event.actor === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
+        const meaningful = event && !(event.kind === "purchased" && playerConfig(before.config, event.actor).controller === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
         let settled = false;
         const settle = () => {
           if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;

@@ -1,5 +1,5 @@
 .balances { position: absolute; z-index: 2; top: 16px; left: 16px; display: flex; flex-wrap: wrap; gap: 12px; max-width: calc(100% - 130px); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; background: var(--panel); }
-.balances span { display: flex; flex-wrap: wrap; gap: 8px; }
+.balances span { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .balances strong { font-variant-numeric: tabular-nums; }
 .dock { position: absolute; z-index: 2; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; flex-wrap: wrap; gap: 16px; width: min(760px, calc(100% - 32px)); padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); }
 .copy { display: grid; flex: 1 1 240px; gap: 4px; overflow-wrap: anywhere; }

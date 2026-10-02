@@ -3,8 +3,31 @@ import * as THREE from "three";
 import { BoardView } from "../../src/rendering/BoardView";
 import { Game } from "../../src/domain/game";
 import { disposeObject } from "../../src/rendering/disposeObject";
+import { QUICK_RULES } from "../../src/domain/rules";
+import { CITY } from "../../src/domain/maps/city";
+import { createMatchConfig } from "../../src/domain/config";
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("BoardView renders injected coordinates, ownership color and RuleSet label amounts in both languages", () => {
+  const fillText = vi.fn();
+  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillText }) }) });
+  const config = createMatchConfig();
+  const map = { ...CITY, path: CITY.path.map((point) => ({ x: point.x + 50, z: point.z - 25 })) };
+  const rules = { ...QUICK_RULES, passStartBonus: 333 };
+  for (const language of ["en", "zh-CN"] as const) {
+    const scene = new THREE.Scene();
+    const board = new BoardView(scene, language, map, config, rules);
+    const root = scene.getObjectByName("board")!;
+    expect(root.children[0]!.position.toArray()).toEqual([60.5, 0, -14.5]);
+    expect(fillText.mock.calls.some((call) => String(call[0]).includes("333"))).toBe(true);
+    board.syncOwnership({ ...new Game(config, rules, map).snapshot, owners: { "neon-avenue": "p2" } });
+    const marker = root.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.CylinderGeometry) as THREE.Mesh;
+    expect((marker.material as THREE.MeshStandardMaterial).color.getHexString()).toBe("ffb75e");
+    board.dispose();
+    fillText.mockClear();
+  }
+});
 
 it("removed ownership markers are disposed before rebuilding, not just detached", () => {
   vi.stubGlobal("document", { createElement: () => ({
@@ -12,9 +35,9 @@ it("removed ownership markers are disposed before rebuilding, not just detached"
     getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillText() {} }),
   }) });
   const scene = new THREE.Scene();
-  const board = new BoardView(scene, "en");
   const snapshot = new Game().snapshot;
-  const owned = { ...snapshot, owners: { "neon-avenue": "human" as const } };
+  const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
+  const owned = { ...snapshot, owners: { "neon-avenue": "p1" as const } };
   board.syncOwnership(owned);
   const root = scene.getObjectByName("board")!;
   const marker = root.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.CylinderGeometry) as THREE.Mesh;

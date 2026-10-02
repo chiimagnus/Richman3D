@@ -1,105 +1,29 @@
-export const BOARD = [
-  { type: "start", id: "start" },
-  {
-    type: "property",
-    id: "harbor-walk",
-    price: 140,
-    rent: 24,
-    group: "cyan",
-  },
-  { type: "chance", id: "chance-1" },
-  {
-    type: "property",
-    id: "neon-avenue",
-    price: 180,
-    rent: 32,
-    group: "cyan",
-  },
-  { type: "tax", id: "city-tax", amount: 80 },
-  {
-    type: "property",
-    id: "metro-plaza",
-    price: 220,
-    rent: 40,
-    group: "amber",
-  },
-  {
-    type: "property",
-    id: "skyline-road",
-    price: 240,
-    rent: 44,
-    group: "amber",
-  },
-  { type: "chance", id: "chance-2" },
-  {
-    type: "property",
-    id: "river-market",
-    price: 200,
-    rent: 36,
-    group: "amber",
-  },
-  { type: "tax", id: "service-fee", amount: 100 },
-  {
-    type: "property",
-    id: "central-station",
-    price: 260,
-    rent: 48,
-    group: "violet",
-  },
-  { type: "chance", id: "chance-3" },
-  {
-    type: "property",
-    id: "tech-park",
-    price: 300,
-    rent: 56,
-    group: "violet",
-  },
-  {
-    type: "property",
-    id: "lakeside",
-    price: 280,
-    rent: 52,
-    group: "violet",
-  },
-  { type: "tax", id: "luxury-tax", amount: 120 },
-  {
-    type: "property",
-    id: "art-district",
-    price: 320,
-    rent: 62,
-    group: "emerald",
-  },
-  { type: "chance", id: "chance-4" },
-  {
-    type: "property",
-    id: "grand-boulevard",
-    price: 360,
-    rent: 72,
-    group: "emerald",
-  },
-  {
-    type: "property",
-    id: "financial-center",
-    price: 420,
-    rent: 86,
-    group: "emerald",
-  },
-  { type: "chance", id: "chance-5" },
-] as const;
+export type PropertyTile = { readonly type: "property"; readonly id: string; readonly price: number; readonly rent: number; readonly group: "cyan" | "amber" | "violet" | "emerald" };
+export type StartTile = { readonly type: "start"; readonly id: string };
+export type TaxTile = { readonly type: "tax"; readonly id: string; readonly amount: number };
+export type ChanceTile = { readonly type: "chance"; readonly id: string };
+export type BoardTile = PropertyTile | StartTile | TaxTile | ChanceTile;
+export type MapDefinition = {
+  readonly id: string;
+  readonly version: number;
+  readonly tiles: readonly BoardTile[];
+  readonly path: readonly { readonly x: number; readonly z: number }[];
+};
 
-export type BoardTile = (typeof BOARD)[number];
-export type StartTile = Extract<BoardTile, { readonly type: "start" }>;
-export type PropertyTile = Extract<BoardTile, { readonly type: "property" }>;
-export type TaxTile = Extract<BoardTile, { readonly type: "tax" }>;
-export type ChanceTile = Extract<BoardTile, { readonly type: "chance" }>;
-
-export function tileAt(index: number): BoardTile {
-  const normalized = ((index % BOARD.length) + BOARD.length) % BOARD.length;
-  const tile = BOARD[normalized];
-
-  if (!tile) {
-    throw new RangeError(`无效棋盘位置: ${index}`);
-  }
-
+export function tileAt(map: MapDefinition, index: number): BoardTile {
+  const normalized = ((index % map.tiles.length) + map.tiles.length) % map.tiles.length;
+  const tile = map.tiles[normalized];
+  if (!tile) throw new RangeError(`无效棋盘位置: ${index}`);
   return tile;
+}
+
+export function validateMap(map: MapDefinition): void {
+  if (!map.id || !Number.isSafeInteger(map.version) || map.version < 1 || map.tiles.length < 2 || map.path.length !== map.tiles.length || map.tiles[0]?.type !== "start") throw new Error("地图定义无效");
+  if (new Set(map.tiles.map((tile) => tile.id)).size !== map.tiles.length || new Set(map.path.map((point) => `${point.x},${point.z}`)).size !== map.path.length) throw new Error("地图重复地块或坐标");
+  for (const [index, tile] of map.tiles.entries()) {
+    if (!tile.id || (index > 0 && tile.type === "start")) throw new Error("地图起点无效");
+    const values = tile.type === "property" ? [tile.price, tile.rent] : tile.type === "tax" ? [tile.amount] : [];
+    if (values.some((value) => !Number.isSafeInteger(value) || value < 0)) throw new Error("地图金额无效");
+  }
+  if (map.path.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.z))) throw new Error("地图坐标无效");
 }

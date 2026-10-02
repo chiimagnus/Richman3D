@@ -4,6 +4,7 @@ import { PointerLockControls } from "three/addons/controls/PointerLockControls.j
 import { boardDirection, boardPosition, worldPath } from "./boardGeometry";
 import { animatePositions } from "./motion";
 import { MotionClock } from "./MotionClock";
+import type { MapDefinition } from "../domain/board";
 
 const EYE_HEIGHT = 1.72;
 
@@ -14,12 +15,13 @@ export class FirstPersonRig {
     private readonly camera: THREE.PerspectiveCamera,
     private readonly canvas: HTMLCanvasElement,
     private readonly clock: MotionClock,
+    private readonly map: MapDefinition,
   ) {
     this.controls = new PointerLockControls(camera, canvas);
   }
 
   setPosition(index: number): void {
-    const position = boardPosition(index);
+    const position = boardPosition(this.map, index);
     this.camera.position.set(position.x, EYE_HEIGHT, position.z);
     this.faceBoardDirection(index);
   }
@@ -31,7 +33,7 @@ export class FirstPersonRig {
   ): Promise<void> {
     const points = [
       this.camera.position.clone(),
-      ...worldPath(path, EYE_HEIGHT),
+      ...worldPath(this.map, path, EYE_HEIGHT),
     ];
     const previous = this.camera.position.clone();
     const movement = new THREE.Vector3();
@@ -70,13 +72,15 @@ export class FirstPersonRig {
     this.controls.pointerSpeed = pointerSpeed;
   }
 
+  setEnabled(enabled: boolean): void { this.controls.enabled = enabled; if (!enabled) this.unlock(); }
+
   dispose(): void {
     this.unlock();
     this.controls.dispose();
   }
 
   lock(onFailure: () => void): void {
-    if (!this.controls.isLocked) {
+    if (this.controls.enabled && !this.controls.isLocked) {
       try {
         const request = this.canvas.requestPointerLock();
         if (request) void request.catch(onFailure);
@@ -91,7 +95,7 @@ export class FirstPersonRig {
   }
 
   private faceBoardDirection(index: number): void {
-    const direction = boardDirection(index);
+    const direction = boardDirection(this.map, index);
     const lookTarget = this.camera.position
       .clone()
       .add(new THREE.Vector3(direction.x, 0, direction.z));

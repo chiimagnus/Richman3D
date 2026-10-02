@@ -3,9 +3,11 @@ import type { GameApp } from "../app/GameApp";
 import type { GameSession } from "../app/GameSession";
 import type { GamePreferences } from "../settings/preferences";
 import { legalCommands } from "../domain/selectors";
-import { formatMessage, messages, playerName } from "../i18n";
+import { messages, resultTitle } from "../i18n";
+import { playerConfig } from "../domain/config";
 import { MainMenu } from "./MainMenu";
 import { PauseMenu } from "./PauseMenu";
+import { MatchSetup } from "./MatchSetup";
 import { Hud } from "./Hud";
 import { SettingsPanel } from "./SettingsPanel";
 import { FeedbackLayer } from "./FeedbackLayer";
@@ -18,10 +20,10 @@ const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: 
 
 export function App({ app }: { app: GameApp }) {
   const state = useSyncExternalStore(app.subscribe, app.getSnapshot);
-  const [settings, setSettings] = useState(false);
+  const [panel, setPanel] = useState<"settings" | "setup" | null>(null);
   return state.session ? <GamePlay key={state.session.matchId} app={app} session={state.session} preferences={state.preferences} /> : <>
-    <MainMenu app={app} onSettings={() => setSettings(true)} />
-    {settings && <SettingsPanel app={app} preferences={state.preferences} onClose={() => setSettings(false)} />}
+    <MainMenu app={app} onSettings={() => setPanel("settings")} onStart={() => setPanel("setup")} />
+    {panel === "settings" ? <SettingsPanel app={app} preferences={state.preferences} onClose={() => setPanel(null)} /> : panel === "setup" && <MatchSetup app={app} onClose={() => setPanel(null)} />}
   </>;
 }
 
@@ -36,7 +38,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
           (event.target instanceof HTMLElement && event.target.closest("button,input,select,textarea,a[href],[contenteditable='true']"))) return;
       const kind = ({ Space: "roll", KeyB: "buy", KeyN: "skip" } as const)[event.code as "Space" | "KeyB" | "KeyN"];
       if (kind && !view.presenting) {
-        const command = legalCommands(view.displayed, "human").find((action) => action.kind === kind);
+        const command = playerConfig(view.displayed.config, view.displayed.activePlayerId).controller === "human" ? legalCommands(view.displayed, view.displayed.activePlayerId).find((action) => action.kind === kind) : null;
         if (command) { event.preventDefault(); void session.dispatch(command); }
       } else if (event.code === "KeyM") app.setPreferences({ ...preferences, soundEnabled: !preferences.soundEnabled });
     };
@@ -54,8 +56,8 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
       <Hud session={session} language={preferences.language} />
       <FeedbackLayer session={session} language={preferences.language} />
     </ErrorBoundary>
-    {ended ? <PanelHost title={formatMessage(copy.status.winner, { playerName: playerName(preferences.language, view.displayed.decision.kind === "game_over" ? view.displayed.decision.winnerId : "human") })}>
-      <p>{copy.feedback.gameOverDetail}</p><button onClick={() => app.start()}>{copy.feedback.restart}</button><button onClick={() => app.leave()}>{copy.runtime.leave}</button>
+    {ended && view.displayed.decision.kind === "game_over" ? <PanelHost title={resultTitle(preferences.language, view.displayed.decision.result, view.displayed.config)}>
+      <p>{copy.setup[view.displayed.decision.result.reason]}</p><button onClick={() => void app.restart()}>{copy.feedback.restart}</button><button onClick={() => app.leave()}>{copy.runtime.leave}</button>
     </PanelHost> : panel === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : (panel === "pause" || view.mode === "paused" && !view.error) && <PauseMenu app={app} onResume={closeSettings} />}
   </main>;
 }

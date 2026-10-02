@@ -1,16 +1,36 @@
-export type PlayerId = "human" | "bot";
+import type { MapDefinition } from "./board";
+import type { RuleSet } from "./rules";
+
+export type PlayerId = "p1" | "p2" | "p3" | "p4";
+export type PlayerConfig = {
+  readonly id: PlayerId;
+  readonly controller: "human" | "bot";
+  readonly name: string | null;
+  readonly defaultNameKey: PlayerId;
+  readonly color: string;
+};
+export type MatchConfig = {
+  readonly players: readonly PlayerConfig[];
+  readonly seed: number;
+  readonly rulesVersion: string;
+  readonly mapId: string;
+  readonly mapVersion: number;
+};
+export type Ranking = { readonly playerId: PlayerId; readonly rank: number; readonly netAssets: number; readonly cash: number; readonly propertyValue: number };
+export type MatchResult = { readonly reason: "last_survivor" | "round_limit"; readonly winnerIds: readonly PlayerId[]; readonly rankings: readonly Ranking[] };
 export type ChanceCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
 
 export type PlayerState = {
   readonly id: PlayerId;
   readonly cash: number;
   readonly position: number;
+  readonly bankrupt: boolean;
 };
 
 export type Decision =
   | { readonly kind: "awaiting_roll" }
   | { readonly kind: "awaiting_purchase"; readonly propertyId: string }
-  | { readonly kind: "game_over"; readonly winnerId: PlayerId };
+  | { readonly kind: "game_over"; readonly result: MatchResult };
 
 export type RandomState = {
   readonly version: "xorshift32-v1";
@@ -21,6 +41,10 @@ export type RandomState = {
 
 export type GameSnapshot = {
   readonly revision: number;
+  readonly config: MatchConfig;
+  readonly rules: RuleSet;
+  readonly map: MapDefinition;
+  readonly completedRounds: number;
   readonly players: readonly PlayerState[];
   readonly activePlayerId: PlayerId;
   readonly decision: Decision;
@@ -45,6 +69,7 @@ export type RollResult = {
   readonly to: number;
   readonly path: readonly number[];
   readonly passedStart: boolean;
+  readonly startBonus: number;
   readonly landing: LandingResult;
 };
 
@@ -59,7 +84,7 @@ export type GameEvent =
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
   | { readonly kind: "skipped"; readonly actor: PlayerId; readonly propertyId: string }
   | { readonly kind: "turn"; readonly actor: PlayerId }
-  | { readonly kind: "ended"; readonly winnerId: PlayerId };
+  | { readonly kind: "ended"; readonly result: MatchResult };
 
 export type ApplyResult =
   | { readonly ok: true; readonly snapshot: GameSnapshot; readonly events: readonly GameEvent[] }

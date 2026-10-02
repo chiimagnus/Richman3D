@@ -1,3 +1,5 @@
+import { QUICK_RULES } from "../../src/domain/rules";
+import { createMatchConfig } from "../../src/domain/config";
 import { describe, expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import type { Command, RollResult } from "../../src/domain/types";
@@ -17,22 +19,22 @@ function roll(game: Game): RollResult {
 
 describe("Game", () => {
   it("允许购买地产，并让后来踩中的对手支付租金", () => {
-    const game = new Game({ seed: 341 });
+    const game = new Game(createMatchConfig(341));
     expect(roll(game).to).toBe(3);
     act(game, "buy");
-    expect(game.snapshot.owners["neon-avenue"]).toBe("human");
+    expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
     expect(game.snapshot.players[0]?.cash).toBe(1320);
-    expect(game.snapshot.activePlayerId).toBe("bot");
+    expect(game.snapshot.activePlayerId).toBe("p2");
     expect(roll(game).landing).toEqual({
-      kind: "rent", propertyId: "neon-avenue", ownerId: "human", amount: 32,
+      kind: "rent", propertyId: "neon-avenue", ownerId: "p1", amount: 32,
     });
     expect(game.snapshot.players[0]?.cash).toBe(1352);
     expect(game.snapshot.players[1]?.cash).toBe(1468);
-    expect(game.snapshot.activePlayerId).toBe("human");
+    expect(game.snapshot.activePlayerId).toBe("p1");
   });
 
   it("经过起点获得奖金，再结算落脚格", () => {
-    const game = new Game({ seed: 2210 });
+    const game = new Game(createMatchConfig(2210));
     expect(roll(game).to).toBe(12);
     act(game, "skip");
     expect(roll(game).landing).toEqual({ kind: "tax", amount: 80 });
@@ -44,25 +46,25 @@ describe("Game", () => {
   });
 
   it("结算机会格的确定性奖励", () => {
-    const game = new Game({ seed: 101 });
+    const game = new Game(createMatchConfig(101));
     const result = roll(game);
     expect(result.to).toBe(2);
     expect(result.landing).toEqual({ kind: "chance", amount: 120, cardId: "innovation-bonus" });
     expect(game.snapshot.players[0]?.cash).toBe(1620);
-    expect(game.snapshot.activePlayerId).toBe("bot");
+    expect(game.snapshot.activePlayerId).toBe("p2");
   });
 
   it("拒绝没有待购买地产时的购买", () => {
     const game = new Game();
-    expect(game.apply({ kind: "buy", actor: "human", expectedRevision: 0 })).toEqual({ ok: false, reason: "illegal_action" });
+    expect(game.apply({ kind: "buy", actor: "p1", expectedRevision: 0 })).toEqual({ ok: false, reason: "illegal_action" });
   });
 
   it("资金跌破零时结束游戏并确定胜者", () => {
-    const game = new Game({ seed: 1, startingCash: 50 });
+    const game = new Game(createMatchConfig(1), { ...QUICK_RULES, startingCash: 50 });
     const result = roll(game);
     expect(result.to).toBe(4);
     expect(result.landing).toEqual({ kind: "tax", amount: 80 });
-    expect(game.snapshot.decision).toEqual({ kind: "game_over", winnerId: "bot" });
+    expect(game.snapshot.decision).toMatchObject({ kind: "game_over", result: { reason: "last_survivor", winnerIds: ["p2"] } });
     expect(game.snapshot.players[0]?.cash).toBe(-30);
   });
 });

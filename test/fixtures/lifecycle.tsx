@@ -1,3 +1,4 @@
+import { createMatchConfig } from "../../src/domain/config";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { GameApp } from "../../src/app/GameApp";
@@ -45,7 +46,7 @@ const output = document.querySelector<HTMLOutputElement>("#stats")!;
 const listeners = () => [...tracked.values()].flatMap((events) => [...events.values()]).reduce((total, entries) => total + entries.size, 0);
 const baseline = listeners();
 document.querySelector("#start")!.addEventListener("click", async () => {
-  await app.start(1);
+  await app.start(createMatchConfig(1));
   await new Promise<void>((resolve) => {
     const check = () => { if (app.getSnapshot().session?.getSnapshot().attached) resolve(); else requestAnimationFrame(check); };
     check();
