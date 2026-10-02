@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 
 const baseURL = "http://127.0.0.1:4317/Richman3D/";
 
@@ -7,7 +8,7 @@ export default defineConfig({
   outputDir: "../test-results",
   fullyParallel: false,
   workers: 1,
-  reporter: [["list"], ["json", { outputFile: "test-results/results.json" }]],
+  reporter: [["list"], ["json", { outputFile: fileURLToPath(new URL("../test-results/results.json", import.meta.url)) }]],
   use: {
     baseURL,
     viewport: { width: 1280, height: 720 },
