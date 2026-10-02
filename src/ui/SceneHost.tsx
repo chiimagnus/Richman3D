@@ -31,8 +31,16 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
       unbind = session.bind({
         sync: (snapshot) => activeWorld.sync(snapshot),
         stop: () => { activeWorld.cancelPresentation(); audio.stop(); },
-        present: async (events, signal) => {
+        present: async (events, signal, settle) => {
+          let settled = false;
+          const feedback = async () => {
+            if (settled || signal.aborted) return;
+            settled = true;
+            const duration = settle();
+            if (duration > 0) await activeWorld.wait(duration, signal);
+          };
           for (const event of events) {
+            if (event.kind === "turn" || event.kind === "ended") await feedback();
             if (signal.aborted) return;
             switch (event.kind) {
               case "rolled": {
@@ -51,6 +59,7 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
               case "ended": activeWorld.unlockFirstPerson(); audio.playGameOver(event.winnerId); break;
             }
           }
+          await feedback();
         },
       });
     } catch { fail(); }

@@ -1,5 +1,24 @@
 import { expect, test } from "@playwright/test";
 
+test("view remount neither reannounces nor revives an expired settlement", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4318/Richman3D/test/fixtures/lifecycle.html");
+  await page.getByRole("button", { name: "Start fixture" }).click();
+  await page.locator("[data-roll]").click();
+  await expect(page.locator("[data-announcement]")).toContainText("支付费用 80");
+  await page.getByRole("button", { name: "Unmount view" }).click();
+  await expect(page.locator("canvas")).toHaveCount(0);
+  await page.getByRole("button", { name: "Bind view" }).click();
+  await expect(page.locator("canvas")).toHaveCount(1);
+  await expect(page.locator("[data-announcement]")).toBeEmpty();
+  await expect(page.locator("[data-feedback-event]")).toHaveCount(0, { timeout: 3000 });
+  await page.getByRole("button", { name: "Unmount view" }).click();
+  await expect(page.locator("canvas")).toHaveCount(0);
+  await page.getByRole("button", { name: "Bind view" }).click();
+  await expect(page.locator("canvas")).toHaveCount(1);
+  await expect(page.locator("[data-feedback-event]")).toHaveCount(0);
+  await expect(page.locator("[data-announcement]")).toBeEmpty();
+});
+
 test("20 actual scene/session entries release canvas, global listeners, audio and GPU resources", async ({ page }, info) => {
   test.setTimeout(120_000);
   const errors: string[] = [];

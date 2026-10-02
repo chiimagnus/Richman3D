@@ -19,6 +19,7 @@ export class GameSession {
   private readonly listeners = new Set<() => void>();
   private port: PresentationPort | null = null;
   private work: Promise<void> | null = null;
+  private announcedNoticeId = 0;
   private view: GameView;
 
   constructor(private readonly game: Game, readonly matchId = "local") {
@@ -26,6 +27,11 @@ export class GameSession {
   }
 
   getSnapshot = (): GameView => this.view;
+  claimAnnouncement(id: number): boolean {
+    if (id <= this.announcedNoticeId || this.view.notice?.id !== id || this.view.notice.expiresAt <= Date.now()) return false;
+    this.announcedNoticeId = id;
+    return true;
+  }
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -105,11 +111,20 @@ export class GameSession {
         const port = this.port;
         this.publish({ committed: result.snapshot, displayed: before, events: result.events, presenting: true, error: null });
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
-        const finished = await this.queue.run(port, result.events);
-        if (this.getSnapshot().mode === "disposed") return;
         const event = result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
         const meaningful = event && !(event.kind === "purchased" && event.actor === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
-        this.publish({ displayed: this.game.snapshot, presenting: false, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + 1750 } : null });
+        let settled = false;
+        const settle = () => {
+          if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;
+          settled = true;
+          const duration = meaningful ? 1750 : 0;
+          this.publish({ displayed: result.snapshot, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration } : null });
+          return duration;
+        };
+        const finished = await this.queue.run(port, result.events, settle);
+        if (this.getSnapshot().mode === "disposed") return;
+        settle();
+        this.publish({ displayed: this.game.snapshot, presenting: false });
         if (!finished || this.port !== port || this.view.mode !== "running") return;
         port.sync(this.game.snapshot);
         command = chooseBotCommand(this.game.snapshot);

@@ -87,6 +87,7 @@
     "resume": "继续",
     "paused": "已暂停，已结算的行动已保留。",
     "presenting": "{actor}正在移动…",
+    "settling": "{actor}的行动结果",
     "purchaseDecision": "是否以 ¥{price} 购买「{propertyName}」？租金 ¥{rent}。",
     "skipAnimation": "跳过动画",
     "firstPerson": "环视",

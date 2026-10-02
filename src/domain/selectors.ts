@@ -8,8 +8,8 @@ export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   return tile?.type === "property" ? tile : null;
 }
 
-export function currentTile(snapshot: GameSnapshot) {
-  const player = snapshot.players.find((candidate) => candidate.id === snapshot.activePlayerId);
+export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.activePlayerId) {
+  const player = snapshot.players.find((candidate) => candidate.id === actor);
   if (!player) throw new Error("当前玩家不存在");
   return tileAt(player.position);
 }

@@ -7,12 +7,14 @@ export function actionView(view: GameView, language: Language) {
   const snapshot = view.displayed;
   const property = pendingProperty(snapshot);
   const copy = messages(language).runtime;
+  const action = view.presenting ? view.events.find((event) => event.kind !== "turn" && event.kind !== "ended") : null;
+  const actor = action?.kind === "rolled" ? action.result.playerId : action?.actor ?? snapshot.activePlayerId;
   const ready = !view.presenting && view.mode === "running" && view.attached && view.error !== "presentation_failed";
   const commands = ready ? legalCommands(snapshot, "human") : [];
   const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
-    ? formatMessage(copy.presenting, { actor: playerName(language, snapshot.activePlayerId) })
+    ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: property.rent })
     : snapshot.decision.kind === "game_over" ? formatMessage(messages(language).status.winner, { playerName: playerName(language, snapshot.decision.winnerId) })
     : snapshot.activePlayerId === "human" ? messages(language).status.yourTurn : messages(language).status.botActing;
-  return { commands, property, tile: currentTile(snapshot), status };
+  return { commands, property, tile: currentTile(snapshot, actor), status };
 }

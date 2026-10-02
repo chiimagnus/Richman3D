@@ -87,6 +87,7 @@
     "resume": "Resume",
     "paused": "Paused. The completed action is preserved.",
     "presenting": "{actor} is moving…",
+    "settling": "{actor}'s action result",
     "purchaseDecision": "Buy “{propertyName}” for ¥{price}? Rent ¥{rent}.",
     "skipAnimation": "Skip animation",
     "firstPerson": "Look around",

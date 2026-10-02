@@ -14,6 +14,34 @@ function controlledPort() {
 }
 
 describe("session lifecycle and visible order", () => {
+  it("settles cash and exposes the cause before allowing the next bot command", async () => {
+    const game = new Game({ seed: 1 });
+    const session = new GameSession(game);
+    let release = () => {};
+    const presenting = vi.fn<PresentationPort["present"]>(async (_events, _signal, settle) => {
+      if (game.snapshot.revision === 1) {
+        expect(settle()).toBe(1750);
+        await new Promise<void>((resolve) => { release = resolve; });
+      }
+    });
+    session.bind({ sync() {}, stop() {}, present: presenting });
+    const work = session.dispatch(legalCommands(game.snapshot, "human")[0]!);
+    await Promise.resolve();
+    const feedback = session.getSnapshot();
+    expect(feedback.presenting).toBe(true);
+    expect(feedback.displayed.players[0]?.cash).toBe(1420);
+    expect(feedback.notice?.event.kind).toBe("rolled");
+    expect(game.snapshot.revision).toBe(1);
+    expect(presenting).toHaveBeenCalledTimes(1);
+    expect(session.claimAnnouncement(feedback.notice!.id)).toBe(true);
+    expect(session.claimAnnouncement(feedback.notice!.id)).toBe(false);
+    await session.dispatch({ kind: "roll", actor: "bot", expectedRevision: 1 });
+    expect(game.snapshot.revision).toBe(1);
+    release();
+    await work;
+    expect(game.snapshot.revision).toBe(3);
+  });
+
   it("holds the previous player and balances while the committed result is already final", async () => {
     const game = new Game({ seed: 1 });
     const session = new GameSession(game);

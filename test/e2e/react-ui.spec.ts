@@ -32,16 +32,19 @@ for (const entry of ["http://127.0.0.1:4317/Richman3D/", "http://127.0.0.1:4318/
   });
 }
 
-test("displayed semantic feedback changes language without restarting expiry or announcing twice", async ({ page }) => {
+test("normal settlement shows its cause before the bot and changes language without restarting expiry", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(1); return array; } });
   });
   await page.goto("./");
   await page.locator("[data-start]").click();
   await page.locator("[data-roll]").click();
-  await page.locator("[data-settings-open]").click();
   await expect(page.locator("[data-human-cash]")).toHaveText("¥1,420");
   await expect(page.locator("[data-feedback-event]")).toContainText("支付费用 80");
+  await expect(page.locator("[data-revision]")).toHaveAttribute("data-revision", "1");
+  await expect(page.locator("[data-roll]")).toBeDisabled();
+  await expect(page.locator("[data-feedback-dice]")).toHaveCount(0);
+  await page.locator("[data-settings-open]").click();
   await page.getByRole("dialog").getByRole("button", { name: "English" }).click();
   await expect(page.locator("[data-feedback-event]")).toContainText("paid ¥80");
   await expect(page.locator("[data-announcement]")).toBeEmpty();
