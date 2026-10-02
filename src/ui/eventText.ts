@@ -1,17 +1,19 @@
 import type { GameEvent, PlayerId, RollResult } from "../domain/types";
 import { BOARD } from "../domain/board";
+import { PASS_START_BONUS } from "../domain/game";
 import { chanceCardText, formatMessage, messages, playerName, tileName } from "../i18n";
-import type { Language } from "../settings/preferences";
+import type { Language } from "../i18n/language";
 
 export function eventText(language: Language, event: GameEvent): string {
   const copy = messages(language).status;
   switch (event.kind) {
-    case "rolled": return rollStatus(language, event.result.playerId, event.result);
+    case "rolled": return rollStatus(language, event.result.playerId, event.result) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: PASS_START_BONUS }) : "");
     case "purchased":
     case "skipped": {
       const tile = BOARD.find((candidate) => candidate.id === event.propertyId);
       if (!tile) throw new Error("事件地块不存在");
-      return formatMessage(event.kind === "purchased" ? copy.purchased : copy.skipped, { propertyName: tileName(language, tile) });
+      const template = event.actor === "human" ? (event.kind === "purchased" ? copy.purchased : copy.skipped) : (event.kind === "purchased" ? copy.botPurchased : copy.botSkipped);
+      return formatMessage(template, { propertyName: tileName(language, tile) });
     }
     case "turn": return event.actor === "human" ? copy.yourTurn : copy.botActing;
     case "ended": return formatMessage(copy.winner, { playerName: playerName(language, event.winnerId) });
@@ -49,7 +51,7 @@ function rollStatus(
       return formatMessage(copy.rollChance, {
         actor,
         steps: result.steps,
-        message: chanceCardText(language, landing.cardId),
+        message: chanceCardText(language, landing.cardId, landing.amount),
       });
     case "property_owned":
       return formatMessage(copy.rollOwned, {

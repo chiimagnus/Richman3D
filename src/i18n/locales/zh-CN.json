@@ -15,23 +15,18 @@
   "settings": {
     "title": "设置",
     "returnToGame": "返回游戏",
-    "returnToGameAria": "返回游戏",
     "sound": "声音",
     "sensitivity": "鼠标灵敏度",
-    "sensitivityAria": "第一人称鼠标灵敏度",
     "low": "低",
     "standard": "标准",
     "high": "高",
     "language": "语言",
-    "languageAria": "游戏语言",
     "languageOptions": {
       "zh-CN": "中文",
       "en": "English"
     }
   },
   "status": {
-    "initial": "你的回合，掷骰开始。",
-    "rolling": "正在掷骰…",
     "insufficientFunds": "资金不足，无法购买这块地产。",
     "purchased": "已购买「{propertyName}」。",
     "skipped": "已跳过「{propertyName}」。",
@@ -40,7 +35,6 @@
     "botPurchased": "城市玩家购买了「{propertyName}」。",
     "botSkipped": "城市玩家跳过了「{propertyName}」。",
     "winner": "{playerName}获胜。",
-    "gameOver": "游戏结束。",
     "rollPropertyAvailable": "{actor}移动 {steps} 格，这块地产可以购买。",
     "rollRent": "{actor}移动 {steps} 格，支付租金 {amount}。",
     "rollTax": "{actor}移动 {steps} 格，支付费用 {amount}。",
@@ -49,43 +43,12 @@
     "rollStart": "{actor}移动 {steps} 格，回到起点。"
   },
   "feedback": {
-    "yourTurnKicker": "YOUR TURN",
-    "rivalTurnKicker": "RIVAL TURN",
-    "yourTurnTitle": "轮到你了",
-    "rivalTurnTitle": "城市玩家行动",
     "diceActor": "{actor}掷骰",
-    "diceAnnouncement": "{actor}掷出 {left} 加 {right}，共 {total}",
-    "passedStart": "经过起点 +¥200 · ",
-    "moved": "{actor}移动 {steps} 格",
-    "propertyAvailable": "「{propertyName}」待售",
-    "salePrice": "售价 ¥{price}",
-    "propertyOwned": "回到「{propertyName}」",
-    "ownProperty": "这是自己的地产",
-    "rentPaid": "支付租金 -¥{amount}",
-    "landedOn": "停在「{propertyName}」",
-    "feePaid": "支付费用 -¥{amount}",
-    "fundsGain": "资金 +¥{amount}",
-    "fundsLoss": "资金 -¥{amount}",
-    "backToStart": "回到中央起点",
-    "continueNextTurn": "继续下一回合",
-    "moveCompleted": "{actor}完成移动",
-    "propertyAcquiredKicker": "PROPERTY ACQUIRED",
-    "bought": "{actor}买下「{propertyName}」",
-    "dealPrice": "成交价 ¥{price}",
-    "propertyKicker": "PROPERTY",
-    "skipped": "{actor}跳过「{propertyName}」",
-    "propertyUnowned": "地产保持无主状态",
-    "victoryKicker": "VICTORY",
-    "gameOverKicker": "GAME OVER",
-    "humanWonTitle": "你赢了",
-    "botWonTitle": "城市玩家获胜",
-    "humanWonDetail": "对手已经破产。",
-    "botWonDetail": "你的资金已经跌破 0。",
     "gameOverDetail": "本局已经结束。",
     "restart": "再来一局"
   },
   "board": {
-    "startDetail": "+200 / 圈",
+    "startDetail": "+{amount} / 圈",
     "chanceDetail": "随机事件",
     "propertyDetail": "售价 {price} · 租金 {rent}",
     "tiles": {
@@ -112,9 +75,25 @@
     }
   },
   "chanceCards": {
-    "innovation-bonus": "城市创新奖金 +120",
-    "maintenance-cost": "临时维修支出 -90",
-    "community-event": "社区活动收益 +60",
-    "traffic-fine": "交通违章罚款 -50"
+    "innovation-bonus": "城市创新奖金 +{amount}",
+    "maintenance-cost": "临时维修支出 {amount}",
+    "community-event": "社区活动收益 +{amount}",
+    "traffic-fine": "交通违章罚款 {amount}"
+  },
+  "runtime": {
+    "title": "Richman 3D",
+    "start": "开始游戏",
+    "leave": "主菜单",
+    "resume": "继续",
+    "paused": "已暂停，已结算的行动已保留。",
+    "presenting": "{actor}正在移动…",
+    "purchaseDecision": "是否以 ¥{price} 购买「{propertyName}」？租金 ¥{rent}。",
+    "skipAnimation": "跳过动画",
+    "firstPerson": "环视",
+    "exitFirstPerson": "退出环视",
+    "pointerLockFailed": "鼠标锁定被拒绝，仍可使用所有游戏按钮。",
+    "presentation_failed": "3D 画面不可用，已提交的局面已保留。可以返回主菜单。",
+    "command_rejected": "此行动已失效，请选择当前可用行动。",
+    "passedStart": "经过起点，获得 ¥{amount}。"
   }
 }

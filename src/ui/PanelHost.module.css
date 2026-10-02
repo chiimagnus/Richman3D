@@ -1,0 +1,3 @@
+.dialog { pointer-events: auto; color: inherit; background: var(--panel); width: min(460px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
+.dialog::backdrop { background: rgb(2 8 13 / 70%); }
+.dialog h2 { margin-top: 0; }

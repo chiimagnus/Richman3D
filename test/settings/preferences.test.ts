@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_PREFERENCES,
@@ -19,7 +19,14 @@ function memoryStorage(initial: string | null = null) {
   };
 }
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe("game preferences", () => {
+  it("protects the storage getter as well as getItem/setItem", () => {
+    vi.stubGlobal("window", { get localStorage() { throw new Error("SecurityError"); } });
+    expect(loadPreferences()).toEqual(DEFAULT_PREFERENCES);
+    expect(() => savePreferences(DEFAULT_PREFERENCES)).not.toThrow();
+  });
   it("uses defaults when nothing is stored", () => {
     const storage = memoryStorage();
 

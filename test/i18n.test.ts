@@ -69,7 +69,7 @@ describe("i18n", () => {
     expect(playerName("zh-CN", "human")).toBe("你");
     expect(messages("zh-CN").settings.title).toBe("设置");
     expect(playerName("en", "bot")).toBe("City Player");
-    expect(chanceCardText("en", "innovation-bonus")).toBe(
+    expect(chanceCardText("en", "innovation-bonus", 120)).toBe(
       "City innovation bonus +120",
     );
   });

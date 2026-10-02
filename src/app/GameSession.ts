@@ -11,6 +11,7 @@ export type GameView = {
   readonly attached: boolean;
   readonly events: readonly GameEvent[];
   readonly error: "presentation_failed" | "command_rejected" | null;
+  readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
 };
 
 export class GameSession {
@@ -20,8 +21,8 @@ export class GameSession {
   private work: Promise<void> | null = null;
   private view: GameView;
 
-  constructor(private readonly game: Game) {
-    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null };
+  constructor(private readonly game: Game, readonly matchId = "local") {
+    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null };
   }
 
   getSnapshot = (): GameView => this.view;
@@ -55,8 +56,10 @@ export class GameSession {
     if (this.view.mode === "disposed") return;
     this.publish({ mode: "paused", displayed: this.game.snapshot });
     this.queue.cancel();
-    this.port?.stop();
-    this.port?.sync(this.game.snapshot);
+    try {
+      this.port?.stop();
+      this.port?.sync(this.game.snapshot);
+    } catch { this.failPresentation(); }
   }
 
   async resume(): Promise<void> {
@@ -74,8 +77,10 @@ export class GameSession {
   }
 
   failPresentation(): void {
-    this.pause();
-    this.publish({ error: "presentation_failed" });
+    if (this.view.mode === "disposed") return;
+    this.queue.cancel();
+    try { this.port?.stop(); } catch { }
+    this.publish({ mode: "paused", displayed: this.game.snapshot, error: "presentation_failed" });
   }
 
   dispose(): void {
@@ -102,7 +107,9 @@ export class GameSession {
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
         const finished = await this.queue.run(port, result.events);
         if (this.getSnapshot().mode === "disposed") return;
-        this.publish({ displayed: this.game.snapshot, presenting: false });
+        const event = result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
+        const meaningful = event && !(event.kind === "purchased" && event.actor === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
+        this.publish({ displayed: this.game.snapshot, presenting: false, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + 1750 } : null });
         if (!finished || this.port !== port || this.view.mode !== "running") return;
         port.sync(this.game.snapshot);
         command = chooseBotCommand(this.game.snapshot);

@@ -1,0 +1,21 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #edf8fc;
+  background: #07111a;
+  --panel: rgb(7 20 30 / 94%);
+  --border: rgb(157 220 238 / 25%);
+  --muted: #b0c5cf;
+  --accent: #79d9ee;
+}
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; width: 100%; min-width: 320px; min-height: 100%; }
+body { min-height: 100vh; }
+button, input, select, textarea { font: inherit; }
+button { min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px; background: #143a4b; color: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button[aria-pressed="true"] { background: #226d80; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.game-canvas { display: block; width: 100%; height: 100%; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

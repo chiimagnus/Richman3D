@@ -43,6 +43,7 @@ Open the local address shown by Vite in a modern desktop browser.
 
 - TypeScript
 - Three.js / WebGL
+- React / React DOM
 - Vite
 - Vitest
 

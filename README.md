@@ -33,6 +33,7 @@ npm run dev
 
 - TypeScript
 - Three.js / WebGL
+- React / React DOM
 - Vite
 - Vitest
 

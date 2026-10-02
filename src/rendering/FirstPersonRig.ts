@@ -12,7 +12,7 @@ export class FirstPersonRig {
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
     private readonly clock: MotionClock,
   ) {
     this.controls = new PointerLockControls(camera, canvas);
@@ -75,9 +75,12 @@ export class FirstPersonRig {
     this.controls.dispose();
   }
 
-  lock(): void {
+  lock(onFailure: () => void): void {
     if (!this.controls.isLocked) {
-      this.controls.lock();
+      try {
+        const request = this.canvas.requestPointerLock();
+        if (request) void request.catch(onFailure);
+      } catch { onFailure(); }
     }
   }
 

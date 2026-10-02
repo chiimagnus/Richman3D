@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import type { GameSnapshot, LandingResult } from "../domain/types";
 import { messages } from "../i18n";
-import type { Language } from "../settings/preferences";
+import type { Language } from "../i18n/language";
 import { BoardView } from "./BoardView";
 import { FirstPersonRig } from "./FirstPersonRig";
 import { PlayerView } from "./PlayerView";
@@ -22,7 +22,7 @@ export class World {
   private lastTime: number | null = null;
   private disposed = false;
 
-  constructor(container: HTMLElement, language: Language) {
+  constructor(container: HTMLElement, language: Language, private readonly onFailure: () => void = () => {}) {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
@@ -32,6 +32,9 @@ export class World {
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("aria-label", messages(language).worldAria);
     container.append(this.canvas);
+
+    let disconnectControls = () => {};
+    try {
 
     this.scene.background = new THREE.Color(0x07111a);
     this.scene.fog = new THREE.FogExp2(0x07111a, 0.016);
@@ -47,10 +50,20 @@ export class World {
     this.board = new BoardView(this.scene, language);
     this.bot = new PlayerView(this.scene, "#ffb75e", this.clock);
     this.firstPerson = new FirstPersonRig(this.camera, this.canvas, this.clock);
+    disconnectControls = () => this.firstPerson.dispose();
 
     this.resize();
     window.addEventListener("resize", this.resize);
     this.renderer.setAnimationLoop(this.render);
+    } catch (error) {
+      disconnectControls();
+      window.removeEventListener("resize", this.resize);
+      disposeObject(this.scene);
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+      this.canvas.remove();
+      throw error;
+    }
   }
 
   sync(snapshot: GameSnapshot): void {
@@ -93,8 +106,8 @@ export class World {
     this.board.setLanguage(language);
   }
 
-  lockFirstPerson(): void {
-    this.firstPerson.lock();
+  lockFirstPerson(onFailure: () => void): void {
+    this.firstPerson.lock(onFailure);
   }
 
   unlockFirstPerson(): void {
@@ -133,11 +146,17 @@ export class World {
 
   private readonly render = (time: number): void => {
     if (this.disposed) return;
+    try {
     const delta = this.lastTime === null ? 0 : Math.max(time - this.lastTime, 0);
     this.lastTime = time;
     this.clock.update(delta);
     this.board.update(time);
     this.renderer.render(this.scene, this.camera);
+    } catch {
+      this.renderer.setAnimationLoop(null);
+      this.clock.cancel();
+      this.onFailure();
+    }
   };
 
   private readonly resize = (): void => {

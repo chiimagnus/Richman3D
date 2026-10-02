@@ -8,6 +8,7 @@ test("first screen, cash, board and a real roll reach a legal decision", async (
   page.on("pageerror", (error) => errors.push(error.message));
   const started = Date.now();
   await page.goto("./");
+  await page.locator("[data-start]").click();
   await expect(page.locator("canvas")).toBeVisible();
   const roll = page.locator("[data-roll]");
   await expect(roll).toBeEnabled();
@@ -17,7 +18,8 @@ test("first screen, cash, board and a real roll reach a legal decision", async (
   await roll.click();
   await expect(page.locator("[data-dice]")).toHaveText(/^[1-6] \+ [1-6]$/);
   await expect.poll(async () =>
-    (await roll.isEnabled()) || (await page.locator("[data-skip]").isVisible()),
+    (await roll.isVisible() && await roll.isEnabled()) ||
+    (await page.locator("[data-skip]").isVisible() && await page.locator("[data-skip]").isEnabled()),
     { timeout: 20_000 },
   ).toBe(true);
   expect(errors).toEqual([]);

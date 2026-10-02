@@ -2,7 +2,7 @@ import type { BoardTile } from "../domain/board";
 import type { ChanceCardId, PlayerId } from "../domain/types";
 import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
-import type { Language } from "../settings/preferences";
+import type { Language } from "./language";
 
 export type Messages = typeof zhCN;
 type MessageValues = Readonly<Record<string, string | number>>;
@@ -41,8 +41,8 @@ export function tileName(language: Language, tile: BoardTile): string {
   return name;
 }
 
-export function chanceCardText(language: Language, cardId: ChanceCardId): string {
-  return messages(language).chanceCards[cardId];
+export function chanceCardText(language: Language, cardId: ChanceCardId, amount: number): string {
+  return formatMessage(messages(language).chanceCards[cardId], { amount });
 }
 
 export function formatCash(language: Language, value: number): string {

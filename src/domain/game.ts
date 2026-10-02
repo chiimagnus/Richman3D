@@ -3,7 +3,7 @@ import { RuleRandom } from "./random";
 import { legalCommands, pendingProperty } from "./selectors";
 import type { ApplyResult, ChanceCardId, Command, Decision, GameEvent, GameSnapshot, LandingResult, PlayerId } from "./types";
 
-const PASS_START_BONUS = 200;
+export const PASS_START_BONUS = 200;
 const CHANCE_CARDS = [
   { id: "innovation-bonus", amount: 120 },
   { id: "maintenance-cost", amount: -90 },

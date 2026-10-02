@@ -15,23 +15,18 @@
   "settings": {
     "title": "Settings",
     "returnToGame": "Back to Game",
-    "returnToGameAria": "Back to Game",
     "sound": "Sound",
     "sensitivity": "Mouse Sensitivity",
-    "sensitivityAria": "First-person mouse sensitivity",
     "low": "Low",
     "standard": "Standard",
     "high": "High",
     "language": "Language",
-    "languageAria": "Game language",
     "languageOptions": {
       "zh-CN": "中文",
       "en": "English"
     }
   },
   "status": {
-    "initial": "Your turn. Roll the dice to begin.",
-    "rolling": "Rolling dice…",
     "insufficientFunds": "Not enough cash to buy this property.",
     "purchased": "Purchased “{propertyName}”.",
     "skipped": "Skipped “{propertyName}”.",
@@ -40,7 +35,6 @@
     "botPurchased": "City Player bought “{propertyName}”.",
     "botSkipped": "City Player skipped “{propertyName}”.",
     "winner": "{playerName} won.",
-    "gameOver": "Game over.",
     "rollPropertyAvailable": "{actor} moved {steps} spaces. This property is available to buy.",
     "rollRent": "{actor} moved {steps} spaces and paid ¥{amount} rent.",
     "rollTax": "{actor} moved {steps} spaces and paid ¥{amount}.",
@@ -49,43 +43,12 @@
     "rollStart": "{actor} moved {steps} spaces back to Start."
   },
   "feedback": {
-    "yourTurnKicker": "YOUR TURN",
-    "rivalTurnKicker": "RIVAL TURN",
-    "yourTurnTitle": "Your Turn",
-    "rivalTurnTitle": "City Player's Turn",
     "diceActor": "{actor} · Dice Roll",
-    "diceAnnouncement": "{actor} rolled {left} plus {right}, for a total of {total}",
-    "passedStart": "Passed Start +¥200 · ",
-    "moved": "{actor} moved {steps} spaces",
-    "propertyAvailable": "“{propertyName}” is for sale",
-    "salePrice": "Price ¥{price}",
-    "propertyOwned": "Back to “{propertyName}”",
-    "ownProperty": "Owned by this player",
-    "rentPaid": "Rent paid -¥{amount}",
-    "landedOn": "Landed on “{propertyName}”",
-    "feePaid": "Fee paid -¥{amount}",
-    "fundsGain": "Cash +¥{amount}",
-    "fundsLoss": "Cash -¥{amount}",
-    "backToStart": "Back to Central Start",
-    "continueNextTurn": "Continue to the next turn",
-    "moveCompleted": "{actor} finished moving",
-    "propertyAcquiredKicker": "PROPERTY ACQUIRED",
-    "bought": "{actor} bought “{propertyName}”",
-    "dealPrice": "Price ¥{price}",
-    "propertyKicker": "PROPERTY",
-    "skipped": "{actor} skipped “{propertyName}”",
-    "propertyUnowned": "The property remains unowned",
-    "victoryKicker": "VICTORY",
-    "gameOverKicker": "GAME OVER",
-    "humanWonTitle": "You Win",
-    "botWonTitle": "City Player Wins",
-    "humanWonDetail": "Your opponent is bankrupt.",
-    "botWonDetail": "Your cash dropped below 0.",
     "gameOverDetail": "This game has ended.",
     "restart": "Play Again"
   },
   "board": {
-    "startDetail": "+200 / lap",
+    "startDetail": "+{amount} / lap",
     "chanceDetail": "Random event",
     "propertyDetail": "Price {price} · Rent {rent}",
     "tiles": {
@@ -112,9 +75,25 @@
     }
   },
   "chanceCards": {
-    "innovation-bonus": "City innovation bonus +120",
-    "maintenance-cost": "Emergency maintenance -90",
-    "community-event": "Community event income +60",
-    "traffic-fine": "Traffic fine -50"
+    "innovation-bonus": "City innovation bonus +{amount}",
+    "maintenance-cost": "Emergency maintenance {amount}",
+    "community-event": "Community event income +{amount}",
+    "traffic-fine": "Traffic fine {amount}"
+  },
+  "runtime": {
+    "title": "Richman 3D",
+    "start": "Start Game",
+    "leave": "Main Menu",
+    "resume": "Resume",
+    "paused": "Paused. The completed action is preserved.",
+    "presenting": "{actor} is moving…",
+    "purchaseDecision": "Buy “{propertyName}” for ¥{price}? Rent ¥{rent}.",
+    "skipAnimation": "Skip animation",
+    "firstPerson": "Look around",
+    "exitFirstPerson": "Exit look-around",
+    "pointerLockFailed": "Mouse lock was denied. All game buttons remain available.",
+    "presentation_failed": "The 3D view is unavailable. The committed game state is preserved. You can return to the menu.",
+    "command_rejected": "This action is no longer available. Choose a current action.",
+    "passedStart": "Passed Start and received ¥{amount}."
   }
 }

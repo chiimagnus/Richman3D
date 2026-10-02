@@ -1,9 +1,10 @@
 import * as THREE from "three";
 
 import { BOARD, type BoardTile } from "../domain/board";
+import { PASS_START_BONUS } from "../domain/game";
 import type { GameSnapshot, LandingResult, PlayerId } from "../domain/types";
 import { formatMessage, messages, tileName } from "../i18n";
-import type { Language } from "../settings/preferences";
+import type { Language } from "../i18n/language";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
 
@@ -33,9 +34,9 @@ export class BoardView {
     private language: Language,
   ) {
     this.object.name = "board";
+    scene.add(this.object);
     this.buildTiles();
     this.buildCenter();
-    scene.add(this.object);
   }
 
   setLanguage(language: Language): void {
@@ -143,6 +144,7 @@ export class BoardView {
     BOARD.forEach((tile, index) => {
       const position = boardPosition(index);
       const tileGroup = new THREE.Group();
+      this.object.add(tileGroup);
       tileGroup.position.copy(position);
 
       const baseMaterial = new THREE.MeshStandardMaterial({
@@ -177,7 +179,6 @@ export class BoardView {
       this.tileLabels.set(index, label);
       tileGroup.add(label);
 
-      this.object.add(tileGroup);
     });
   }
 
@@ -349,7 +350,7 @@ function tileDetail(tile: BoardTile, language: Language): string {
 
   switch (tile.type) {
     case "start":
-      return copy.startDetail;
+      return formatMessage(copy.startDetail, { amount: PASS_START_BONUS });
     case "chance":
       return copy.chanceDetail;
     case "tax":
