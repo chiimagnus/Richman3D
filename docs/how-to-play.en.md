@@ -59,6 +59,8 @@ Choose **Done** or press Esc to close Settings and restore focus to its trigger.
 
 A normal match saves its initial state and every accepted action before presentation. **Main Menu** waits for saving; **Continue saved match** restores the last successfully saved positions, cash, ownership, decision and random state after leaving or refreshing. It does not repeat payments or Start rewards. A pending computer turn begins only after your explicit Continue action. Ended matches offer **View saved results**, not another turn.
 
+Going to the background pauses and settles current animation at the already committed destination; animation frames are not saved. Returning to the foreground stays paused until you explicitly Resume. A pending load that finishes in the background cannot start a computer turn either.
+
 Only the current match and its previous valid snapshot are stored. Starting or restarting replaces the current match. Saving failure offers **Retry saving** or **Continue without saving**, with a persistent unsaved indicator. Retrying does not execute the action again. If another page changed the save, this page pauses; explicitly load the latest match or discard this page’s unsaved progress instead of silently overwriting it. Damaged or unsupported saves are preserved, not automatically erased.
 
 Storage is local to this browser profile and site, not a cloud backup. Browser cleanup, private mode or device failure may lose it. **Export match file** in Pause or a saving-problem panel downloads the current memory state as `.richman.json`, even if local saving is refused. It includes player names and the full state; consider privacy before sharing.

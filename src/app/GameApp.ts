@@ -58,6 +58,7 @@ export class GameApp {
       if (request !== this.request) return;
       const session = new GameSession(restored ? Game.restore(restored.record.state) : new Game(config), restored?.record.matchId ?? crypto.randomUUID(), purpose,
         purpose === "match" ? { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local" } : undefined);
+      if (document.hidden) session.pause();
       this.publish({ ...this.view, session, loading: false });
       await session.initializeSave();
       if (request !== this.request) return;
