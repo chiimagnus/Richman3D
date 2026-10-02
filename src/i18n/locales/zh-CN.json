@@ -1,4 +1,5 @@
 {
+  "navigation": { "loading": "正在载入对局…", "retry": "重新加载菜单", "loadFailed": "对局加载失败。重新加载菜单后可重试下载，尚未创建对局。", "pause": "暂停", "discard": "重开或返回菜单会丢弃本局，当前尚未保存。" },
   "players": {
     "human": "你",
     "bot": "城市玩家"

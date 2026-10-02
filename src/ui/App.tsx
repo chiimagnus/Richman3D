@@ -1,10 +1,11 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import type { GameApp } from "../app/GameApp";
 import type { GameSession } from "../app/GameSession";
 import type { GamePreferences } from "../settings/preferences";
 import { legalCommands } from "../domain/selectors";
 import { formatMessage, messages, playerName } from "../i18n";
-import { SceneHost } from "./SceneHost";
+import { MainMenu } from "./MainMenu";
+import { PauseMenu } from "./PauseMenu";
 import { Hud } from "./Hud";
 import { SettingsPanel } from "./SettingsPanel";
 import { FeedbackLayer } from "./FeedbackLayer";
@@ -13,20 +14,24 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
 import styles from "./App.module.css";
 
+const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: module.SceneHost })));
+
 export function App({ app }: { app: GameApp }) {
   const state = useSyncExternalStore(app.subscribe, app.getSnapshot);
-  return state.session ? <GamePlay key={state.session.matchId} app={app} session={state.session} preferences={state.preferences} /> : <main className={styles.menu}>
-    <h1>{messages(state.preferences.language).runtime.title}</h1>
-    <button data-start onClick={() => app.start()}>{messages(state.preferences.language).runtime.start}</button>
-  </main>;
+  const [settings, setSettings] = useState(false);
+  return state.session ? <GamePlay key={state.session.matchId} app={app} session={state.session} preferences={state.preferences} /> : <>
+    <MainMenu app={app} onSettings={() => setSettings(true)} />
+    {settings && <SettingsPanel app={app} preferences={state.preferences} onClose={() => setSettings(false)} />}
+  </>;
 }
 
 function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
-  const [panel, setPanel] = useState<"settings" | null>(null);
+  const [panel, setPanel] = useState<"settings" | "pause" | null>(null);
   const view = useGameView(session);
   const copy = messages(preferences.language);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
+      if (event.code === "Escape" && !document.pointerLockElement && !panel && !document.querySelector("dialog[open]")) { session.pause(); setPanel("pause"); return; }
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || panel ||
           (event.target instanceof HTMLElement && event.target.closest("button,input,select,textarea,a[href],[contenteditable='true']"))) return;
       const kind = ({ Space: "roll", KeyB: "buy", KeyN: "skip" } as const)[event.code as "Space" | "KeyB" | "KeyN"];
@@ -42,15 +47,15 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   const closeSettings = () => { setPanel(null); void session.resume(); };
   return <main className={styles.game} data-match-id={session.matchId}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={<div role="alert">{copy.runtime.presentation_failed}<button onClick={() => app.leave()}>{copy.runtime.leave}</button></div>}>
-      <SceneHost app={app} session={session} preferences={preferences} />
+      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost app={app} session={session} preferences={preferences} /></Suspense>
     </ErrorBoundary>
-    <div className={styles.tools}><button data-settings-open onClick={() => { session.pause(); setPanel("settings"); }}>{copy.settings.title}</button><button onClick={() => app.leave()}>{copy.runtime.leave}</button></div>
+    <div className={styles.tools}><button data-settings-open onClick={() => { session.pause(); setPanel("settings"); }}>{copy.settings.title}</button><button data-pause onClick={() => { session.pause(); setPanel("pause"); }}>{copy.navigation.pause}</button></div>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={<p role="alert">{copy.runtime.presentation_failed}</p>}>
       <Hud session={session} language={preferences.language} />
       <FeedbackLayer session={session} language={preferences.language} />
     </ErrorBoundary>
     {ended ? <PanelHost title={formatMessage(copy.status.winner, { playerName: playerName(preferences.language, view.displayed.decision.kind === "game_over" ? view.displayed.decision.winnerId : "human") })}>
       <p>{copy.feedback.gameOverDetail}</p><button onClick={() => app.start()}>{copy.feedback.restart}</button><button onClick={() => app.leave()}>{copy.runtime.leave}</button>
-    </PanelHost> : panel === "settings" && <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} />}
+    </PanelHost> : panel === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : (panel === "pause" || view.mode === "paused" && !view.error) && <PauseMenu app={app} onResume={closeSettings} />}
   </main>;
 }

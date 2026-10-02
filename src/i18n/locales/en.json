@@ -1,4 +1,5 @@
 {
+  "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. No match has started.", "pause": "Pause", "discard": "Restarting or returning to the menu discards this game. It has not been saved." },
   "players": {
     "human": "You",
     "bot": "City Player"

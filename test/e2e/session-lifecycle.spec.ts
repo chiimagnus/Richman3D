@@ -11,6 +11,7 @@ test("view remount neither reannounces nor revives an expired settlement", async
   await expect(page.locator("canvas")).toHaveCount(1);
   await expect(page.locator("[data-announcement]")).toBeEmpty();
   await expect(page.locator("[data-feedback-event]")).toHaveCount(0, { timeout: 3000 });
+  await page.getByRole("button", { name: "继续", exact: true }).click();
   await page.getByRole("button", { name: "Unmount view" }).click();
   await expect(page.locator("canvas")).toHaveCount(0);
   await page.getByRole("button", { name: "Bind view" }).click();

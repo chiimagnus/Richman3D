@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameApp } from "../app/GameApp";
 import type { GameSession } from "../app/GameSession";
-import { GameAudio } from "../audio/GameAudio";
 import { World } from "../rendering/World";
 import { lookSensitivityScale, type GamePreferences } from "../settings/preferences";
 import { messages } from "../i18n";
@@ -10,7 +9,7 @@ import styles from "./App.module.css";
 
 export function SceneHost({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
   const host = useRef<HTMLDivElement>(null);
-  const resources = useRef<{ world: World; audio: GameAudio } | null>(null);
+  const resources = useRef<{ world: World } | null>(null);
   const [failed, setFailed] = useState(false);
   const [pointerError, setPointerError] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -20,12 +19,12 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
     let unbind = () => {};
     let unsubscribe = () => {};
     const settings = app.getSnapshot().preferences;
-    const audio = new GameAudio(settings.soundEnabled);
+    const audio = app.audio;
     const fail = () => { session.failPresentation(); setFailed(true); };
     try {
       world = new World(host.current!, settings.language, fail);
       const activeWorld = world;
-      resources.current = { world, audio };
+      resources.current = { world };
       world.setLookSensitivity(lookSensitivityScale(settings.lookSensitivity));
       unsubscribe = world.onPointerLockChange(setLocked);
       unbind = session.bind({
@@ -70,7 +69,7 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
       unbind();
       unsubscribe();
       resources.current = null;
-      audio.dispose();
+      audio.stop();
       world?.dispose();
     };
   }, [app, session]);
@@ -79,7 +78,6 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
     if (!resource) return;
     resource.world.setLanguage(preferences.language);
     resource.world.setLookSensitivity(lookSensitivityScale(preferences.lookSensitivity));
-    resource.audio.setEnabled(preferences.soundEnabled);
   }, [preferences]);
   useEffect(() => {
     if (view.mode !== "running") resources.current?.world.unlockFirstPerson();

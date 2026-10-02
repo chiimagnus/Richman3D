@@ -13,6 +13,7 @@ it("muting stops scheduled notes immediately and disposal closes owned audio", (
     state = "running";
     destination = {};
     close = close;
+    resume = vi.fn(async () => {});
     createGain() { return gain; }
     createOscillator() {
       const node = { type: "sine", frequency: gainParam, connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn(), onended: null };
@@ -21,6 +22,7 @@ it("muting stops scheduled notes immediately and disposal closes owned audio", (
     }
   });
   const audio = new GameAudio();
+  audio.unlock();
   audio.playPurchase();
   expect(audio.activeNodeCount).toBe(3);
   audio.setEnabled(false);

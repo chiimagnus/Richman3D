@@ -44,8 +44,12 @@ root.render(<StrictMode><App app={app} /></StrictMode>);
 const output = document.querySelector<HTMLOutputElement>("#stats")!;
 const listeners = () => [...tracked.values()].flatMap((events) => [...events.values()]).reduce((total, entries) => total + entries.size, 0);
 const baseline = listeners();
-document.querySelector("#start")!.addEventListener("click", () => {
-  app.start(1);
+document.querySelector("#start")!.addEventListener("click", async () => {
+  await app.start(1);
+  await new Promise<void>((resolve) => {
+    const check = () => { if (app.getSnapshot().session?.getSnapshot().attached) resolve(); else requestAnimationFrame(check); };
+    check();
+  });
   requestAnimationFrame(() => requestAnimationFrame(() => {
     output.textContent = JSON.stringify({ world: world?.resourceInfo, audioNodes: audio?.activeNodeCount ?? 0, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, revision: app.getSnapshot().session?.getSnapshot().committed.revision });
   }));

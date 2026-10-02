@@ -16,6 +16,11 @@ export class GameAudio {
 
   get activeNodeCount(): number { return this.nodes.size; }
 
+  unlock(): void {
+    const context = this.audioContext(true);
+    try { if (context) void context.resume().catch(() => undefined); } catch { }
+  }
+
   stop(): void {
     for (const [oscillator, gain] of this.nodes) {
       oscillator.onended = null;
@@ -173,19 +178,17 @@ export class GameAudio {
     oscillator.stop(start + duration + 0.02);
   }
 
-  private audioContext(): AudioContext | null {
+  private audioContext(create = false): AudioContext | null {
     if (!this.enabled || this.disposed) {
       return null;
     }
 
     try {
       if (!this.context) {
+        if (!create) return null;
         this.context = new AudioContext();
         this.master = this.context.createGain();
         this.master.connect(this.context.destination);
-      }
-      if (this.context.state === "suspended") {
-        void this.context.resume().catch(() => undefined);
       }
       return this.context;
     } catch {
