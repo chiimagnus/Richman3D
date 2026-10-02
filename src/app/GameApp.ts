@@ -1,11 +1,9 @@
 import { GameAudio } from "../audio/GameAudio";
 import { tileAt, type PropertyTile } from "../domain/board";
-import {
-  Game,
-  type GameSnapshot,
-  type PlayerId,
-  type RollResult,
-} from "../domain/game";
+import { Game } from "../domain/game";
+import type { GameSnapshot, PlayerId, RollResult, Command } from "../domain/types";
+import { chooseBotCommand } from "../domain/bot";
+import { pendingProperty, legalCommands } from "../domain/selectors";
 import {
   chanceCardText,
   formatMessage,
@@ -26,12 +24,11 @@ import { FeedbackLayer } from "../ui/FeedbackLayer";
 import { Hud } from "../ui/Hud";
 import { SettingsPanel } from "../ui/SettingsPanel";
 
-const BOT_CASH_RESERVE = 260;
-
 type StatusText = (language: Language) => string;
 
 export class GameApp {
-  private readonly game = new Game();
+  private readonly game = new Game({ seed: crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 });
+  private displayedSnapshot = this.game.snapshot;
   private preferences: GamePreferences = loadPreferences();
   private readonly audio = new GameAudio(this.preferences.soundEnabled);
   private readonly world: World;
@@ -56,9 +53,9 @@ export class GameApp {
       lookSensitivityScale(this.preferences.lookSensitivity),
     );
     this.hud = new Hud(this.root, {
-      roll: () => void this.rollHuman(),
-      buy: () => this.buyHumanProperty(),
-      skip: () => this.skipHumanProperty(),
+      roll: (command) => void this.rollHuman(command),
+      buy: (command) => this.buyHumanProperty(command),
+      skip: (command) => this.skipHumanProperty(command),
     });
     this.settings = new SettingsPanel(this.root, {
       setSoundEnabled: (enabled) => this.setSoundEnabled(enabled),
@@ -89,7 +86,7 @@ export class GameApp {
         window.setTimeout(() => {
           if (
             !this.pointerLocked &&
-            this.game.snapshot.phase !== "game_over"
+            this.game.snapshot.decision.kind !== "game_over"
           ) {
             this.settings.open();
           }
@@ -107,7 +104,7 @@ export class GameApp {
   };
 
   private returnToGame(): void {
-    if (this.game.snapshot.phase !== "game_over") {
+    if (this.game.snapshot.decision.kind !== "game_over") {
       this.world.canvas.focus();
       this.world.lockFirstPerson();
     }
@@ -146,11 +143,11 @@ export class GameApp {
     }
   };
 
-  private async rollHuman(): Promise<void> {
+  private async rollHuman(command = this.humanCommand("roll")): Promise<void> {
     const snapshot = this.game.snapshot;
     if (
-      this.busy ||
-      snapshot.phase !== "awaiting_roll" ||
+      !command || this.busy ||
+      snapshot.decision.kind !== "awaiting_roll" ||
       snapshot.activePlayerId !== "human"
     ) {
       return;
@@ -161,7 +158,7 @@ export class GameApp {
     this.render();
 
     this.audio.playRoll();
-    const result = this.game.roll();
+    const result = this.applyRoll(command);
     await this.feedback.showDice(result.dice, "human");
     this.status = (language) => rollStatus(language, "human", result);
     await this.world.moveHuman(result.path, () => this.audio.playStep());
@@ -173,7 +170,7 @@ export class GameApp {
     this.render();
     this.feedback.showRollResult("human", result);
 
-    if (this.game.snapshot.phase === "game_over") {
+    if (this.game.snapshot.decision.kind === "game_over") {
       this.finishGame();
       return;
     }
@@ -183,13 +180,13 @@ export class GameApp {
     }
   }
 
-  private buyHumanProperty(): void {
+  private buyHumanProperty(command = this.humanCommand("buy")): void {
     const snapshot = this.game.snapshot;
-    const property = this.pendingProperty(snapshot);
+    const property = pendingProperty(snapshot);
 
     if (
-      this.busy ||
-      snapshot.phase !== "awaiting_purchase" ||
+      !command || this.busy ||
+      snapshot.decision.kind !== "awaiting_purchase" ||
       snapshot.activePlayerId !== "human" ||
       !property
     ) {
@@ -203,7 +200,7 @@ export class GameApp {
       return;
     }
 
-    this.game.buyCurrentProperty();
+    this.applyCommand(command);
     this.world.syncOwnership(this.game.snapshot);
     this.status = (language) =>
       formatMessage(messages(language).status.purchased, {
@@ -215,20 +212,20 @@ export class GameApp {
     void this.runBotTurn();
   }
 
-  private skipHumanProperty(): void {
+  private skipHumanProperty(command = this.humanCommand("skip")): void {
     const snapshot = this.game.snapshot;
-    const property = this.pendingProperty(snapshot);
+    const property = pendingProperty(snapshot);
 
     if (
-      this.busy ||
-      snapshot.phase !== "awaiting_purchase" ||
+      !command || this.busy ||
+      snapshot.decision.kind !== "awaiting_purchase" ||
       snapshot.activePlayerId !== "human" ||
       !property
     ) {
       return;
     }
 
-    this.game.skipPurchase();
+    this.applyCommand(command);
     this.status = (language) =>
       formatMessage(messages(language).status.skipped, {
         propertyName: tileName(language, property),
@@ -242,7 +239,7 @@ export class GameApp {
     const before = this.game.snapshot;
     if (
       this.busy ||
-      before.phase === "game_over" ||
+      before.decision.kind === "game_over" ||
       before.activePlayerId !== "bot"
     ) {
       return;
@@ -256,7 +253,7 @@ export class GameApp {
     await pause(620);
 
     this.audio.playRoll();
-    const result = this.game.roll();
+    const result = this.applyRoll();
     await this.feedback.showDice(result.dice, "bot");
     await this.world.moveBot(result.path, () => this.audio.playStep());
     this.world.landOnTile(result.to, result.landing);
@@ -265,7 +262,7 @@ export class GameApp {
     this.feedback.showRollResult("bot", result);
 
     if (
-      this.game.snapshot.phase === "awaiting_purchase" &&
+      this.game.snapshot.decision.kind === "awaiting_purchase" &&
       this.game.snapshot.activePlayerId === "bot"
     ) {
       this.resolveBotPurchase();
@@ -273,7 +270,7 @@ export class GameApp {
 
     this.busy = false;
 
-    if (this.game.snapshot.phase === "game_over") {
+    if (this.game.snapshot.decision.kind === "game_over") {
       this.finishGame();
       return;
     }
@@ -286,53 +283,38 @@ export class GameApp {
 
   private resolveBotPurchase(): void {
     const snapshot = this.game.snapshot;
-    const property = this.pendingProperty(snapshot);
-
-    if (!property) {
-      throw new Error("电脑购买阶段缺少地产");
-    }
-
-    const bot = snapshot.players.find((player) => player.id === "bot");
-    if (!bot) {
-      throw new Error("找不到电脑玩家");
-    }
-
-    if (bot.cash - property.price >= BOT_CASH_RESERVE) {
-      this.game.buyCurrentProperty();
-      this.world.syncOwnership(this.game.snapshot);
-      this.status = (language) =>
-        formatMessage(messages(language).status.botPurchased, {
-          propertyName: tileName(language, property),
-        });
+    const property = pendingProperty(snapshot);
+    const command = chooseBotCommand(snapshot);
+    if (!property || !command) throw new Error("电脑购买阶段缺少合法动作");
+    this.applyCommand(command);
+    this.world.syncOwnership(this.game.snapshot);
+    if (command.kind === "buy") {
       this.audio.playPurchase();
       this.feedback.showPurchase("bot", property, property.price);
     } else {
-      this.game.skipPurchase();
-      this.status = (language) =>
-        formatMessage(messages(language).status.botSkipped, {
-          propertyName: tileName(language, property),
-        });
       this.feedback.showSkipped("bot", property);
     }
   }
 
-  private pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
-    if (!snapshot.pendingPropertyId) {
-      return null;
-    }
+  private applyCommand(command: Command) {
+    const result = this.game.apply(command);
+    if (!result.ok) throw new Error(result.reason);
+    return result;
+  }
 
-    const active = snapshot.players.find(
-      (player) => player.id === snapshot.activePlayerId,
-    );
+  private applyRoll(input?: Command): RollResult {
+    const snapshot = this.game.snapshot;
+    const command = input ?? (snapshot.activePlayerId === "bot"
+      ? chooseBotCommand(snapshot)
+      : this.humanCommand("roll"));
+    if (!command) throw new Error("没有合法掷骰动作");
+    const event = this.applyCommand(command).events.find((entry) => entry.kind === "rolled");
+    if (!event || event.kind !== "rolled") throw new Error("缺少掷骰结果");
+    return event.result;
+  }
 
-    if (!active) {
-      return null;
-    }
-
-    const tile = tileAt(active.position);
-    return tile.type === "property" && tile.id === snapshot.pendingPropertyId
-      ? tile
-      : null;
+  private humanCommand(kind: Command["kind"]): Command | undefined {
+    return legalCommands(this.displayedSnapshot, "human").find((action) => action.kind === kind);
   }
 
   private toggleSound(): void {
@@ -379,7 +361,7 @@ export class GameApp {
     this.world.unlockFirstPerson();
 
     const snapshot = this.game.snapshot;
-    const winnerId = snapshot.winnerId;
+    const winnerId = snapshot.decision.kind === "game_over" ? snapshot.decision.winnerId : null;
     this.status = (language) =>
       winnerId
         ? formatMessage(messages(language).status.winner, {
@@ -392,6 +374,7 @@ export class GameApp {
   }
 
   private render(): void {
+    this.displayedSnapshot = this.game.snapshot;
     this.hud.render(this.game.snapshot, {
       busy: this.busy,
       pointerLocked: this.pointerLocked,

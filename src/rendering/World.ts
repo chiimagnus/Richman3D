@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { GameSnapshot, LandingResult } from "../domain/game";
+import type { GameSnapshot, LandingResult } from "../domain/types";
 import { messages } from "../i18n";
 import type { Language } from "../settings/preferences";
 import { BoardView } from "./BoardView";

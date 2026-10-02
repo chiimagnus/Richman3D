@@ -1,4 +1,4 @@
-import type { LandingResult, PlayerId } from "../domain/game";
+import type { LandingResult, PlayerId } from "../domain/types";
 
 export class GameAudio {
   private context: AudioContext | null = null;

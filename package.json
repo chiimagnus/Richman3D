@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.domain.json --noEmit",
     "test": "vitest --config test/vitest.config.ts",
     "test:e2e": "playwright test --config test/playwright.config.ts"
   },

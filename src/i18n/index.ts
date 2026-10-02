@@ -1,5 +1,5 @@
 import type { BoardTile } from "../domain/board";
-import type { ChanceCardId, PlayerId } from "../domain/game";
+import type { ChanceCardId, PlayerId } from "../domain/types";
 import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
 import type { Language } from "../settings/preferences";

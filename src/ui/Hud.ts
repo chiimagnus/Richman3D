@@ -1,5 +1,6 @@
-import { tileAt, type PropertyTile } from "../domain/board";
-import type { GameSnapshot, PlayerId, PlayerState } from "../domain/game";
+import { tileAt } from "../domain/board";
+import { pendingProperty, legalCommands } from "../domain/selectors";
+import type { Command, GameSnapshot, PlayerId, PlayerState } from "../domain/types";
 import {
   formatCash,
   formatMessage,
@@ -10,9 +11,9 @@ import {
 import type { Language } from "../settings/preferences";
 
 export type HudActions = {
-  readonly roll: () => void;
-  readonly buy: () => void;
-  readonly skip: () => void;
+  readonly roll: (command: Command) => void;
+  readonly buy: (command: Command) => void;
+  readonly skip: (command: Command) => void;
 };
 
 export type HudRenderOptions = {
@@ -39,6 +40,7 @@ export class Hud {
   private readonly skipButton: HTMLButtonElement;
   private readonly skipLabel: HTMLElement;
   private readonly previousCash = new Map<PlayerId, number>();
+  private commands: readonly Command[] = [];
 
   constructor(container: HTMLElement, actions: HudActions) {
     this.root.className = "hud";
@@ -96,9 +98,12 @@ export class Hud {
     this.skipButton = requiredElement<HTMLButtonElement>(this.root, "[data-skip]");
     this.skipLabel = requiredElement(this.root, "[data-skip-label]");
 
-    this.rollButton.addEventListener("click", actions.roll);
-    this.buyButton.addEventListener("click", actions.buy);
-    this.skipButton.addEventListener("click", actions.skip);
+    for (const [kind, button] of [["roll", this.rollButton], ["buy", this.buyButton], ["skip", this.skipButton]] as const) {
+      button.addEventListener("click", () => {
+        const command = this.commands.find((action) => action.kind === kind);
+        if (command) actions[kind](command);
+      });
+    }
   }
 
   render(snapshot: GameSnapshot, options: HudRenderOptions): void {
@@ -107,7 +112,9 @@ export class Hud {
     const human = playerById(snapshot, "human");
     const bot = playerById(snapshot, "bot");
     const humanTile = tileAt(human.position);
-    const pendingProperty = pendingPropertyFor(snapshot);
+    const property = pendingProperty(snapshot);
+    const commands = options.busy ? [] : legalCommands(snapshot, "human");
+    this.commands = commands;
 
     this.balanceBar.setAttribute("aria-label", copy.balancesAria);
     this.humanName.textContent = playerName(language, "human");
@@ -124,15 +131,8 @@ export class Hud {
     this.updateCash(this.humanBalance, human, "[data-human-cash]", language);
     this.updateCash(this.botBalance, bot, "[data-bot-cash]", language);
 
-    const humanCanRoll =
-      snapshot.phase === "awaiting_roll" &&
-      snapshot.activePlayerId === "human" &&
-      !options.busy;
-    const humanBuying =
-      snapshot.phase === "awaiting_purchase" &&
-      snapshot.activePlayerId === "human" &&
-      pendingProperty !== null &&
-      !options.busy;
+    const humanCanRoll = commands.some((command) => command.kind === "roll");
+    const humanBuying = commands.some((command) => command.kind === "skip");
 
     this.rollButton.hidden = humanBuying;
     this.rollButton.disabled = !humanCanRoll;
@@ -141,11 +141,11 @@ export class Hud {
     this.skipButton.hidden = !humanBuying;
     this.skipButton.disabled = !humanBuying;
 
-    if (pendingProperty) {
+    if (property) {
       this.buyLabel.textContent = formatMessage(copy.buyWithPrice, {
-        price: pendingProperty.price,
+        price: property.price,
       });
-      this.buyButton.disabled = !humanBuying || human.cash < pendingProperty.price;
+      this.buyButton.disabled = !commands.some((command) => command.kind === "buy");
     } else {
       this.buyLabel.textContent = copy.buy;
       this.buyButton.disabled = true;
@@ -153,7 +153,7 @@ export class Hud {
 
     this.root.dataset.pointerLocked = String(options.pointerLocked);
 
-    if (snapshot.phase === "game_over") {
+    if (snapshot.decision.kind === "game_over") {
       this.rollButton.hidden = false;
       this.rollButton.disabled = true;
       this.buyButton.hidden = true;
@@ -203,19 +203,6 @@ function playerById(snapshot: GameSnapshot, id: PlayerId): PlayerState {
   }
 
   return player;
-}
-
-function pendingPropertyFor(snapshot: GameSnapshot): PropertyTile | null {
-  if (!snapshot.pendingPropertyId) {
-    return null;
-  }
-
-  const activePlayer = playerById(snapshot, snapshot.activePlayerId);
-  const tile = tileAt(activePlayer.position);
-
-  return tile.type === "property" && tile.id === snapshot.pendingPropertyId
-    ? tile
-    : null;
 }
 
 function requiredElement<T extends Element = HTMLElement>(

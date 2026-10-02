@@ -1,5 +1,5 @@
 import { tileAt, type PropertyTile } from "../domain/board";
-import type { PlayerId, RollResult } from "../domain/game";
+import type { PlayerId, RollResult } from "../domain/types";
 import {
   chanceCardText,
   formatMessage,

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { BOARD, type BoardTile } from "../domain/board";
-import type { GameSnapshot, LandingResult, PlayerId } from "../domain/game";
+import type { GameSnapshot, LandingResult, PlayerId } from "../domain/types";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../settings/preferences";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
