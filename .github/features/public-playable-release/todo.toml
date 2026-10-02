@@ -1,0 +1,386 @@
+version = 1
+current_task_id = ""
+
+[[tasks]]
+id = "P1-T1"
+title = "建立现状回归与浏览器测试入口"
+status = "pending"
+plan = "plan-p1.md#p1-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P1-T2"
+title = "统一规则命令、结构化事件和可重放随机源"
+status = "pending"
+plan = "plan-p1.md#p1-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P1-T3"
+title = "可取消表现序列与会话销毁"
+status = "pending"
+plan = "plan-p1.md#p1-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P1-T4"
+title = "修复当前双语投影与启动失败边界"
+status = "pending"
+plan = "plan-p1.md#p1-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P2-T1"
+title = "应用菜单与按需创建对局"
+status = "pending"
+plan = "plan-p2.md#p2-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P2-T2"
+title = "对局设置与明确的终局规则"
+status = "pending"
+plan = "plan-p2.md#p2-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P2-T3"
+title = "有解释的结算页和重开路径"
+status = "pending"
+plan = "plan-p2.md#p2-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P2-T4"
+title = "可跳过的实操教学与游戏内规则"
+status = "pending"
+plan = "plan-p2.md#p2-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P3-T1"
+title = "快照格式与事务存储仓库"
+status = "pending"
+plan = "plan-p3.md#p3-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P3-T2"
+title = "自动保存与菜单继续游戏"
+status = "pending"
+plan = "plan-p3.md#p3-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P3-T3"
+title = "有限导入导出、损坏保全和版本处理"
+status = "pending"
+plan = "plan-p3.md#p3-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P3-T4"
+title = "后台暂停与跨标签页冲突的用户路径"
+status = "pending"
+plan = "plan-p3.md#p3-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P4-T1"
+title = "席位模型及所有二人假设的原子迁移"
+status = "pending"
+plan = "plan-p4.md#p4-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P4-T2"
+title = "轮序、淘汰与整轮终局"
+status = "pending"
+plan = "plan-p4.md#p4-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P4-T3"
+title = "同机交接与决策操作者"
+status = "pending"
+plan = "plan-p4.md#p4-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P4-T4"
+title = "地产检查、资产抽屉和可追溯事件"
+status = "pending"
+plan = "plan-p4.md#p4-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P5-T1"
+title = "单一地产状态与经济计算"
+status = "pending"
+plan = "plan-p5.md#p5-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P5-T2"
+title = "建筑升级与可见成长"
+status = "pending"
+plan = "plan-p5.md#p5-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P5-T3"
+title = "出售建筑、抵押与赎回"
+status = "pending"
+plan = "plan-p5.md#p5-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P5-T4"
+title = "固定债务与救济决策"
+status = "pending"
+plan = "plan-p5.md#p5-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P5-T5"
+title = "破产清算与多人终局一致"
+status = "pending"
+plan = "plan-p5.md#p5-t5"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P6-T1"
+title = "不购买后的顺序拍卖"
+status = "pending"
+plan = "plan-p6.md#p6-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P6-T2"
+title = "原子交易提案与接受拒绝"
+status = "pending"
+plan = "plan-p6.md#p6-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P6-T3"
+title = "市场中断、交接和可解释记录闭环"
+status = "pending"
+plan = "plan-p6.md#p6-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P7-T1"
+title = "实体牌库与抽弃牌总量守恒"
+status = "pending"
+plan = "plan-p7.md#p7-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P7-T2"
+title = "前进、后退、传送与落点链"
+status = "pending"
+plan = "plan-p7.md#p7-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P7-T3"
+title = "五种持有道具与手牌交互"
+status = "pending"
+plan = "plan-p7.md#p7-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P7-T4"
+title = "卡牌恢复、隐私、过期与淘汰清理"
+status = "pending"
+plan = "plan-p7.md#p7-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P8-T1"
+title = "合法动作投影与独立策略入口"
+status = "pending"
+plan = "plan-p8.md#p8-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P8-T2"
+title = "三档决策与全玩法策略闭环"
+status = "pending"
+plan = "plan-p8.md#p8-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P8-T3"
+title = "可重复模拟、调参和局长验证"
+status = "pending"
+plan = "plan-p8.md#p8-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P9-T1"
+title = "战术总览、第一人称与地块检查"
+status = "pending"
+plan = "plan-p9.md#p9-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P9-T2"
+title = "与规则一致的3D骰子"
+status = "pending"
+plan = "plan-p9.md#p9-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P9-T3"
+title = "地产成长、归属与城市可读性"
+status = "pending"
+plan = "plan-p9.md#p9-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P9-T4"
+title = "动画速度、事件优先级与舒适性"
+status = "pending"
+plan = "plan-p9.md#p9-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P9-T5"
+title = "音乐、音效音量与即时静音"
+status = "pending"
+plan = "plan-p9.md#p9-t5"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P10-T1"
+title = "地图定义与显式路径坐标"
+status = "pending"
+plan = "plan-p10.md#p10-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P10-T2"
+title = "24格港湾地图及策略差异"
+status = "pending"
+plan = "plan-p10.md#p10-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P10-T3"
+title = "版本化每日挑战与可重复种子"
+status = "pending"
+plan = "plan-p10.md#p10-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P10-T4"
+title = "战绩、成就与克制的赛后分享"
+status = "pending"
+plan = "plan-p10.md#p10-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P11-T1"
+title = "触屏输入与窄屏完整经营"
+status = "pending"
+plan = "plan-p11.md#p11-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P11-T2"
+title = "语义操作、完整双语与减少动态效果"
+status = "pending"
+plan = "plan-p11.md#p11-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P11-T3"
+title = "性能预算与低画质路径的有界实验"
+status = "pending"
+plan = "plan-p11.md#p11-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P11-T4"
+title = "WebGL、权限和加载失败后的保全路径"
+status = "pending"
+plan = "plan-p11.md#p11-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P12-T1"
+title = "同一测试入口与部署前门槛"
+status = "pending"
+plan = "plan-p12.md#p12-t1"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P12-T2"
+title = "双语玩法、素材来源与隐私说明"
+status = "pending"
+plan = "plan-p12.md#p12-t2"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P12-T3"
+title = "可复现反馈与小范围试玩工具"
+status = "pending"
+plan = "plan-p12.md#p12-t3"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P12-T4"
+title = "真实试玩、发布判定与回滚演练"
+status = "pending"
+plan = "plan-p12.md#p12-t4"
+commit = ""
+note = ""
