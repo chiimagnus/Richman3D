@@ -8,8 +8,8 @@ import {
   playerName,
   tileName,
 } from "../src/i18n";
-import en from "../src/locales/en.json";
-import zhCN from "../src/locales/zh-CN.json";
+import en from "../src/i18n/locales/en.json";
+import zhCN from "../src/i18n/locales/zh-CN.json";
 
 function leafPaths(value: unknown, prefix = ""): string[] {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {

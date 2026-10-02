@@ -1,8 +1,8 @@
-import type { BoardTile } from "./domain/board";
-import type { ChanceCardId, PlayerId } from "./domain/game";
+import type { BoardTile } from "../domain/board";
+import type { ChanceCardId, PlayerId } from "../domain/game";
 import en from "./locales/en.json";
 import zhCN from "./locales/zh-CN.json";
-import type { Language } from "./settings/preferences";
+import type { Language } from "../settings/preferences";
 
 export type Messages = typeof zhCN;
 type MessageValues = Readonly<Record<string, string | number>>;
