@@ -45,7 +45,6 @@
   },
   "feedback": {
     "diceActor": "{actor} · Dice Roll",
-    "gameOverDetail": "This game has ended.",
     "restart": "Play Again"
   },
   "board": {
@@ -90,6 +89,12 @@
     "round": "Round {round} / {limit}", "tied": "{playerName} tied for the win.", "nameSeparator": " & ",
     "round_limit": "The full round limit was reached. Ranked by net assets, then cash; equal results share the win.",
     "last_survivor": "Only one player remains solvent.", "overview": "Board overview", "firstPerson": "Your first-person view"
+  },
+  "results": {
+    "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
+    "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
+    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs" },
+    "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
   "runtime": {
     "title": "Richman 3D",

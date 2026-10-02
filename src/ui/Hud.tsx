@@ -17,7 +17,7 @@ export function Hud({ session, language }: { session: GameSession; language: Lan
     if (!view.presenting && view.mode === "running" && document.activeElement === document.body) {
       actions.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     }
-  }, [decisionKind, view.presenting, view.mode]);
+  }, [decisionKind, view.presenting, view.mode, view.attached]);
   const execute = (kind: "roll" | "buy" | "skip") => {
     const command = model.commands.find((action) => action.kind === kind);
     if (command) void session.dispatch(command);

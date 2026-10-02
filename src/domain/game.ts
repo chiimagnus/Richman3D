@@ -5,7 +5,7 @@ import { createMatchConfig, validateConfig } from "./config";
 import { nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
-import type { ApplyResult, Command, Decision, GameEvent, GameSnapshot, LandingResult, MatchConfig } from "./types";
+import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -36,7 +36,9 @@ export class Game {
       rules: { ...rules, chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
       map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
       completedRounds: 0,
-      players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false })),
+      players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
+        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0 },
+      })),
       activePlayerId: config.players[0]!.id,
       decision: { kind: "awaiting_roll" },
       owners: {}, lastRoll: null,
@@ -65,7 +67,7 @@ export class Game {
 
     let result: Extract<ApplyResult, { ok: true }>;
     try {
-      const players = before.players.map((player) => ({ ...player }));
+      const players = before.players.map((player) => ({ ...player, statistics: { ...player.statistics } }));
       const owners = { ...before.owners };
       const random = new RuleRandom(before.random);
       const player = players.find((candidate) => candidate.id === command.actor);
@@ -133,6 +135,25 @@ export class Game {
         }
       }
 
+      const record = (id: PlayerId, field: keyof FinancialStats, amount: number) => {
+        const target = players.find((entry) => entry.id === id);
+        if (!target) throw new Error("财务玩家不存在");
+        target.statistics[field] = cashAfterChange(target.statistics[field], amount);
+      };
+      for (const event of events) {
+        if (event.kind === "purchased") record(event.actor, "purchases", event.price);
+        if (event.kind === "rolled") {
+          const action = event.result;
+          record(action.playerId, "startBonus", action.startBonus);
+          const landing = action.landing;
+          if (landing.kind === "tax") record(action.playerId, "taxesPaid", landing.amount);
+          if (landing.kind === "chance") record(action.playerId, landing.amount >= 0 ? "chanceIncome" : "chanceExpense", Math.abs(landing.amount));
+          if (landing.kind === "rent") {
+            record(action.playerId, "rentPaid", landing.amount);
+            record(landing.ownerId, "rentReceived", landing.amount);
+          }
+        }
+      }
       if (player.cash < 0) { player.bankrupt = true; decision = { kind: "awaiting_roll" }; }
       const candidate = { ...before, players, owners, decision, lastRoll, random: random.snapshot };
       if (players.filter((entry) => !entry.bankrupt).length === 1) {

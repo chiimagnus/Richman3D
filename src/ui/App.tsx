@@ -3,7 +3,7 @@ import type { GameApp } from "../app/GameApp";
 import type { GameSession } from "../app/GameSession";
 import type { GamePreferences } from "../settings/preferences";
 import { legalCommands } from "../domain/selectors";
-import { messages, resultTitle } from "../i18n";
+import { messages } from "../i18n";
 import { playerConfig } from "../domain/config";
 import { MainMenu } from "./MainMenu";
 import { PauseMenu } from "./PauseMenu";
@@ -11,7 +11,7 @@ import { MatchSetup } from "./MatchSetup";
 import { Hud } from "./Hud";
 import { SettingsPanel } from "./SettingsPanel";
 import { FeedbackLayer } from "./FeedbackLayer";
-import { PanelHost } from "./PanelHost";
+import { ResultsScreen } from "./ResultsScreen";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
 import styles from "./App.module.css";
@@ -47,17 +47,14 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   }, [app, session, preferences, panel, view]);
   const ended = view.displayed.decision.kind === "game_over" && !view.presenting;
   const closeSettings = () => { setPanel(null); void session.resume(); };
-  return <main className={styles.game} data-match-id={session.matchId}>
+  return <main className={styles.game} data-match-id={session.matchId} data-seed={view.committed.config.seed}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={<div role="alert">{copy.runtime.presentation_failed}<button onClick={() => app.leave()}>{copy.runtime.leave}</button></div>}>
       <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost app={app} session={session} preferences={preferences} /></Suspense>
     </ErrorBoundary>
-    <div className={styles.tools}><button data-settings-open onClick={() => { session.pause(); setPanel("settings"); }}>{copy.settings.title}</button><button data-pause onClick={() => { session.pause(); setPanel("pause"); }}>{copy.navigation.pause}</button></div>
+    {!ended && <div className={styles.tools}><button data-settings-open onClick={() => { session.pause(); setPanel("settings"); }}>{copy.settings.title}</button><button data-pause onClick={() => { session.pause(); setPanel("pause"); }}>{copy.navigation.pause}</button></div>}
     <ErrorBoundary onError={() => session.failPresentation()} fallback={<p role="alert">{copy.runtime.presentation_failed}</p>}>
-      <Hud session={session} language={preferences.language} />
-      <FeedbackLayer session={session} language={preferences.language} />
+      {!ended && <><Hud session={session} language={preferences.language} /><FeedbackLayer session={session} language={preferences.language} /></>}
     </ErrorBoundary>
-    {ended && view.displayed.decision.kind === "game_over" ? <PanelHost title={resultTitle(preferences.language, view.displayed.decision.result, view.displayed.config)}>
-      <p>{copy.setup[view.displayed.decision.result.reason]}</p><button onClick={() => void app.restart()}>{copy.feedback.restart}</button><button onClick={() => app.leave()}>{copy.runtime.leave}</button>
-    </PanelHost> : panel === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : (panel === "pause" || view.mode === "paused" && !view.error) && <PauseMenu app={app} onResume={closeSettings} />}
+    {ended ? <ResultsScreen app={app} snapshot={view.displayed} /> : panel === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : (panel === "pause" || view.mode === "paused" && !view.error) && <PauseMenu app={app} onResume={closeSettings} />}
   </main>;
 }

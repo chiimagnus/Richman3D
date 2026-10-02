@@ -45,7 +45,6 @@
   },
   "feedback": {
     "diceActor": "{actor}掷骰",
-    "gameOverDetail": "本局已经结束。",
     "restart": "再来一局"
   },
   "board": {
@@ -90,6 +89,12 @@
     "round": "第{round} / {limit}轮", "tied": "{playerName}并列获胜。", "nameSeparator": "、",
     "round_limit": "已完成整轮上限。按净资产、再按现金排名；仍相同则并列。",
     "last_survivor": "只剩一名未破产玩家。", "overview": "棋盘总览", "firstPerson": "本人第一人称"
+  },
+  "results": {
+    "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
+    "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
+    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出" },
+    "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
   },
   "runtime": {
     "title": "Richman 3D",

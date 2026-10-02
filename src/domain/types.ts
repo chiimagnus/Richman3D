@@ -18,6 +18,15 @@ export type MatchConfig = {
 };
 export type Ranking = { readonly playerId: PlayerId; readonly rank: number; readonly netAssets: number; readonly cash: number; readonly propertyValue: number };
 export type MatchResult = { readonly reason: "last_survivor" | "round_limit"; readonly winnerIds: readonly PlayerId[]; readonly rankings: readonly Ranking[] };
+export type FinancialStats = {
+  readonly startBonus: number;
+  readonly rentReceived: number;
+  readonly rentPaid: number;
+  readonly taxesPaid: number;
+  readonly chanceIncome: number;
+  readonly chanceExpense: number;
+  readonly purchases: number;
+};
 export type ChanceCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
 
 export type PlayerState = {
@@ -25,6 +34,7 @@ export type PlayerState = {
   readonly cash: number;
   readonly position: number;
   readonly bankrupt: boolean;
+  readonly statistics: FinancialStats;
 };
 
 export type Decision =
