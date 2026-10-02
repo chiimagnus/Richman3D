@@ -16,13 +16,13 @@
 
 **文件与锚点：** `GameSnapshot`、`Game` 构造/导出入口、`preferences.ts`；新增 `src/storage/snapshot.ts`、`src/storage/GameStore.ts`、`test/storage/snapshot.test.ts`、`test/storage/store.test.ts`、必要的静态 JSON fixture。
 
-**步骤：** 明确 schemaVersion 与 rulesVersion 区别：前者表示文件形状，后者表示游戏规则和随机算法。当前局 envelope 包含 matchId/revision/mapId、时间仅作显示、地图版本与规则版本显式绑定、domain state 与上一有效快照。校验先完成再创建 Game，验证席位唯一、当前玩家存在、金额为安全整数、位置在本地图、owner/待购买指向合法对象、阶段与终局一致、随机状态合法。保存的数据不得含函数或语言化文案。
+**步骤：** 明确 schemaVersion 与 rulesVersion 区别：前者表示文件形状，后者表示游戏规则和随机算法。每份快照envelope包含matchId/revision/mapId、仅作显示的保存时间、明确绑定的地图/规则版本及domain state。backup是独立记录，不在当前快照里再嵌套上一份快照，防止不断形成历史嵌套。校验先完成再创建 Game，验证席位唯一、当前玩家存在、金额为安全整数、位置在本地图、owner/待购买指向合法对象、阶段与终局一致、随机状态合法。保存的数据不得含函数或语言化文案。
 
-本阶段只创建games对象库，保存当前局、前一有效局及current指针。终局标记放同一局记录，不预建尚无用户功能消费的profile仓库；P10接入真实战绩时才增加所需对象库并验证同事务去重。写事务先检查matchId和期望revision，再写当前与备份；仅transaction complete返回成功。实现一条明确的读取/校验/保存错误通道，UI只区分可重试保存、数据不兼容/损坏、旧页冲突三类行动，不为每种浏览器异常造一套恢复状态机。测试用fake-indexeddb覆盖事务，浏览器测试验证真正落库；存储边界以构造参数传入GameSession，不增加没有第二个实现的Repository继承层。
+本阶段只创建games对象库，用两个固定键current和backup保存当前局与前一有效快照；不另存current指针，也不按每个matchId积累整局记录。终局标记放同一局记录，不预建尚无用户功能消费的profile仓库；P10接入真实战绩时才增加所需对象库并验证同事务去重。写事务先检查matchId和期望revision，再写当前与备份；仅transaction complete返回成功。实现一条明确的读取/校验/保存错误通道，UI只区分可重试保存、数据不兼容/损坏、旧页冲突三类行动，不为每种浏览器异常造一套恢复状态机。测试用fake-indexeddb覆盖事务，浏览器测试验证真正落库；存储边界以构造参数传入GameSession，不增加没有第二个实现的Repository继承层。
 
-IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动画或无关异步await导致事务提前结束；request成功不是事务提交成功，统一等待complete/abort结果。所有写入比较matchId与上一次成功落库revision，创建/替换当前局也检查current指针，不能只保护单局record而让旧局抢回首页继续入口。
+IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动画或无关异步await导致事务提前结束；request成功不是事务提交成功，统一等待complete/abort结果。所有写入在同一事务读取固定current记录，比较其中matchId与上一次成功落库revision；初次创建比较记录确实不存在。替换当前局也必须比较原current的这对值，再原子写backup和新的current，不能因新旧两局碰巧revision相同就允许旧局覆盖。取消、失败或冲突不得移动backup；反复新建对局后games仍只有这两个键。
 
-**验证：** 同 revision 的两次竞争写仅一次成功；事务中途失败后当前与备份均保持原状；不存在 revision 的旧存档不能覆盖新局；非法 NaN/无效所有者/未知 rulesVersion 拒绝。读写完整快照比较，不以“函数没抛错”作为保存证明。
+**验证：** 同 revision 的两次竞争写仅一次成功；事务中途失败后当前与备份均保持原状；不存在 revision 的旧存档不能覆盖新局；非法 NaN/无效所有者/未知 rulesVersion 拒绝。读写完整快照比较，不以“函数没抛错”作为保存证明。补测两局revision相同但matchId不同、反复新建后对象库键数不增长，避免仅验证同一局的竞争写。
 
 **原子提交：** `feat: 定义版本化快照与原子存档事务`。
 
@@ -36,7 +36,7 @@ IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动�
 
 **步骤：** 每条已接受规则命令后保存当前结果，完成保存或明确错误分支后才继续表现/下一命令；重试只写同一快照，不能再次执行 roll/apply。保存中应用入口串行，React只投影Session的提交阶段，不在组件里各设busy。保存成功不每回合弹toast；失败首次明确告知，选择未保存继续后在暂停/行动区保留一个状态，不在下一条命令重复弹同一警告。Session记录lastPersistedRevision；用户明确选择未保存继续后，内存可比数据库领先多步，重试以lastPersistedRevision作事务比较并写当前最新快照，不能拿内存revision−1要求数据库已存在而永远无法恢复。数据库若已被其他标签更新则停止并提示冲突，不能把写失败误当自己可强制覆盖。菜单仅在有有效未结束局时显示继续；已结束局显示查看最近结算，不误当继续。返回菜单先完成当前保存，失败提供重试、导出或明确放弃，不谎报保存。
 
-恢复从 domain state 重建 World、HUD、当前决策与电脑队列：snapshot 若已在目的地，直接显示目的地，不能补发经过起点奖励或再次付租。电脑待行动时用户确认继续后才推进。开始新局的覆盖操作与旧会话最后写入必须按 matchId/revision 事务隔离；旧局 dispose 后的 await 完成不能抢回 current 指针。
+恢复从 domain state 重建 World、HUD、当前决策与电脑队列：snapshot 若已在目的地，直接显示目的地，不能补发经过起点奖励或再次付租。电脑待行动时用户确认继续后才推进。开始新局的覆盖操作与旧会话最后写入必须按 matchId/revision 事务隔离；旧局 dispose 后的 await 完成不能覆盖固定current记录。
 
 **验证：** 真实浏览器在骰子动画中、待购买、电脑待行动、已结束时刷新；实际现金/位置/所有权/随机状态吻合；继续后下次骰子与未刷新的对照一致；开始新局期间旧写完成不覆盖新局；连续三条命令处于未保存模式后恢复存储，可把最新状态写回且无重掷/重扣。开启第二浏览器 context 验证不同 origin/storage 不被误称同步。
 

@@ -14,9 +14,9 @@
 
 ### 战术总览、第一人称与地块检查
 
-**文件与锚点：** World.camera、FirstPersonRig、PlayerView、boardGeometry、GameSession、HUD、preferences；新增 `src/rendering/CameraRig.ts`、`test/rendering/camera.test.ts`、`test/e2e/camera-modes.spec.ts`。
+**文件与锚点：** P2已建立的`src/rendering/CameraRig.ts`与`test/rendering/camera.test.ts`、World.camera、FirstPersonRig、PlayerView、boardGeometry、GameSession、HUD、preferences；新增`test/e2e/camera-modes.spec.ts`。本任务扩展固定总览/第一人称的既有模块，不再次创建一套模式状态。
 
-**步骤：** CameraRig拥有视角模式与目标，World只创建一个最终渲染相机；第一人称控件和总览控件互斥启用，不让两组监听同时改同一相机。桌面初始第一人称但不自动锁鼠标，明显提供总览按钮；触屏默认总览。总览可拖动旋转、有限缩放、点击地块查属性，边界保证棋盘不被拖丢；一键回当前玩家。相机模式进入偏好，视角位置不进入规则存档。
+**步骤：** 复用P2的CameraRig视角模式与目标，World继续只创建一个最终渲染相机；本任务增加总览拖拽、缩放和检查。第一人称控件和总览控件互斥启用，不让两组监听同时改同一相机。桌面初始第一人称但不自动锁鼠标，明显提供总览按钮；触屏默认总览。总览可拖动旋转、有限缩放、点击地块查属性，边界保证棋盘不被拖丢；一键回当前玩家。相机模式进入偏好，视角位置不进入规则存档。
 
 点击检查与拖动有移动阈值区分；UI按钮事件不冒泡成canvas锁定请求。第一人称下地块信息由React资产列表提供同一查询投影，不要求精准瞄准小模型；保持全部经营按钮可用，Pointer Lock中打开资产/手牌先解锁再显示面板，不能藏住所有新增动作只留Space/B/N。
 
