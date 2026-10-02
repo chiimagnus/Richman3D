@@ -4,7 +4,7 @@
 
 **Non-goals：** 无云同步、账户、多存档管理器、自动迁移未发布开发格式或以 savegame 执行脚本。
 
-**Approach：** IndexedDB 负责局面/上一有效备份/revision/结算标记的事务；偏好仍用原有 localStorage。Session 在规则命令后保存结果，不存动画进度，恢复不重放经济副作用。
+**Approach：** 复用P2已经接入的席位、地图和RuleSet契约，IndexedDB仅负责当前局/上一有效备份及revision事务；偏好仍用原有localStorage。Session 在规则命令后保存结果，不存动画进度，恢复不重放经济副作用。
 
 **Acceptance：** A02/A03/A10；当前 schema v1 的导入/导出/续玩可闭环，多标签旧版本写入被拒绝。
 
@@ -16,9 +16,9 @@
 
 **文件与锚点：** `GameSnapshot`、`Game` 构造/导出入口、`preferences.ts`；新增 `src/storage/snapshot.ts`、`src/storage/GameStore.ts`、`test/storage/snapshot.test.ts`、`test/storage/store.test.ts`、必要的静态 JSON fixture。
 
-**步骤：** 明确 schemaVersion 与 rulesVersion 区别：前者表示文件形状，后者表示游戏规则和随机算法。当前局 envelope 包含 matchId/revision/mapId、时间仅作显示、domain state 与上一有效快照。校验先完成再创建 Game，验证席位唯一、当前玩家存在、金额为安全整数、位置在本地图、owner/待购买指向合法对象、阶段与终局一致、随机状态合法。保存的数据不得含函数或语言化文案。
+**步骤：** 明确 schemaVersion 与 rulesVersion 区别：前者表示文件形状，后者表示游戏规则和随机算法。当前局 envelope 包含 matchId/revision/mapId、时间仅作显示、地图版本与规则版本显式绑定、domain state 与上一有效快照。校验先完成再创建 Game，验证席位唯一、当前玩家存在、金额为安全整数、位置在本地图、owner/待购买指向合法对象、阶段与终局一致、随机状态合法。保存的数据不得含函数或语言化文案。
 
-使用最小 IndexedDB 对象库：games 保存当前/备份；profile 保存结算去重与摘要。写同一事务先检查期望 revision，再保存新局面与前一有效局面；仅 transaction complete 才返回成功。首次打开失败、事务 abort、配额不足分成可辨认错误结果。测试使用 fake-indexeddb（只作开发依赖），真实入口同样接通 GameStore，不新增无人使用的 Repository 接口层。
+本阶段只创建games对象库，保存当前局、前一有效局及current指针。终局标记放同一局记录，不预建尚无用户功能消费的profile仓库；P10接入真实战绩时才增加所需对象库并验证同事务去重。写事务先检查matchId和期望revision，再写当前与备份；仅transaction complete返回成功。实现一条明确的读取/校验/保存错误通道，UI只区分可重试保存、数据不兼容/损坏、旧页冲突三类行动，不为每种浏览器异常造一套恢复状态机。测试用fake-indexeddb覆盖事务，浏览器测试验证真正落库；存储边界以构造参数传入GameSession，不增加没有第二个实现的Repository继承层。
 
 IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动画或无关异步await导致事务提前结束；request成功不是事务提交成功，统一等待complete/abort结果。所有写入比较matchId与上一次成功落库revision，创建/替换当前局也检查current指针，不能只保护单局record而让旧局抢回首页继续入口。
 
@@ -34,7 +34,7 @@ IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动�
 
 **文件与锚点：** `GameSession` 命令入口、PresentationQueue、MainMenu、PauseMenu、ResultsScreen；新增 `test/e2e/save-resume.spec.ts`。
 
-**步骤：** 每条已接受规则命令后保存当前结果，完成保存或明确错误分支后才继续表现/下一命令；重试只写同一快照，不能再次执行 roll/apply。保存中应用入口串行，不用多个 UI busy 标记分别猜测。Session记录lastPersistedRevision；用户明确选择未保存继续后，内存可比数据库领先多步，重试以lastPersistedRevision作事务比较并写当前最新快照，不能拿内存revision−1要求数据库已存在而永远无法恢复。数据库若已被其他标签更新则停止并提示冲突，不能把写失败误当自己可强制覆盖。菜单仅在有有效未结束局时显示继续；已结束局显示查看最近结算，不误当继续。返回菜单先完成当前保存，失败提供重试、导出或明确放弃，不谎报保存。
+**步骤：** 每条已接受规则命令后保存当前结果，完成保存或明确错误分支后才继续表现/下一命令；重试只写同一快照，不能再次执行 roll/apply。保存中应用入口串行，React只投影Session的提交阶段，不在组件里各设busy。保存成功不每回合弹toast；失败首次明确告知，选择未保存继续后在暂停/行动区保留一个状态，不在下一条命令重复弹同一警告。Session记录lastPersistedRevision；用户明确选择未保存继续后，内存可比数据库领先多步，重试以lastPersistedRevision作事务比较并写当前最新快照，不能拿内存revision−1要求数据库已存在而永远无法恢复。数据库若已被其他标签更新则停止并提示冲突，不能把写失败误当自己可强制覆盖。菜单仅在有有效未结束局时显示继续；已结束局显示查看最近结算，不误当继续。返回菜单先完成当前保存，失败提供重试、导出或明确放弃，不谎报保存。
 
 恢复从 domain state 重建 World、HUD、当前决策与电脑队列：snapshot 若已在目的地，直接显示目的地，不能补发经过起点奖励或再次付租。电脑待行动时用户确认继续后才推进。开始新局的覆盖操作与旧会话最后写入必须按 matchId/revision 事务隔离；旧局 dispose 后的 await 完成不能抢回 current 指针。
 
@@ -50,9 +50,9 @@ IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动�
 
 **文件与锚点：** `snapshot.ts`、`GameStore`、MainMenu/PauseMenu；新增 `src/storage/transfer.ts`、`test/storage/transfer.test.ts`、`test/e2e/save-transfer.spec.ts`。
 
-**步骤：** 导出明确的 `.richman.json` 文件，包含版本而不包含 DOM/音频/外部资源。导入大小先限 1 MiB，再 JSON parse，再完整 schema/引用校验，最后确认是否替换当前局；读取、校验、预览不得提前停止现有局。存在格式损坏时优先提供恢复上一有效快照和导出原始数据；备份也无效则说明不可继续，不自动重置。未来版本/未知规则拒绝载入，但保留原文件与当前存档。
+**步骤：** 导出明确的 `.richman.json` 文件，包含版本而不包含 DOM/音频/外部资源。导入大小先限 1 MiB，再 JSON parse，再完整 schema/引用校验，最后确认是否替换当前局；读取、校验、预览不得提前停止现有局。存在格式损坏时提供恢复上一有效快照和导出原始数据；完整校验备份后显示其保存时间，由用户确认恢复，不自动回退到看似合法的旧局；备份也无效则说明不可继续，不自动重置。未来版本/未知规则拒绝载入，但保留原文件与当前存档。
 
-导入局标记来源 imported，不纳入正式挑战最佳成绩；不把这个标记宣传为反作弊。当前只承诺发布过的格式兼容；真正发布 schema v2 前需要新增明确迁移路径和 fixture，禁止无限“尝试猜字段”。所有异常向用户呈现可操作选项，开发细节仅进入本地诊断。
+导入局标记来源 imported，不纳入正式挑战最佳成绩；不把这个标记宣传为反作弊。当前只为真正发布的格式承担兼容；未发布开发格式变更只拒绝不认识的数据并保留导出，不编写v0/v1猜字段适配链。将来确需支持已发布版本时，以实际旧档fixture设计一次明确迁移，不能用本计划替未来每个版本预建框架。所有异常向用户呈现可操作选项，开发细节仅进入本地诊断。
 
 **验证：** 导出→清空测试 origin→导入→继续→再导出同一规则状态；超大文件、未知版本、重复玩家、非法所有权、未知牌引用（P7 扩充）不能改变当前局；取消替换不销毁现有会话；恢复备份后标记恢复时间而不重复事件。
 
@@ -64,11 +64,11 @@ IndexedDB事务内部只调度必要的数据库请求，不夹入网络、动�
 
 **依赖：** P3-T3。
 
-**文件与锚点：** `GameSession`、`PauseMenu`、`GameStore`、`motion.ts`、`GameAudio`；新增 `test/e2e/save-conflict.spec.ts`、`test/app/visibility.test.ts`。
+**文件与锚点：** `GameSession`、React `PauseMenu.tsx`/`PanelHost.tsx`、`GameStore`、P1统一帧驱动的motion、GameAudio；新增 `test/e2e/save-conflict.spec.ts`、`test/app/visibility.test.ts`。
 
-**步骤：** visibilitychange hidden 后禁止推进新规则命令，当前已提交结果已由 T2 保存；不依赖 beforeunload 最后一秒写数据库。返回前台停在暂停/待决策状态，用户点击继续后恢复；关闭时不能自动代替玩家确认购买。文档说明“暂停会收敛当前动画到已结算位置”，不假装能保存视频帧。
+**步骤：** 复用P1运行时暂停/取消入口，不再新增一组窗口监听和计时器。visibilitychange hidden 后禁止推进新规则命令，当前已提交结果已由 T2 保存；不依赖 beforeunload 最后一秒写数据库。返回前台停在暂停/待决策状态，用户点击继续后恢复；关闭时不能自动代替玩家确认购买。文档说明“暂停会收敛当前动画到已结算位置”，不假装能保存视频帧。
 
-两个标签页继续同一局，旧 revision 保存失败时停止该页推进，给出重新载入/另存新局，不循环覆盖或后台自动抢锁。直接使用 T1 事务条件，不叠加 localStorage 锁、lease 心跳或网络协调层。存储不可用可选择继续未保存局并显著显示状态；导出仍可用，不把浏览器拒绝持久化当成玩法崩溃。
+两个标签页继续同一局，旧 revision 保存失败时停止该页推进，给出载入较新存档/导出本页未保存进度，不循环覆盖或后台自动抢锁。直接使用 T1 事务条件，不叠加 localStorage 锁、lease 心跳或网络协调层。存储不可用可选择继续未保存局并显著显示状态；导出仍可用，不把浏览器拒绝持久化当成玩法崩溃。
 
 **验证：** 两页面真实竞争写，后打开页不能静默覆盖；隐藏期间资金/轮数不继续变化；恢复后恰好一条电脑推进链；存储被拒绝时仍可正常玩一轮并手动导出；错误修复后重试保存不改变骰子。关闭浏览器后的恢复需真实浏览器验证，不仅 mock visibility。
 

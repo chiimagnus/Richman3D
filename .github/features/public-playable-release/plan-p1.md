@@ -1,79 +1,97 @@
-# P1 — 让规则结果与会话生命周期可控
+# P1 — 确定性内核、对局运行时与 React 界面基础
 
-**Goal：** 给菜单、续玩和策略系统建立可重放的规则入口与可销毁的游戏会话，不推倒重写现有玩法。
+**Goal：** 在保持现有一人一电脑玩法可用的前提下，建立可测试的规则内核、可销毁运行时和声明式 UI，而不是把 GameApp 换个名字继续扩张。
 
-**Non-goals：** 不加建筑、多人、卡牌、数据库或通用游戏框架。
+**Non-goals：** 本阶段不增加市场、建筑、多地图内容、后端或新游戏规则。React UI 的迁移不同时重写 Three.js renderer。
 
-**Approach：** 先保住现有可玩流程，再把同步规则提交与异步表现分开；新会话仍走现有 Game/World/HUD。仅因返回菜单、暂停、存档的明确需求新增取消与生命周期边界。
+**Approach：** T1 固定现状与测试入口；T2 收敛规则命令和稳定快照；T3 分离调度/资源生命周期；T4 让 React 接管现有 UI 并修复交互边界。后续界面只在新路径开发。
 
-**Acceptance：** A01/A02/A08/A10。原有买地、租金、税费、机会、语言和按键仍可用；取消旧局不会继续驱动下一局；规则随机数可重放。
+**Acceptance：** A01/A02/A08/A10；原有规则回归保留，非法动作不产生部分变更；订阅无无限重渲染；旧局无残留推进；中英 UI 和实际控件操作可用。
 
-**Rules：** domain 不依赖 DOM/Three.js；不为动画设置第二份资产状态；测试全部在 `test/`；不新增 Redux、ECS、状态总线。依赖无；后续阶段必须先满足本阶段契约。
+**Rules：** 架构取舍以 idea 第8节和根 AGENTS.md 为准，不再设框架黑名单。所有测试及配置在 test/；本次只修订计划，以下新增文件和命令均待执行任务创建。
 
 ## P1-T1
 
 ### 建立现状回归与浏览器测试入口
 
-**文件与锚点：** 修改 `package.json`、`.gitignore`、`tsconfig.json`（仅在测试配置确实要求时）；新增 `test/vitest.config.ts`、`test/playwright.config.ts`、`test/e2e/baseline.spec.ts`；复用四个现有 `test/**/*.test.ts`。现有接入是 `main.ts → GameApp`，测试命令带 `--passWithNoTests`。
+**文件/接入：** package.json、锁文件、tsconfig.json、.gitignore、现有 deploy-pages.yml；新增 test/vitest.config.ts、test/playwright.config.ts、test/e2e/baseline.spec.ts。P1-T2接入领域边界测试时再增加test/tsconfig.domain.json（只含ES库、无DOM全局）并纳入typecheck，不为尚不存在的架构放空检查。现有四个单元测试不删除。
 
-**当前问题：** 19 个已记录的测试只覆盖规则/偏好/翻译/几何，不能证明真实 UI 链路；零测试也可通过的配置会掩盖将来的目录错误。
+**问题：** 当前 `vitest --passWithNoTests` 会掩盖目录收集错误；现有测试没有证明实际鼠标交互、焦点或 WebGL 生命周期。部署只 build。
 
-**步骤：** 将 Vitest 明确限定为 `test/**/*.test.ts`，排除 e2e 与浏览器 fixture；去掉零测试通过。增加仅开发依赖 `@playwright/test` 与 `test:e2e` 脚本，配置放在 test 内，不安装/替换用户的 Chrome。浏览器先测当前已有界面：页面加载、WebGL canvas、语言切换、声音偏好、掷骰到玩家再次可操作或待购买的合法状态。使用专用无头测试浏览器，不抢用户浏览器焦点。新增配置与脚本同一任务接通，不能只建一个无人运行的测试目录。配置位于 test/，因此 package.json 必须显式指定 `vitest --config test/vitest.config.ts` 与 `playwright test --config test/playwright.config.ts`；将配置目录计入现有 typecheck。Playwright 的 webServer 由测试进程负责启动和停止，baseURL 使用实际 `/Richman3D/` 子路径，先只运行 Chromium 项目，P11再扩大浏览器矩阵。锁定新增开发依赖版本，不顺手升级生产技术栈。测试报告统一输出test-results/，本任务把该目录和Playwright报告目录加入.gitignore，不把生成报告混进源码。纯规则/投影继续用Vitest；实际DOM、WebGL与音频控制走浏览器fixture，不为单元测试再造完整假浏览器。
+**步骤：** Vitest 显式收集 test/**/*.test.ts，排除 e2e/fixture，去掉零测试通过；浏览器以独立测试进程打开原有入口，先覆盖首屏、掷骰到下一个合法决策、现有现金和棋盘。新增 @playwright/test 开发依赖，配置和脚本同任务接通；`test:e2e` 显式指定 test/playwright.config.ts，webServer 随进程退出，baseURL 使用 /Richman3D/。不用用户日常浏览器抢焦点，不安装或替换用户的 Chrome 应用。
 
-**验证：** `npm run typecheck`、`npm test -- --run`；`npm run test:e2e -- test/e2e/baseline.spec.ts`。预期四个现有测试文件仍被收集；空 include 负向检查必须返回失败；浏览器不得出现未处理异常，等待明确状态而不是固定睡眠后截图。此时不伪造未来菜单或存档测试。
+把当前可复现失败与未测项列清，禁止用 evaluate() 直接调用业务方法绕过点击来宣称按钮可用。设置控件命中、拒绝存储 getter、动态语言问题的修复与完整回归由 T4 负责；本任务不把已知红色 UI 场景改成假通过。若基线阻断冒烟，先定位最小实际阻塞，随相应任务修复，不删除断言。
 
-**原子提交边界：** 测试配置、命令与真实现状用例一组；提交建议 `test: 建立公开版浏览器回归入口`。后续实现时才提交代码，本次只登记计划。
+报告输出 test-results/，加入忽略。现有部署立即增加 typecheck 和非空单测前置；PR 检查复用同一命令。完整浏览器生产产物门槛在 P12 收口，不让整个开发期间仅靠 build。不在本任务触发远端部署。
+
+**验证：** npm run typecheck；npm test -- --run；npm run test:e2e -- test/e2e/baseline.spec.ts。检查零收集返回失败、四个现有测试被发现、测试进程关闭后没有遗留服务器。记录真实结果，不把浏览器 fixture 当最终用户测试。
+
+**提交：** 测试入口、报告忽略与已有 workflow 的最小门槛一起，`test: 建立游戏回归入口与基本质量门槛`。
 
 ## P1-T2
 
 ### 统一规则命令、结构化事件和可重放随机源
 
-**依赖：** P1-T1。
+**依赖：** T1。**文件/锚点：** domain/game.ts 的 roll/buyCurrentProperty/skipPurchase/snapshot、GameApp 调用者；新增 domain/types.ts、random.ts、selectors.ts、bot.ts；test/domain/commands.test.ts、random.test.ts、snapshot.test.ts，并迁移原 game.test.ts。
 
-**文件与锚点：** 修改 `src/domain/game.ts::Game.roll/buyCurrentProperty/skipPurchase/advanceTurn`、`src/app/GameApp.ts::rollHuman/runBotTurn`、`test/domain/game.test.ts`；新增 `src/domain/types.ts`、`src/domain/random.ts`、`test/domain/random.test.ts`、`test/domain/commands.test.ts`。
+**关键不变量：** 校验失败、计算失败和重复提交不能改变位置、资金、随机游标或事件。当前 roll 会先移动/发奖再抽机会事件，只在最外层 catch 不能撤销已经改变的数据。
 
-**不变量：** 一次合法命令只有一份规则结果；非法操作者/错误阶段/重复提交不得移动棋子、扣钱或消耗随机数。所有 UI/电脑动作必须进入同一入口。
+**步骤：** 建立 Game.apply(command) 单一入口，携带actor与用户当前看到的expectedRevision；会话不能把过期输入改写成最新revision来绕过拒绝。先校验类型、有限数字和实际决策；使用候选状态及候选随机游标计算全部结果，成功后一次提交并返回快照+有序语义事件。失败保留原状态，不通知订阅，不通过重试命令恢复。外部监听器在提交后失败只影响表现，不能导致再次转账。
 
-**步骤：** 以 `Game.apply(command)` 承接现有三种动作，命令带操作者与期望 revision；返回完整快照和按顺序排列的语义事件，不存中文/英文句子。把原有直接业务方法迁入该执行路径并修改全部调用者，不留下两个能独立结算的入口。当前仅保留实际需要的三种阶段，不提前把拍卖、网络、卡牌所有状态写进枚举。
+snapshot 改为成功提交时建立的不可变缓存，同一版本反复读取保持 Object.is 相同；旧快照不被下一次命令修改。只读查询统一产生当前地块、合法动作、购买限制和资金信息，UI 不另写判断；不是建立第二个可写 store。基线 Bot 也通过 selectors 和同一命令入口行动，先保留260现金的现有选择，不把策略继续塞进 GameSession；后续阶段在这个模块扩展。
 
-采用固定算法版本的 xorshift32 随机源，保存非零 uint32 状态；新局种子在 app 边界生成，零种子明确规范化；骰子/洗牌通过有界整数抽取，避免直接取模引入可避免的偏差。规则随机数与动画、音效、UI 完全隔离；测试保存已知种子输出向量和恢复向量。原来的函数型 random 注入与 sequenceRandom 测试迁为明确可重放的随机状态 fixture，不保留不能序列化的生产随机路径。GameSnapshot 增加 schema 所需的规则版本、revision 和随机状态；正式存储由 P3 接入。
+规则 RNG 使用固定版本 xorshift32，保存非零 uint32 状态，零种子统一规范化并保存原始输入/规范化结果的约定。若采用拒绝采样，须按 xorshift 非零输出域定义：先将原始输出减一映射到 [0, 2^32−2]，以区间长度 2^32−1 计算可整除上界，再拒绝尾部；不能把非零域当成完整2^32取样域。固定测试向量同时覆盖恢复和有界整数。这里不需要密码学随机、公平性网络证明或自研随机框架。动画、音频和 UI 不接触该状态。
 
-**验证：** `npm test -- --run test/domain/game.test.ts test/domain/random.test.ts test/domain/commands.test.ts`；两个相同种子/命令序列快照相同；错误 revision、NaN、越界参数和错误玩家拒绝后快照与随机状态逐字段不变。原有五个规则场景都保留结果断言，再跑 baseline 浏览器用例。
+当前只迁移已有三个决策；types 的判别联合随实际功能扩展，不预先装配未实现的市场/牌效状态。移除旧公开 roll/buy/skip 旁路、函数型生产 RNG 注入与重复合法性判断；保留所有旧测试的业务结果，用确定性 state/seed fixture 替换不可恢复随机序列。
 
-**原子提交边界：** 命令入口、调用者迁移、随机源与回归一起提交；`refactor: 统一规则命令与可重放随机状态`。不能只新增 types/random 而无人使用。
+**验证：** 同 seed/命令序列结果一致；非法 actor/revision、NaN、Infinity、失败机会计算不留下部分提交；旧快照深内容不变、同版本引用稳定；拒绝动作不消耗 RNG。query/AI 返回的动作从真实 apply 执行，不能只检查对象形状。完整旧规则回归与基线冒烟继续通过；用单独的test/tsconfig.domain.json（lib仅ES库、types为空，避免自动引入浏览器/Node全局）验证domain在无DOM类型环境编译，测试运行时导入边界不引用React/Three/存储，不能只靠AGENTS口头约束。
+
+**提交：** 内核及所有调用者原子迁移，`refactor: 建立原子规则命令与稳定快照`。
 
 ## P1-T3
 
 ### 可取消表现序列与会话销毁
 
-**依赖：** P1-T2。
+**依赖：** T2。**文件/锚点：** GameApp、World、FirstPersonRig、PlayerView、BoardView、motion、FeedbackLayer、GameAudio；新增 app/GameSession.ts、app/PresentationQueue.ts；test/app/session.test.ts、test/rendering/motion.test.ts、test/e2e/session-lifecycle.spec.ts。
 
-**文件与锚点：** 修改 `GameApp`、`World`、`FirstPersonRig`、`PlayerView`、`BoardView`、`motion.ts::animatePositions`、`FeedbackLayer`、`GameAudio`；新增 `src/app/GameSession.ts`、`src/app/PresentationQueue.ts`、`test/app/session.test.ts`、`test/e2e/session-lifecycle.spec.ts`、所需 `test/fixtures/session.html`。
+**步骤：** GameApp 保留依赖组装与应用导航；GameSession 拥有一局的串行命令入口、生命周期和已提交结果。PresentationQueue 只消费语义事件，不能补结算。基线 Bot 调用 T2 的策略函数；组件或动画不能再直接 runBotTurn。运行中、暂停、销毁有明确转换，但不新增 generation/lease/重试框架。
 
-**根因与接入：** E02/E08。当前 await 动画后继续 runBotTurn，旧局没有销毁入口；`motion` 的补完定时器可能在视图退出后仍写位置。新增菜单后这条路径直接可达。
+World 持有一个 setAnimationLoop 场景帧入口；motion/骰子/建筑/相机以 update(delta) 或可注销回调接入，不各开无限 rAF。当前 rAF + fallbackTimer 改为同一运行时的 finish/cancel 语义：普通完成、主动跳过、暂停收敛、销毁取消分别处理；取消必须解除等待且不能接着发下一条电脑命令。隐藏/暂停即停止推进并把画面投影到已提交状态，因此删旧后台超时补完不会让 Promise 永远悬挂。规则不使用 delta 决定钱和骰子；本版没有物理积分，不强制60Hz固定规则 tick。
 
-**步骤：** GameApp 只持有一个活动 GameSession；Session 承接当前对局命令、音效、表现与电脑推进。PresentationQueue 只串行消费已提交事件，不重算落点；同一时刻不能开两条推进链。取消必须是可识别的取消结果，不能假装成功 resolve 后继续电脑回合。暂停把画面收敛到已提交快照并保留待决策，销毁则终止旧链；恢复只启动一条合法后继链，不重播规则。
+创建方负责清理：World 停帧并移除 resize，FirstPersonRig dispose PointerLockControls 与监听，BoardView/PlayerView 释放自己拥有的几何/材质/纹理，反馈清计时器，GameAudio 停正在播放的节点。公共几何只由共享拥有者释放；已 removeFromParent 的产权标记也释放，不能只处理仍在 scene 内的对象。声音主 Gain 在本任务解决静音立即生效，P9 只扩展音乐/音量，不让已知声音残留拖到末期。
 
-为 World/控件/反馈/音频建立明确 dispose：停止 renderer animation loop，移除监听，释放纹理/几何/材质和控件订阅，清理 rAF/计时器/播放节点。共享资源由唯一拥有者释放，不遍历时重复释放；已移除的归属标记也要释放资源。替换当前没有取消语义的 motion fallback，而不是只在每个回调外再加一层 try/catch。测试 fixture 只在测试服务器可用，不在生产公开 `window.game` 调试后门。
+为 UI 提供范围限于当前应用/会话的 subscribe/getSnapshot 与命令接口；返回 unsubscribe。对局状态与表现就绪状态分开，不能每帧给 React 发一个新 GameSnapshot。测试替换外部计时/视图边界，不为每个纯函数造 interface。
 
-**验证：** session 单元测试覆盖取消发生在掷骰等待、位移、落地反馈、电脑等待；旧会话不能再发命令。浏览器 fixture 连续创建/销毁 20 次、取消后再次创建；检查 canvas/监听次数与 `renderer.info.memory` 不持续增长，并核验最后位置和余额来自当前快照。资源清理由 S05 支持；后台补完由 S02 支持，不能仅用 mock 计数代替浏览器证据。
+**结果提交与玩家看见的顺序：** Game.apply提交后立即取得最终快照，P3在此保存；演出尚未结束时，界面仍标识这条行动的执行者并关闭规则输入，不因快照已经advanceTurn就提前切到下一人的购买/掷骰面。GameView可持有本次提交前、提交后的两个只读快照引用和表现阶段：演出期间使用提交前的静态资金/位置，落地演出完成或跳过时一次切到提交后结果；连续追加移动通过语义事件说明，不在React里重新累加余额。暂停、隐藏、渲染故障与恢复直接显示最后已提交快照并停止自动推进。这样只延迟展示，不产生第二份可写规则状态，不把未显示等同于未保存。测试要同时断言中间可见阶段与最终结果，不能只检查最后现金。
 
-**原子提交边界：** 生命周期接线与相应资源清理同一组；`refactor: 分离对局会话并完整取消旧局表现`。
+**验证：** 用受控 delta 覆盖移动正常结束、跳过、隐藏、销毁；等待必须结束且取消后无命令。真实测试 fixture 20次进入/销毁，核对 canvas、监听、音频节点和 renderer.info 趋势；异步旧动画返回不会写新局。加入“移除产权标记后重建”资源回归。检查静音当下停止已安排音符，不能只测 enabled=false。
+
+**提交：** `refactor: 统一对局运行时与资源生命周期`；同提交删除原 GameApp 里的游戏推进职责和 motion 双调度路径。
 
 ## P1-T4
 
 ### 修复当前双语投影与启动失败边界
 
-**依赖：** P1-T3。
+**依赖：** T3。**交付方式：** 直接通过 React UI 迁移解决重复 DOM/文案拥有者，不先把旧控制器扩一遍再重写。
 
-**文件与锚点：** `preferences.ts::loadPreferences/savePreferences`、`FeedbackLayer::setLanguage/showEvent/showGameOver`、`GameSession`、`FirstPersonRig::lock/onLockChange`、双语 JSON；扩展 `test/settings/preferences.test.ts`，新增 `test/e2e/runtime-boundaries.spec.ts`。
+**文件/接入：** main.ts→main.tsx、index.html 入口、package.json/锁文件/tsconfig.json/vite.config.ts；新增 ui/App.tsx、SceneHost.tsx、Hud.tsx、SettingsPanel.tsx、FeedbackLayer.tsx、PanelHost.tsx、useGameView.ts、组件 CSS Modules 与 tokens.css；修改i18n、preferences和GameApp的UI接口；Language/isLanguage移到无业务依赖的src/i18n/language.ts，更新全部类型/校验调用者并删除preferences的旧导出，不保留兼容重导出；新增 test/ui/view-model.test.ts、test/e2e/react-ui.spec.ts、runtime-boundaries.spec.ts。
 
-**步骤：** 把默认 storage 获取移入 try 内，保留显式存储注入以测试拒绝 getter；不把设置存储失败和对局存档失败混为同一状态。反馈保存“事件种类+参数/玩家 ID”，语言变更时重新绘制正在显示的事件/回合/结算，不延长其寿命、不再次触发音效或规则。清理复制的已翻译字符串缓存。对 Pointer Lock 请求失败监听真实错误事件并给出按钮/拖动玩法提示；不自动反复申请，不吞错后把 UI 标为已锁定。
+**步骤：** 只加入 React、React DOM、匹配类型及 Vite React 插件，核对现有 TS/Vite peer 要求并锁定版本；配置 jsx=react-jsx，测试收集包括 .test.tsx，tsconfig 包含 test/。不为这一迁移顺手装 Redux、R3F、ECS或DI容器；需要它们时依据 idea 的用途决策，而非永久禁用。
 
-**验证：** 存储 getter 直接抛错时仍进入游戏并使用默认偏好；显示中的租金/机会/结算中英来回切换、对应 aria 文本同步而余额不变；拒绝锁定仍能用按钮完成掷骰购买。执行 preferences、i18n 和 runtime-boundaries 用例，覆盖缺占位符、0 金额、中文用户名与特殊字符。
+React App 消费 GameApp/Session 稳定视图。useSyncExternalStore 使用稳定 subscribe/getSnapshot，语言/局面/运行阶段改变才生成新投影；不要把 Game.snapshot 的 map/spread getter直接塞进 Hook。UI 只保存面板选择与输入草稿；React render、Effect、ref 回调不执行掷骰、转账或推进电脑。创建新局由明确开始操作负责；StrictMode 重挂载不能创建第二局或重放动作，不关闭 StrictMode 掩盖问题。
 
-**原子提交边界：** 当前边界缺口与回归；`fix: 完整更新动态语言并处理浏览器拒绝`。
+**唯一资源拥有者：** GameApp创建/销毁GameSession；SceneHost在已获得真实容器后创建一个World并向会话绑定呈现端口，Effect清理只解绑并销毁这个World，不能调用GameSession.dispose。会话不依赖HTMLElement构造，也不再另持有一份自己创建的World。解绑取消未完成演出、关闭规则输入，但保留已提交领域状态；新视图绑定后先从该状态完整重建，再按会话当前运行状态开放操作，不能从组件挂载重新执行roll或买地。用户返回菜单时由GameApp停止/销毁会话并卸载SceneHost；局部渲染错误只关闭视图，不丢掉可导出的局面。T3的命令式视图接入在本任务随旧UI一起移除，不留两套World创建路径。
+
+一次替换三个旧 UI 类及 GameApp 对它们的创建、render、监听引用，删除旧 requiredElement 样板和不再引用的全局 CSS。单一 PanelHost 管设置/当前结算，原生 dialog 明确 pointer-events:auto、关闭/焦点恢复，不能依赖 top layer 自动修正祖先 pointer-events。样式令牌与组件样式本任务建立，不留 P11 才拆；隐藏界面不应还能执行底层快捷键。
+
+反馈存语义事件和到期时间，换语言重投影当前事件/回合/结算，不续期、不重放声音。移除装饰性的重复英文 kicker、重复 status/toast；设置变更在控件内反映，不覆盖当前购买/付款原因。偏好默认 localStorage 获取移入 try 内，保留真实 v1偏好逐字段默认，不写旧版兼容层。Pointer Lock 失败只更新状态并给按钮路径，不反复申请。初始WebGL创建失败保留可读错误与退出路径，P11再扩充上下文丢失场景。React渲染错误设置局部ErrorBoundary；异步保存/演出失败由Session显式接收并显示当前状态，ErrorBoundary不是Promise异常捕获器，不能留下void异步调用的未处理拒绝。
+
+**验证：** 开发 StrictMode 与生产 preview 分别执行真实控件点击、键盘操作、焦点返回；检查 settings-dialog计算样式和实际命中，不用DOM.click绕过。存储 getter 抛错仍可进入；显示中的事件换语言无旧文案/未替换占位符；0金额、特殊字符姓名均正确；一次动作只一次 apply/一次 aria公告。快照静止时重复渲染不发布新对象，场景帧不触发整个HUD重渲染。验证 `index.html` 新入口及 /Richman3D/ 静态产物，不留下旧 main.ts 与旧控制器。
+
+**补充验证：** StrictMode setup→cleanup→setup期间matchId、revision、RNG不变，活跃World和帧入口各至多一个；动作播放中卸载再绑定只显示已提交结果，不重复推进。对比动画开始、落地、下一操作者三个时点，不能出现“正在看本人掷骰、却能操作对手回合”。本任务同时用真实新UI更新README引用的`public/og-image.png`；不得继续展示已删除的大卡片/日志，P12只做发布版本的最终复核。
+
+**提交：** `refactor: 用 React 统一游戏界面与交互边界`。
 
 ## 阶段结束检查
 
-运行完整 typecheck、Vitest、build 和 P1 浏览器用例；记录基线浏览器版本。执行阶段才创建 `audit-p1.md`，未过审不进入 P2。这里没有审计结论，也不把“计划写完”当作四个任务完成。
+完整 typecheck、Vitest、build、基线与React浏览器回归；核对旧 UI、双帧调度、直接规则旁路确已移除。未来执行阶段才建立本阶段审计；本次计划审查不以任务 pending 的存在冒充实现完成。
