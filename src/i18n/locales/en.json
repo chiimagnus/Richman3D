@@ -14,24 +14,20 @@
   },
   "settings": {
     "title": "Settings",
-    "close": "Close",
-    "closeAria": "Close settings",
+    "returnToGame": "Back to Game",
+    "returnToGameAria": "Back to Game",
     "sound": "Sound",
-    "soundHelp": "Game sound effects",
     "sensitivity": "Mouse Sensitivity",
-    "sensitivityHelp": "First-person look",
     "sensitivityAria": "First-person mouse sensitivity",
     "low": "Low",
     "standard": "Standard",
     "high": "High",
     "language": "Language",
-    "languageHelp": "Interface and board labels",
     "languageAria": "Game language",
     "languageOptions": {
       "zh-CN": "中文",
       "en": "English"
-    },
-    "note": "Settings are saved in this browser."
+    }
   },
   "status": {
     "initial": "Your turn. Roll the dice to begin.",
@@ -43,9 +39,6 @@
     "yourTurn": "Your turn.",
     "botPurchased": "City Player bought “{propertyName}”.",
     "botSkipped": "City Player skipped “{propertyName}”.",
-    "soundEnabled": "Sound enabled.",
-    "soundDisabled": "Sound disabled.",
-    "sensitivityUpdated": "Mouse sensitivity updated.",
     "winner": "{playerName} won.",
     "gameOver": "Game over.",
     "rollPropertyAvailable": "{actor} moved {steps} spaces. This property is available to buy.",
