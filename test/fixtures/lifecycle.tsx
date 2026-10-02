@@ -1,4 +1,7 @@
-import { createMatchConfig } from "../../src/domain/config";
+import { createMatchConfig, SEAT_COLORS, SEAT_IDS } from "../../src/domain/config";
+import type { PlayerId } from "../../src/domain/types";
+import type { PlayerView } from "../../src/rendering/PlayerView";
+import type { Group } from "three";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { GameApp } from "../../src/app/GameApp";
@@ -63,7 +66,12 @@ const baseline = listeners();
 function report() {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const session = app.getSnapshot().session;
-    output.textContent = JSON.stringify({ world: world?.resourceInfo, audioNodes: app.audio.activeNodeCount, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, matchId: session?.matchId, revision: session?.getSnapshot().committed.revision, state: session?.getSnapshot().committed, save: session?.getSnapshot().save });
+    const players: Map<PlayerId, PlayerView> | undefined = world ? Reflect.get(world, "players") : undefined;
+    const pawns = players ? [...players].map(([id, pawn]) => {
+      const object: Group = Reflect.get(pawn, "object");
+      return { id, position: object.position.toArray(), visible: object.visible };
+    }) : [];
+    output.textContent = JSON.stringify({ world: world?.resourceInfo, pawns, audioNodes: app.audio.activeNodeCount, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, matchId: session?.matchId, revision: session?.getSnapshot().committed.revision, state: session?.getSnapshot().committed, save: session?.getSnapshot().save });
   }));
 }
 let unwatch = () => {};
@@ -71,14 +79,17 @@ app.subscribe(() => { unwatch(); unwatch = app.getSnapshot().session?.subscribe(
 document.querySelector("#hold-save")!.addEventListener("click", () => { holdNextSave = true; });
 document.querySelector("#release-save")!.addEventListener("click", () => { releaseSave?.(); releaseSave = null; });
 document.querySelector("#start")!.addEventListener("click", async () => {
-  await app.start(createMatchConfig(1));
+  const size = Number(document.querySelector<HTMLSelectElement>("#seats")!.value);
+  const human = Number(document.querySelector<HTMLSelectElement>("#human")!.value);
+  const config = createMatchConfig(341);
+  await app.start({ ...config, seed: size === 2 && human === 0 ? 1 : 341, players: SEAT_IDS.slice(0, size).map((id, index) => ({
+    id, defaultNameKey: id, controller: index === human ? "human" : "bot", name: null, color: SEAT_COLORS[index]!,
+  })) });
   await new Promise<void>((resolve) => {
     const check = () => { if (app.getSnapshot().session?.getSnapshot().attached) resolve(); else requestAnimationFrame(check); };
     check();
   });
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    output.textContent = JSON.stringify({ world: world?.resourceInfo, audioNodes: audio?.activeNodeCount ?? 0, listeners: listeners() - baseline, activeWorlds: activeWorlds.size, revision: app.getSnapshot().session?.getSnapshot().committed.revision });
-  }));
+  report();
 });
 document.querySelector("#dispose")!.addEventListener("click", () => {
   app.leave();

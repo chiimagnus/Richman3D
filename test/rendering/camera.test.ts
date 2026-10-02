@@ -33,15 +33,23 @@ it.each([16 / 9, 9 / 16, 0.35, 2.4])("fits all selected map bounds at aspect %s 
   rig.dispose();
 });
 
-it("draws both real pawns with stable same-tile offsets and toggles self visibility", () => {
+it.each([2, 3, 4])("draws %s real pawns with stable same-tile offsets, visibility and cleanup", (size) => {
   const scene = new THREE.Scene();
   const clock = new MotionClock();
-  const first = new PlayerView(scene, "#57d4ff", clock, CITY, 0);
-  const second = new PlayerView(scene, "#ffb75e", clock, CITY, 1);
-  first.setPosition(0); second.setPosition(0);
-  expect(scene.children[0]!.position.equals(scene.children[1]!.position)).toBe(false);
-  first.setVisible(false); expect(scene.children[0]!.visible).toBe(false);
-  first.setVisible(true); expect(scene.children[0]!.visible).toBe(true);
-  first.dispose(); second.dispose();
+  const pawns = Array.from({ length: size }, (_, index) => new PlayerView(scene, "#57d4ff", clock, CITY, index));
+  pawns.forEach((pawn) => pawn.setPosition(0));
+  const offsets = scene.children.map((object) => object.position.clone().sub(boardPosition(CITY, 0)));
+  expect(new Set(offsets.map((offset) => offset.toArray().join(","))).size).toBe(size);
+  for (const [index, offset] of offsets.entries()) {
+    expect(offset.x).toBeCloseTo(index % 2 === 0 ? -0.72 : 0.72);
+    expect(offset.y).toBeCloseTo(0.18);
+    expect(offset.z).toBeCloseTo(index < 2 ? -0.72 : 0.72);
+  }
+  pawns[0]!.setVisible(false); expect(scene.children[0]!.visible).toBe(false);
+  pawns[0]!.setVisible(true); expect(scene.children[0]!.visible).toBe(true);
+  pawns[0]!.dispose();
+  pawns.slice(1).forEach((pawn) => pawn.setPosition(6));
+  scene.children.forEach((object, index) => expect(object.position.clone().sub(boardPosition(CITY, 6)).distanceTo(offsets[index + 1]!)).toBeLessThan(1e-10));
+  pawns.slice(1).forEach((pawn) => pawn.dispose());
   expect(scene.children).toHaveLength(0);
 });
