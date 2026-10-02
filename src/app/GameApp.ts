@@ -65,6 +65,8 @@ export class GameApp {
       setLookSensitivity: (sensitivity) =>
         this.setLookSensitivity(sensitivity),
       setLanguage: (language) => this.setLanguage(language),
+      returnToGame: () => this.returnToGame(),
+      focusGame: () => this.world.canvas.focus(),
     });
     this.feedback = new FeedbackLayer(
       this.root,
@@ -76,7 +78,23 @@ export class GameApp {
     this.world.canvas.addEventListener("click", this.enterFirstPerson);
     this.world.onPointerLockChange((locked) => {
       this.pointerLocked = locked;
+
+      if (locked) {
+        this.settings.close();
+      }
+
       this.render();
+
+      if (!locked) {
+        window.setTimeout(() => {
+          if (
+            !this.pointerLocked &&
+            this.game.snapshot.phase !== "game_over"
+          ) {
+            this.settings.open();
+          }
+        }, 120);
+      }
     });
     window.addEventListener("keydown", this.handleKeydown);
 
@@ -87,6 +105,13 @@ export class GameApp {
   private readonly enterFirstPerson = (): void => {
     this.world.lockFirstPerson();
   };
+
+  private returnToGame(): void {
+    if (this.game.snapshot.phase !== "game_over") {
+      this.world.canvas.focus();
+      this.world.lockFirstPerson();
+    }
+  }
 
   private readonly handleKeydown = (event: KeyboardEvent): void => {
     if (
@@ -322,15 +347,7 @@ export class GameApp {
     this.preferences = { ...this.preferences, soundEnabled };
     this.audio.setEnabled(soundEnabled);
     savePreferences(this.preferences);
-    this.status = (language) =>
-      soundEnabled
-        ? messages(language).status.soundEnabled
-        : messages(language).status.soundDisabled;
     this.render();
-
-    if (soundEnabled) {
-      this.audio.playTurn(this.game.snapshot.activePlayerId);
-    }
   }
 
   private setLookSensitivity(lookSensitivity: LookSensitivity): void {
@@ -341,7 +358,6 @@ export class GameApp {
     this.preferences = { ...this.preferences, lookSensitivity };
     this.world.setLookSensitivity(lookSensitivityScale(lookSensitivity));
     savePreferences(this.preferences);
-    this.status = (language) => messages(language).status.sensitivityUpdated;
     this.render();
   }
 
@@ -385,7 +401,6 @@ export class GameApp {
     this.settings.render({
       preferences: this.preferences,
       pointerLocked: this.pointerLocked,
-      busy: this.busy,
     });
   }
 }

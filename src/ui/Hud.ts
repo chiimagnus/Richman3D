@@ -38,7 +38,6 @@ export class Hud {
   private readonly buyLabel: HTMLElement;
   private readonly skipButton: HTMLButtonElement;
   private readonly skipLabel: HTMLElement;
-  private readonly lookHint: HTMLElement;
   private readonly previousCash = new Map<PlayerId, number>();
 
   constructor(container: HTMLElement, actions: HudActions) {
@@ -58,7 +57,6 @@ export class Hud {
         </span>
       </aside>
 
-      <div class="look-hint" data-look-hint></div>
       <div class="crosshair" aria-hidden="true"><span></span><span></span></div>
 
       <footer class="action-dock">
@@ -97,7 +95,6 @@ export class Hud {
     this.buyLabel = requiredElement(this.root, "[data-buy-label]");
     this.skipButton = requiredElement<HTMLButtonElement>(this.root, "[data-skip]");
     this.skipLabel = requiredElement(this.root, "[data-skip-label]");
-    this.lookHint = requiredElement(this.root, "[data-look-hint]");
 
     this.rollButton.addEventListener("click", actions.roll);
     this.buyButton.addEventListener("click", actions.buy);
@@ -155,9 +152,6 @@ export class Hud {
     }
 
     this.root.dataset.pointerLocked = String(options.pointerLocked);
-    this.lookHint.textContent = options.pointerLocked
-      ? pointerLockHint(snapshot, pendingProperty, language)
-      : copy.enterFirstPerson;
 
     if (snapshot.phase === "game_over") {
       this.rollButton.hidden = false;
@@ -209,31 +203,6 @@ function playerById(snapshot: GameSnapshot, id: PlayerId): PlayerState {
   }
 
   return player;
-}
-
-function pointerLockHint(
-  snapshot: GameSnapshot,
-  pendingProperty: PropertyTile | null,
-  language: Language,
-): string {
-  const copy = messages(language).hud;
-
-  if (
-    snapshot.activePlayerId === "human" &&
-    snapshot.phase === "awaiting_purchase" &&
-    pendingProperty
-  ) {
-    return formatMessage(copy.pointerPurchase, { price: pendingProperty.price });
-  }
-
-  if (
-    snapshot.activePlayerId === "human" &&
-    snapshot.phase === "awaiting_roll"
-  ) {
-    return copy.pointerRoll;
-  }
-
-  return copy.pointerIdle;
 }
 
 function pendingPropertyFor(snapshot: GameSnapshot): PropertyTile | null {

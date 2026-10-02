@@ -6,36 +6,28 @@
   "worldAria": "3D 大富翁棋盘",
   "hud": {
     "balancesAria": "玩家资金",
-    "enterFirstPerson": "点击画面进入第一人称",
     "recentDiceAria": "最近一次骰子",
     "roll": "掷骰子",
     "buy": "购买",
     "buyWithPrice": "购买 · {price}",
-    "skip": "跳过",
-    "pointerPurchase": "B 购买 ¥{price} · N 跳过 · M 声音 · Esc 退出",
-    "pointerRoll": "Space 掷骰 · M 声音 · Esc 退出",
-    "pointerIdle": "M 声音 · Esc 退出"
+    "skip": "跳过"
   },
   "settings": {
     "title": "设置",
-    "close": "关闭",
-    "closeAria": "关闭设置",
+    "returnToGame": "返回游戏",
+    "returnToGameAria": "返回游戏",
     "sound": "声音",
-    "soundHelp": "游戏音效",
     "sensitivity": "鼠标灵敏度",
-    "sensitivityHelp": "第一人称环视",
     "sensitivityAria": "第一人称鼠标灵敏度",
     "low": "低",
     "standard": "标准",
     "high": "高",
     "language": "语言",
-    "languageHelp": "界面与棋盘文字",
     "languageAria": "游戏语言",
     "languageOptions": {
       "zh-CN": "中文",
       "en": "English"
-    },
-    "note": "设置会保存在当前浏览器。"
+    }
   },
   "status": {
     "initial": "你的回合，掷骰开始。",
@@ -47,9 +39,6 @@
     "yourTurn": "轮到你了。",
     "botPurchased": "城市玩家购买了「{propertyName}」。",
     "botSkipped": "城市玩家跳过了「{propertyName}」。",
-    "soundEnabled": "声音已开启。",
-    "soundDisabled": "声音已关闭。",
-    "sensitivityUpdated": "鼠标灵敏度已更新。",
     "winner": "{playerName}获胜。",
     "gameOver": "游戏结束。",
     "rollPropertyAvailable": "{actor}移动 {steps} 格，这块地产可以购买。",
