@@ -2,6 +2,7 @@ import { tileAt, type PropertyTile } from "../domain/board";
 import type { PlayerId, RollResult } from "../domain/game";
 import {
   chanceCardText,
+  formatMessage,
   messages,
   playerName,
   tileName,
@@ -129,7 +130,7 @@ export class FeedbackLayer {
   ): Promise<void> {
     const copy = messages(this.language).feedback;
     const actor = playerName(this.language, actorId);
-    this.diceActor.textContent = copy.diceActor(actor);
+    this.diceActor.textContent = formatMessage(copy.diceActor, { actor });
     this.diceAnnouncement.textContent = "";
     this.diceStage.hidden = false;
     this.diceStage.classList.add("is-rolling");
@@ -145,12 +146,12 @@ export class FeedbackLayer {
     }
 
     this.setDice(dice[0], dice[1]);
-    this.diceAnnouncement.textContent = copy.diceAnnouncement(
+    this.diceAnnouncement.textContent = formatMessage(copy.diceAnnouncement, {
       actor,
-      dice[0],
-      dice[1],
-      dice[0] + dice[1],
-    );
+      left: dice[0],
+      right: dice[1],
+      total: dice[0] + dice[1],
+    });
     this.diceStage.classList.remove("is-rolling");
     this.diceStage.classList.add("is-settled");
     await wait(reducedMotion() ? 360 : 260);
@@ -166,28 +167,37 @@ export class FeedbackLayer {
     const passStart = result.passedStart ? copy.passedStart : "";
     let tone: FeedbackTone = "neutral";
     let kicker = localizedTileName;
-    let title = copy.moved(actor, result.steps);
+    let title = formatMessage(copy.moved, {
+      actor,
+      steps: result.steps,
+    });
     let detail = passStart;
 
     switch (result.landing.kind) {
       case "property_available":
         tone = "property";
-        title = copy.propertyAvailable(localizedTileName);
-        detail += copy.salePrice(result.landing.price);
+        title = formatMessage(copy.propertyAvailable, {
+          propertyName: localizedTileName,
+        });
+        detail += formatMessage(copy.salePrice, { price: result.landing.price });
         break;
       case "property_owned":
         tone = "positive";
-        title = copy.propertyOwned(localizedTileName);
+        title = formatMessage(copy.propertyOwned, {
+          propertyName: localizedTileName,
+        });
         detail += copy.ownProperty;
         break;
       case "rent":
         tone = "negative";
-        title = copy.rentPaid(result.landing.amount);
-        detail += copy.landedOn(localizedTileName);
+        title = formatMessage(copy.rentPaid, { amount: result.landing.amount });
+        detail += formatMessage(copy.landedOn, {
+          propertyName: localizedTileName,
+        });
         break;
       case "tax":
         tone = "negative";
-        title = copy.feePaid(result.landing.amount);
+        title = formatMessage(copy.feePaid, { amount: result.landing.amount });
         detail += localizedTileName;
         break;
       case "chance":
@@ -195,8 +205,10 @@ export class FeedbackLayer {
         title = chanceCardText(this.language, result.landing.cardId);
         detail +=
           result.landing.amount >= 0
-            ? copy.fundsGain(result.landing.amount)
-            : copy.fundsLoss(Math.abs(result.landing.amount));
+            ? formatMessage(copy.fundsGain, { amount: result.landing.amount })
+            : formatMessage(copy.fundsLoss, {
+                amount: Math.abs(result.landing.amount),
+              });
         break;
       case "start":
         tone = "positive";
@@ -205,7 +217,12 @@ export class FeedbackLayer {
         break;
     }
 
-    this.showEvent(kicker, title, detail || copy.moveCompleted(actor), tone);
+    this.showEvent(
+      kicker,
+      title,
+      detail || formatMessage(copy.moveCompleted, { actor }),
+      tone,
+    );
   }
 
   showPurchase(actorId: PlayerId, property: PropertyTile, price: number): void {
@@ -213,8 +230,11 @@ export class FeedbackLayer {
     const actor = playerName(this.language, actorId);
     this.showEvent(
       copy.propertyAcquiredKicker,
-      copy.bought(actor, tileName(this.language, property)),
-      copy.dealPrice(price),
+      formatMessage(copy.bought, {
+        actor,
+        propertyName: tileName(this.language, property),
+      }),
+      formatMessage(copy.dealPrice, { price }),
       "property",
     );
   }
@@ -224,7 +244,10 @@ export class FeedbackLayer {
     const actor = playerName(this.language, actorId);
     this.showEvent(
       copy.propertyKicker,
-      copy.skipped(actor, tileName(this.language, property)),
+      formatMessage(copy.skipped, {
+        actor,
+        propertyName: tileName(this.language, property),
+      }),
       copy.propertyUnowned,
       "neutral",
     );

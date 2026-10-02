@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { Game } from "./game";
+import { Game } from "../../src/domain/game";
 
 function sequenceRandom(values: readonly number[]): () => number {
   let index = 0;

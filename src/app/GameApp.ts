@@ -6,7 +6,13 @@ import {
   type PlayerId,
   type RollResult,
 } from "../domain/game";
-import { chanceCardText, messages, playerName, tileName } from "../i18n";
+import {
+  chanceCardText,
+  formatMessage,
+  messages,
+  playerName,
+  tileName,
+} from "../i18n";
 import { World } from "../rendering/World";
 import {
   loadPreferences,
@@ -175,7 +181,9 @@ export class GameApp {
     this.game.buyCurrentProperty();
     this.world.syncOwnership(this.game.snapshot);
     this.status = (language) =>
-      messages(language).status.purchased(tileName(language, property));
+      formatMessage(messages(language).status.purchased, {
+        propertyName: tileName(language, property),
+      });
     this.render();
     this.audio.playPurchase();
     this.feedback.showPurchase("human", property, property.price);
@@ -197,7 +205,9 @@ export class GameApp {
 
     this.game.skipPurchase();
     this.status = (language) =>
-      messages(language).status.skipped(tileName(language, property));
+      formatMessage(messages(language).status.skipped, {
+        propertyName: tileName(language, property),
+      });
     this.render();
     this.feedback.showSkipped("human", property);
     void this.runBotTurn();
@@ -266,13 +276,17 @@ export class GameApp {
       this.game.buyCurrentProperty();
       this.world.syncOwnership(this.game.snapshot);
       this.status = (language) =>
-        messages(language).status.botPurchased(tileName(language, property));
+        formatMessage(messages(language).status.botPurchased, {
+          propertyName: tileName(language, property),
+        });
       this.audio.playPurchase();
       this.feedback.showPurchase("bot", property, property.price);
     } else {
       this.game.skipPurchase();
       this.status = (language) =>
-        messages(language).status.botSkipped(tileName(language, property));
+        formatMessage(messages(language).status.botSkipped, {
+          propertyName: tileName(language, property),
+        });
       this.feedback.showSkipped("bot", property);
     }
   }
@@ -352,7 +366,9 @@ export class GameApp {
     const winnerId = snapshot.winnerId;
     this.status = (language) =>
       winnerId
-        ? messages(language).status.winner(playerName(language, winnerId))
+        ? formatMessage(messages(language).status.winner, {
+            playerName: playerName(language, winnerId),
+          })
         : messages(language).status.gameOver;
     this.render();
     this.audio.playGameOver(winnerId);
@@ -385,21 +401,38 @@ function rollStatus(
 
   switch (landing.kind) {
     case "property_available":
-      return copy.rollPropertyAvailable(actor, result.steps);
-    case "rent":
-      return copy.rollRent(actor, result.steps, landing.amount);
-    case "tax":
-      return copy.rollTax(actor, result.steps, landing.amount);
-    case "chance":
-      return copy.rollChance(
+      return formatMessage(copy.rollPropertyAvailable, {
         actor,
-        result.steps,
-        chanceCardText(language, landing.cardId),
-      );
+        steps: result.steps,
+      });
+    case "rent":
+      return formatMessage(copy.rollRent, {
+        actor,
+        steps: result.steps,
+        amount: landing.amount,
+      });
+    case "tax":
+      return formatMessage(copy.rollTax, {
+        actor,
+        steps: result.steps,
+        amount: landing.amount,
+      });
+    case "chance":
+      return formatMessage(copy.rollChance, {
+        actor,
+        steps: result.steps,
+        message: chanceCardText(language, landing.cardId),
+      });
     case "property_owned":
-      return copy.rollOwned(actor, result.steps);
+      return formatMessage(copy.rollOwned, {
+        actor,
+        steps: result.steps,
+      });
     case "start":
-      return copy.rollStart(actor, result.steps);
+      return formatMessage(copy.rollStart, {
+        actor,
+        steps: result.steps,
+      });
   }
 }
 

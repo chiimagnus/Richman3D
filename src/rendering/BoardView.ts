@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import { BOARD, type BoardTile } from "../domain/board";
 import type { GameSnapshot, LandingResult, PlayerId } from "../domain/game";
-import { messages, tileName } from "../i18n";
+import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../settings/preferences";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 
@@ -354,7 +354,10 @@ function tileDetail(tile: BoardTile, language: Language): string {
     case "tax":
       return `-${tile.amount}`;
     case "property":
-      return copy.propertyDetail(tile.price, tile.rent);
+      return formatMessage(copy.propertyDetail, {
+        price: tile.price,
+        rent: tile.rent,
+      });
   }
 }
 

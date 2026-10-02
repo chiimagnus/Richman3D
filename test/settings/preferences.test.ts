@@ -5,7 +5,7 @@ import {
   loadPreferences,
   lookSensitivityScale,
   savePreferences,
-} from "./preferences";
+} from "../../src/settings/preferences";
 
 function memoryStorage(initial: string | null = null) {
   let value = initial;

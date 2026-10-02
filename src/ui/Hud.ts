@@ -1,6 +1,12 @@
 import { tileAt, type PropertyTile } from "../domain/board";
 import type { GameSnapshot, PlayerId, PlayerState } from "../domain/game";
-import { formatCash, messages, playerName, tileName } from "../i18n";
+import {
+  formatCash,
+  formatMessage,
+  messages,
+  playerName,
+  tileName,
+} from "../i18n";
 import type { Language } from "../settings/preferences";
 
 export type HudActions = {
@@ -139,7 +145,9 @@ export class Hud {
     this.skipButton.disabled = !humanBuying;
 
     if (pendingProperty) {
-      this.buyLabel.textContent = copy.buyWithPrice(pendingProperty.price);
+      this.buyLabel.textContent = formatMessage(copy.buyWithPrice, {
+        price: pendingProperty.price,
+      });
       this.buyButton.disabled = !humanBuying || human.cash < pendingProperty.price;
     } else {
       this.buyLabel.textContent = copy.buy;
@@ -215,7 +223,7 @@ function pointerLockHint(
     snapshot.phase === "awaiting_purchase" &&
     pendingProperty
   ) {
-    return copy.pointerPurchase(pendingProperty.price);
+    return formatMessage(copy.pointerPurchase, { price: pendingProperty.price });
   }
 
   if (

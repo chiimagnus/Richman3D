@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { BOARD } from "../domain/board";
-import { boardDirection, boardPosition } from "./boardGeometry";
+import { BOARD } from "../../src/domain/board";
+import { boardDirection, boardPosition } from "../../src/rendering/boardGeometry";
 
 describe("boardGeometry", () => {
   it("把 20 个地块映射为 20 个不重复的方形外围坐标", () => {

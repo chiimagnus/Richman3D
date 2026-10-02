@@ -101,8 +101,8 @@ export class SettingsPanel {
                 role="group"
                 data-language-group
               >
-                <button type="button" data-language="zh-CN">中文</button>
-                <button type="button" data-language="en">English</button>
+                <button type="button" data-language="zh-CN"></button>
+                <button type="button" data-language="en"></button>
               </div>
             </div>
           </div>
@@ -220,9 +220,14 @@ export class SettingsPanel {
     }
 
     for (const button of this.languageButtons) {
+      const language = button.dataset.language;
+      if (!isLanguage(language)) {
+        continue;
+      }
+      button.textContent = copy.languageOptions[language];
       button.setAttribute(
         "aria-pressed",
-        String(button.dataset.language === preferences.language),
+        String(language === preferences.language),
       );
     }
 
