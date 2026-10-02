@@ -18,7 +18,7 @@ export type SaveRecord = {
 export type SaveIdentity = Pick<SaveRecord, "matchId" | "revision">;
 export type StoredGame = { readonly record: SaveRecord; readonly snapshot: GameSnapshot };
 export class SaveError extends Error {
-  constructor(readonly kind: "unavailable" | "invalid" | "incompatible" | "conflict", options?: ErrorOptions) { super(kind, options); }
+  constructor(readonly kind: "unavailable" | "invalid" | "incompatible" | "conflict" | "too_large", options?: ErrorOptions) { super(kind, options); }
 }
 
 export function readSave(value: unknown): StoredGame {

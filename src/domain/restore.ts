@@ -19,7 +19,7 @@ export function integer(value: unknown, minimum = 0, maximum = Number.MAX_SAFE_I
 }
 
 export function sameData(first: unknown, second: unknown): boolean {
-  if (first === second) return true;
+  if (Object.is(first, second)) return true;
   if (Array.isArray(first) && Array.isArray(second)) return first.length === second.length && first.every((value, index) => sameData(value, second[index]));
   if (!first || !second || typeof first !== "object" || typeof second !== "object" || Array.isArray(first) || Array.isArray(second)) return false;
   const left = record(first);

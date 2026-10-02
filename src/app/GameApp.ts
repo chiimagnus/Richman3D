@@ -5,7 +5,7 @@ import { createMatchConfig } from "../domain/config";
 import type { MatchConfig } from "../domain/types";
 import { loadTutorialCompleted, saveTutorialCompleted, tutorialConfig } from "./tutorial";
 import { GameStore } from "../storage/GameStore";
-import { SaveError, type SaveRecord, type StoredGame } from "../storage/snapshot";
+import { makeSave, SaveError, type SaveRecord, type StoredGame } from "../storage/snapshot";
 
 export type StoredView = { readonly kind: "loading" | "empty" } | { readonly kind: "valid"; readonly record: SaveRecord }
   | { readonly kind: "error"; readonly error: SaveError["kind"] };
@@ -96,6 +96,26 @@ export class GameApp {
       const error = cause instanceof SaveError ? cause.kind : "unavailable";
       if (request === this.request) this.publish({ ...this.view, stored: { kind: "error", error } });
       return null;
+    }
+  }
+
+  async replaceSaved(incoming: StoredGame, expectedRaw: unknown, source: SaveRecord["source"]): Promise<void> {
+    if (this.view.loading) throw new SaveError("conflict");
+    const next = makeSave(incoming.snapshot, crypto.randomUUID(), source, incoming.record.savedAt);
+    const request = ++this.request;
+    const previous = this.view.session;
+    this.publish({ ...this.view, loading: true });
+    previous?.pause();
+    try {
+      await previous?.flush();
+      if (request !== this.request) throw new SaveError("conflict");
+      const record = await this.store.replace(next, expectedRaw);
+      if (request !== this.request) return;
+      previous?.dispose();
+      this.audio.stop();
+      this.publish({ ...this.view, session: null, loading: false, loadFailed: false, stored: { kind: "valid", record } });
+    } finally {
+      if (request === this.request && this.view.loading) this.publish({ ...this.view, loading: false });
     }
   }
 

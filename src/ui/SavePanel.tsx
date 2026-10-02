@@ -4,7 +4,7 @@ import { messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import { downloadSave } from "../storage/transfer";
 
-export function SavePanel({ app, session }: { app: GameApp; session: GameSession }) {
+export function SavePanel({ app, session, onTransfer }: { app: GameApp; session: GameSession; onTransfer: () => void }) {
   const copy = messages(app.getSnapshot().preferences.language).storage;
   const save = session.getSnapshot().save;
   const conflict = save.kind === "conflict";
@@ -16,6 +16,7 @@ export function SavePanel({ app, session }: { app: GameApp; session: GameSession
     </>}
     <p>{copy.exportWarning}</p>
     <button data-save-export onClick={() => downloadSave(session.exportRecord())}>{copy.export}</button>
+    <button data-transfer-open onClick={onTransfer}>{copy.transfer.title}</button>
     <p>{copy.discardWarning}</p>
     <button data-unsaved-discard onClick={() => void app.leave(true)}>{copy.discard}</button>
   </PanelHost>;

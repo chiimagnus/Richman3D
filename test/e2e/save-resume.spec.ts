@@ -1,32 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { Game } from "../../src/domain/game";
 import { legalCommands } from "../../src/domain/selectors";
 import { chooseBotCommand } from "../../src/domain/bot";
-import type { SaveRecord } from "../../src/storage/snapshot";
-import { finishMatch } from "./match-actions";
+import { finishMatch, saved, startMatch as start } from "./match-actions";
 import { readFile } from "node:fs/promises";
-
-async function saved(page: Page, key = "current"): Promise<SaveRecord | undefined> {
-  return page.evaluate((key) => new Promise((resolve, reject) => {
-    const opening = indexedDB.open("richman3d", 1);
-    opening.onerror = () => reject(opening.error);
-    opening.onsuccess = () => {
-      const database = opening.result;
-      const transaction = database.transaction("games");
-      const request = transaction.objectStore("games").get(key);
-      transaction.oncomplete = () => { database.close(); resolve(request.result); };
-      transaction.onabort = () => { database.close(); reject(transaction.error); };
-    };
-  }), key);
-}
-
-async function start(page: Page, seed: number) {
-  await page.addInitScript((seed) => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(seed); return array; } }), seed);
-  await page.goto("./");
-  await page.locator("[data-start]").click();
-  await page.locator("[data-launch]").click();
-  await expect(page.locator("[data-roll]")).toBeEnabled();
-}
 
 test("real initial and purchase saves survive refresh, preserving state and the next actual random result", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

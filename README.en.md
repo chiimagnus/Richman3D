@@ -20,6 +20,7 @@ A first-person 3D Richman-style browser board game built with **TypeScript + Thr
 - Match setup, 20/40 full-round rankings and financial results
 - Independent five-step practice and bilingual in-game help
 - Local automatic match saving, refresh continuation and visible saving failures
+- Validated file import/export, explicit backup recovery and damaged-save preservation
 
 Full current rules and controls: **[How to play](docs/how-to-play.en.md)**.
 

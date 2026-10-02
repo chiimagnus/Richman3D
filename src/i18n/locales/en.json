@@ -119,6 +119,21 @@
     }
   },
   "storage": {
+    "transfer": {
+      "title": "Import and recover saves", "limit": "Choose a .richman.json file of at most 1 MiB. Reading and validation do not replace your match.",
+      "file": "Match file", "backup": "Preview previous valid backup", "raw": "Export current raw data", "working": "Processing save…",
+      "preview": "Save preview", "savedAt": "Snapshot saved: {time}", "confirm": "Confirm replacement", "cancel": "Cancel and return",
+      "replace": "Confirmation replaces the current save and this page’s unsaved progress. Export any data you need first. A valid current snapshot becomes the backup; damaged data is replaced only with your confirmation. Continue from the menu afterwards.",
+      "imported": "This will be an imported match, not a formal challenge score. The source label is not an anti-cheat guarantee.",
+      "errors": {
+        "unavailable": "The file or local storage could not be accessed. Your current match is preserved; retry when access is available.",
+        "invalid": "The data is invalid or cannot be exported unchanged. Your current match is preserved; choose a valid file or backup.",
+        "incompatible": "This file uses an unsupported format, map or rules version. Keep the original file; it has not replaced your match.",
+        "conflict": "Another page changed the save. Nothing was replaced. Read a fresh preview before confirming again.",
+        "too_large": "The file exceeds 1 MiB and was not read. Choose a smaller match file.",
+        "backupUnavailable": "No valid, supported backup is available. Current data is preserved; export it or choose a valid file."
+      }
+    },
     "export": "Export match file", "exportWarning": "The file includes player names and the full match state. Keep it private unless you intend to share it.",
     "continue": "Continue saved match", "results": "View saved results", "problemTitle": "Match saving",
     "unsaved": "This match has unsaved progress. The previous saved data is preserved.",

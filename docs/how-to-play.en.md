@@ -61,7 +61,11 @@ A normal match saves its initial state and every accepted action before presenta
 
 Only the current match and its previous valid snapshot are stored. Starting or restarting replaces the current match. Saving failure offers **Retry saving** or **Continue without saving**, with a persistent unsaved indicator. Retrying does not execute the action again. If another page changed the save, this page pauses; explicitly load the latest match or discard this page’s unsaved progress instead of silently overwriting it. Damaged or unsupported saves are preserved, not automatically erased.
 
-Storage is local to this browser profile and site, not a cloud backup. Browser cleanup, private mode or device failure may lose it. **Export match file** in Pause or a saving-problem panel downloads the current memory state as `.richman.json`, even if local saving is refused. It includes player names and the full state; consider privacy before sharing. File import and manual backup recovery are not available yet.
+Storage is local to this browser profile and site, not a cloud backup. Browser cleanup, private mode or device failure may lose it. **Export match file** in Pause or a saving-problem panel downloads the current memory state as `.richman.json`, even if local saving is refused. It includes player names and the full state; consider privacy before sharing.
+
+Open **Import and recover saves** from the menu, Pause or a saving-problem panel and select a file of at most 1 MiB. The full format, version and state are checked before previewing its saved time. Only **Confirm replacement** replaces the current match, including this page’s unsaved progress. Cancelling or failed validation preserves the current session. Imported matches are marked as imported and are not formal challenge scores; this marker is not an anti-cheat guarantee.
+
+You can also preview the **Previous valid backup**, check its original saved time and explicitly recover it. Import and recovery return to the menu; the computer does not act until you choose Continue. Damaged and unsupported saves are not automatically erased or rolled back. **Export current raw data** first if you need a copy before replacement. An invalid backup cannot be recovered. If another page changes the save before confirmation, replacement is refused: read a fresh preview instead of overwriting it automatically.
 
 ## Keyboard
 

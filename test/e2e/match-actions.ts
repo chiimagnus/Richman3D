@@ -1,4 +1,27 @@
 import { expect, type Page } from "@playwright/test";
+import type { SaveRecord } from "../../src/storage/snapshot";
+
+export async function saved(page: Page, key = "current"): Promise<SaveRecord | undefined> {
+  return page.evaluate((key) => new Promise((resolve, reject) => {
+    const opening = indexedDB.open("richman3d", 1);
+    opening.onerror = () => reject(opening.error);
+    opening.onsuccess = () => {
+      const database = opening.result;
+      const transaction = database.transaction("games");
+      const request = transaction.objectStore("games").get(key);
+      transaction.oncomplete = () => { database.close(); resolve(request.result); };
+      transaction.onabort = () => { database.close(); reject(transaction.error); };
+    };
+  }), key);
+}
+
+export async function startMatch(page: Page, seed: number) {
+  await page.addInitScript((seed) => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(seed); return array; } }), seed);
+  await page.goto("./");
+  await page.locator("[data-start]").click();
+  await page.locator("[data-launch]").click();
+  await expect(page.locator("[data-roll]")).toBeEnabled();
+}
 
 export async function finishMatch(page: Page, buying = false): Promise<void> {
   for (let command = 0; command < 200; command += 1) {

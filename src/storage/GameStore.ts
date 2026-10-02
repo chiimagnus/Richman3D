@@ -40,6 +40,14 @@ export class GameStore {
   }
 
   async save(value: SaveRecord, expected: SaveIdentity | null): Promise<SaveRecord> {
+    return this.write(value, { kind: "save", identity: expected });
+  }
+
+  async replace(value: SaveRecord, expectedRaw: unknown): Promise<SaveRecord> {
+    return this.write(value, { kind: "replace", raw: expectedRaw });
+  }
+
+  private async write(value: SaveRecord, expected: { kind: "save"; identity: SaveIdentity | null } | { kind: "replace"; raw: unknown }): Promise<SaveRecord> {
     const next = readSave(value).record;
     const database = await this.open();
     try {
@@ -53,8 +61,16 @@ export class GameStore {
         const current = store.get("current");
         current.onsuccess = () => {
           try {
-            const previous = current.result === undefined ? null : readSave(current.result).record;
-            if (expected === null ? previous !== null : !previous || previous.matchId !== expected.matchId || previous.revision !== expected.revision) throw new SaveError("conflict");
+            if (expected.kind === "replace" && !sameData(current.result, expected.raw)) throw new SaveError("conflict");
+            let previous: SaveRecord | null = null;
+            if (current.result !== undefined) {
+              try { previous = readSave(current.result).record; }
+              catch (cause) { if (expected.kind !== "replace") throw cause; }
+            }
+            if (expected.kind === "save") {
+              const identity = expected.identity;
+              if (identity === null ? previous !== null : !previous || previous.matchId !== identity.matchId || previous.revision !== identity.revision) throw new SaveError("conflict");
+            } else if (previous?.matchId === next.matchId) throw new SaveError("conflict");
             if (previous?.matchId === next.matchId && next.revision < previous.revision) throw new SaveError("conflict");
             if (previous && next.matchId === previous.matchId && next.revision === previous.revision) {
               if (!sameData(next.state, previous.state) || next.source !== previous.source) throw new SaveError("conflict");
