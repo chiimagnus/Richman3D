@@ -11,6 +11,12 @@ const CHANCE_CARDS = [
   { id: "traffic-fine", amount: -50 },
 ] as const satisfies readonly { id: ChanceCardId; amount: number }[];
 
+function cashAfterChange(cash: number, amount: number): number {
+  const next = cash + amount;
+  if (!Number.isSafeInteger(next)) throw new RangeError("资金超出整数范围");
+  return next;
+}
+
 function freeze<T>(value: T): T {
   if (value !== null && typeof value === "object") {
     for (const child of Object.values(value)) freeze(child);
@@ -75,7 +81,7 @@ export class Game {
         const to = path.at(-1);
         if (to === undefined) throw new Error("移动路径为空");
         const passedStart = path.includes(0);
-        if (passedStart) player.cash += PASS_START_BONUS;
+        if (passedStart) player.cash = cashAfterChange(player.cash, PASS_START_BONUS);
         player.position = to;
         lastRoll = dice;
         const tile = tileAt(to);
@@ -83,13 +89,13 @@ export class Game {
         switch (tile.type) {
           case "start": landing = { kind: "start" }; break;
           case "tax":
-            player.cash -= tile.amount;
+            player.cash = cashAfterChange(player.cash, -tile.amount);
             landing = { kind: "tax", amount: tile.amount };
             break;
           case "chance": {
             const card = CHANCE_CARDS[random.integer(CHANCE_CARDS.length)];
             if (!card) throw new Error("机会卡无效");
-            player.cash += card.amount;
+            player.cash = cashAfterChange(player.cash, card.amount);
             landing = { kind: "chance", amount: card.amount, cardId: card.id };
             break;
           }
@@ -103,8 +109,8 @@ export class Game {
             } else {
               const owner = players.find((candidate) => candidate.id === ownerId);
               if (!owner) throw new Error("产权玩家不存在");
-              player.cash -= tile.rent;
-              owner.cash += tile.rent;
+              player.cash = cashAfterChange(player.cash, -tile.rent);
+              owner.cash = cashAfterChange(owner.cash, tile.rent);
               landing = { kind: "rent", propertyId: tile.id, ownerId, amount: tile.rent };
             }
             break;
@@ -115,7 +121,7 @@ export class Game {
         const property = pendingProperty(before);
         if (!property) throw new Error("待购地产不存在");
         if (command.kind === "buy") {
-          player.cash -= property.price;
+          player.cash = cashAfterChange(player.cash, -property.price);
           owners[property.id] = player.id;
           events.push({ kind: "purchased", actor: player.id, propertyId: property.id, price: property.price });
         } else {
@@ -134,7 +140,6 @@ export class Game {
         activePlayerId = next.id;
         events.push({ kind: "turn", actor: next.id });
       }
-      if (players.some((candidate) => !Number.isSafeInteger(candidate.cash))) throw new RangeError("资金超出整数范围");
       if (!Number.isSafeInteger(before.revision + 1) || !Number.isSafeInteger(random.snapshot.draws)) throw new RangeError("版本超出整数范围");
       const snapshot = freeze({ revision: before.revision + 1, players, owners, activePlayerId, decision, lastRoll, random: random.snapshot });
       result = freeze({ ok: true, snapshot, events });

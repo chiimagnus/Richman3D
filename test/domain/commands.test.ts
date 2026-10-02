@@ -67,6 +67,19 @@ describe("atomic commands", () => {
     expect(game.snapshot).toBe(committed);
   });
 
+  it("rejects a transient pass-start overflow even when tax would bring final cash back in range", () => {
+    const game = new Game({ seed: 2210, startingCash: Number.MAX_SAFE_INTEGER - 198 });
+    for (const kind of ["roll", "skip", "roll"] as const) {
+      expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    }
+    const before = game.snapshot;
+    const listener = vi.fn();
+    game.subscribe(listener);
+    expect(game.apply(legalCommands(before, "human")[0]!)).toEqual({ ok: false, reason: "calculation_failed" });
+    expect(game.snapshot).toBe(before);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
   it("queries and bot actions go through real apply, including unaffordable skip", () => {
     const game = new Game({ seed: 341, startingCash: 200 });
     expect(game.apply(legalCommands(game.snapshot, "human")[0]!).ok).toBe(true);
