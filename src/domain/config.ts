@@ -12,17 +12,15 @@ export function normalizeName(value: string): string | null {
   return name;
 }
 
-export function createMatchConfig(seed = 1): MatchConfig {
+export function createMatchConfig(seed = 1, seats = 2): MatchConfig {
+  if (!Number.isInteger(seats) || seats < 2 || seats > SEAT_IDS.length) throw new Error("席位数量无效");
   return { seed, rulesVersion: QUICK_RULES.version, mapId: CITY.id, mapVersion: CITY.version,
-    players: [
-      { id: "p1", controller: "human", name: null, defaultNameKey: "p1", color: SEAT_COLORS[0] },
-      { id: "p2", controller: "bot", name: null, defaultNameKey: "p2", color: SEAT_COLORS[1] },
-    ],
+    players: SEAT_IDS.slice(0, seats).map((id, index) => ({ id, controller: index === 0 ? "human" : "bot", name: null, defaultNameKey: id, color: SEAT_COLORS[index]! })),
   };
 }
 
 export function validateConfig(config: MatchConfig): void {
-  if (!Number.isSafeInteger(config.seed) || config.seed < 0 || config.seed > 0xffff_ffff || config.players.length < 2 || config.players.length > 4 || !config.players.some((player) => player.controller === "human")) throw new Error("对局配置无效");
+  if (!Number.isSafeInteger(config.seed) || config.seed < 0 || config.seed > 0xffff_ffff || config.players.length < 2 || config.players.length > 4) throw new Error("对局配置无效");
   for (const [index, player] of config.players.entries()) {
     if (player.id !== SEAT_IDS[index] || player.defaultNameKey !== player.id || !["human", "bot"].includes(player.controller) || !/^#[\da-f]{6}$/i.test(player.color) || (player.name !== null && (typeof player.name !== "string" || normalizeName(player.name) !== player.name))) throw new Error("席位配置无效");
   }

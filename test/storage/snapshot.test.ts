@@ -7,7 +7,7 @@ import { makeSave, readSave } from "../../src/storage/snapshot";
 
 const matchId = "00000000-0000-4000-8000-000000000001";
 
-it.each([101, 341, 108])("restores every committed decision and RNG of a real match with seed %s, without replaying events", (seed) => {
+it.each([768, 940, 108])("restores every committed decision and RNG of a real match with seed %s, without replaying events", (seed) => {
   let game = new Game(createMatchConfig(seed));
   for (let commandCount = 0; commandCount < 200; commandCount += 1) {
     const record = makeSave(game.snapshot, matchId, "local", 1000);
@@ -26,7 +26,7 @@ it.each([101, 341, 108])("restores every committed decision and RNG of a real ma
 });
 
 it("does not retain mutable external state or accept injected rules under a registered version", () => {
-  const game = new Game(createMatchConfig(341));
+  const game = new Game(createMatchConfig(940));
   const raw = JSON.parse(JSON.stringify(makeSave(game.snapshot, matchId)));
   const restored = Game.restore(readSave(raw).record.state);
   raw.state.players[0].cash = 0;
@@ -48,6 +48,10 @@ it.each([
   (raw: any) => { raw.state.players[1].id = "p1"; },
   (raw: any) => { raw.state.config.players[1].id = "p1"; },
   (raw: any) => { raw.state.activePlayerId = "p4"; },
+  (raw: any) => { raw.state.turnOrder = ["p1", "p1"]; },
+  (raw: any) => { raw.state.turnOrder.reverse(); },
+  (raw: any) => { delete raw.state.turnOrder; },
+  (raw: any) => { raw.rulesVersion = raw.state.config.rulesVersion = "city-v1-quick"; },
   (raw: any) => { raw.state.owners["city-tax"] = "p1"; },
   (raw: any) => { raw.state.owners["neon-avenue"] = "p4"; },
   (raw: any) => { raw.state.owners["neon-avenue"] = "p1"; },
@@ -55,18 +59,19 @@ it.each([
   (raw: any) => { raw.state.decision = { kind: "game_over", result: { reason: "last_survivor", winnerIds: ["p1"], rankings: [] } }; },
   (raw: any) => { raw.state.completedRounds = 20; },
   (raw: any) => { raw.state.random.state = 0; },
-  (raw: any) => { raw.state.random.draws = 1; },
+  (raw: any) => { raw.state.random.draws = 0; },
   (raw: any) => { raw.state.random.inputSeed = 5; },
   (raw: any) => { raw.state.lastRoll = [0, 7]; },
   (raw: any) => { raw.state.animation = {}; },
   (raw: any) => { raw.state.players[0].externalURL = "https://example.com"; },
   (raw: any) => { raw.state.config.players[0].controller = "remote"; },
+  (raw: any) => { raw.state.config.players.forEach((player: any) => { player.controller = "bot"; }); },
   (raw: any) => { raw.revision = 1; },
   (raw: any) => { raw.savedAt = Infinity; },
   (raw: any) => { raw.matchId = "bad"; },
   (raw: any) => { raw.source = "trusted"; },
 ])("rejects malformed, contradictory or incompatible state %# without touching the original", (mutate) => {
-  const game = new Game(createMatchConfig(341));
+  const game = new Game(createMatchConfig(940));
   const before = game.snapshot;
   const raw = JSON.parse(JSON.stringify(makeSave(before, matchId)));
   mutate(raw);
@@ -75,7 +80,7 @@ it.each([
 });
 
 it("rejects an owned pending purchase and tampered final rankings", () => {
-  const game = new Game(createMatchConfig(341));
+  const game = new Game(createMatchConfig(940));
   game.apply(legalCommands(game.snapshot, "p1")[0]!);
   const pending = makeSave(game.snapshot, matchId);
   expect(() => readSave({ ...pending, state: { ...pending.state, owners: { "neon-avenue": "p2" } } })).toThrow();

@@ -12,7 +12,7 @@ async function practice(page: Page, step: number) {
 test("five actual steps survive help and language changes, then a normal match has a fresh seed and finances", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript(() => {
-    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(1); return array; } });
+    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(6); return array; } });
     const original = Storage.prototype.setItem;
     const writes: string[] = [];
     Object.assign(window, { storageWrites: writes });
@@ -22,7 +22,7 @@ test("five actual steps survive help and language changes, then a normal match h
   await practice(page, 3);
   const practiceId = await page.locator("[data-match-id]").getAttribute("data-match-id");
   await expect(page.locator("[data-match-id]")).toHaveAttribute("data-purpose", "tutorial");
-  await expect(page.locator("[data-match-id]")).toHaveAttribute("data-seed", "341");
+  await expect(page.locator("[data-match-id]")).toHaveAttribute("data-seed", "940");
   await expect(page.locator("[data-buy]")).toHaveCount(0);
   await page.locator("canvas").focus();
   await page.keyboard.press("B");
@@ -53,7 +53,7 @@ test("five actual steps survive help and language changes, then a normal match h
   expect(await page.evaluate(() => localStorage.getItem("richman3d.tutorial.v1"))).toBe("completed");
   await page.locator("[data-launch]").click();
   await expect(page.locator("[data-match-id]")).toHaveAttribute("data-purpose", "match");
-  await expect(page.locator("[data-match-id]")).toHaveAttribute("data-seed", "1");
+  await expect(page.locator("[data-match-id]")).toHaveAttribute("data-seed", "6");
   expect(await page.locator("[data-match-id]").getAttribute("data-match-id")).not.toBe(practiceId);
   await expect(page.locator("[data-human-cash]")).toHaveText("¥1,500");
   await expect(page.locator("[data-bot-cash]")).toHaveText("¥1,500");

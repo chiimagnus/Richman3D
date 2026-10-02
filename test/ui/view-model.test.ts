@@ -1,11 +1,12 @@
 import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
+import { createMatchConfig } from "../../src/domain/config";
 import { GameSession } from "../../src/app/GameSession";
 import { actionView } from "../../src/ui/viewModel";
 import { formatCash, formatMessage } from "../../src/i18n";
 
 it("does not offer commands without a scene or while paused and reprojects language", () => {
-  const session = new GameSession(new Game());
+  const session = new GameSession(new Game(createMatchConfig(940)));
   expect(actionView(session.getSnapshot(), "en").commands).toEqual([]);
   session.bind({ sync() {}, stop() {}, async present() {} });
   const before = session.getSnapshot();

@@ -2,7 +2,7 @@ import { tileAt, validateMap, type MapDefinition } from "./board";
 import { mapFor } from "./maps";
 import { rulesFor, validateRules, type RuleSet } from "./rules";
 import { createMatchConfig, validateConfig } from "./config";
-import { nextTurn } from "./turns";
+import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot } from "./restore";
@@ -31,19 +31,22 @@ export class Game {
     validateRules(rules);
     validateMap(map);
     if (config.rulesVersion !== rules.version || config.mapId !== map.id || config.mapVersion !== map.version) throw new Error("配置版本不匹配");
+    const random = new RuleRandom(config.seed);
+    const turnOrder = initialTurnOrder(config, random);
     this.state = freeze({
       revision: 0,
       config: { ...config, players: config.players.map((player) => ({ ...player })) },
       rules: { ...rules, chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
       map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
       completedRounds: 0,
+      turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
         statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0 },
       })),
-      activePlayerId: config.players[0]!.id,
+      activePlayerId: turnOrder[0]!,
       decision: { kind: "awaiting_roll" },
       owners: {}, lastRoll: null,
-      random: new RuleRandom(config.seed).snapshot,
+      random: random.snapshot,
     });
   }
 
@@ -162,7 +165,11 @@ export class Game {
           }
         }
       }
-      if (player.cash < 0) { player.bankrupt = true; decision = { kind: "awaiting_roll" }; }
+      if (player.cash < 0) {
+        player.bankrupt = true;
+        for (const [propertyId, ownerId] of Object.entries(owners)) if (ownerId === player.id) delete owners[propertyId];
+        decision = { kind: "awaiting_roll" };
+      }
       const candidate = { ...before, players, owners, decision, lastRoll, random: random.snapshot };
       if (players.filter((entry) => !entry.bankrupt).length === 1) {
         const result = matchResult(candidate, "last_survivor");

@@ -19,7 +19,7 @@ describe("atomic commands", () => {
     { kind: "unknown", actor: "p1", expectedRevision: 0 },
     { kind: "buy", actor: "p1", expectedRevision: 0 },
   ])("rejects invalid/stale input without state or notifications: %o", (input) => {
-    const game = new Game(createMatchConfig(341));
+    const game = new Game(createMatchConfig(940));
     const before = game.snapshot;
     const listener = vi.fn();
     game.subscribe(listener);
@@ -29,25 +29,25 @@ describe("atomic commands", () => {
   });
 
   it("does not consume candidate RNG or position when chance calculation fails", () => {
-    const game = new Game(createMatchConfig(101));
+    const game = new Game(createMatchConfig(768));
     const before = game.snapshot;
     const original = RuleRandom.prototype.integer;
     vi.spyOn(RuleRandom.prototype, "integer").mockImplementation(function (this: RuleRandom, bound) {
       if (bound === 4) throw new Error("failed chance calculation");
       return original.call(this, bound);
     });
-    const command = legalCommands(before, "p1")[0]!;
+    const command = legalCommands(before, before.activePlayerId)[0]!;
     expect(game.apply(command)).toEqual({ ok: false, reason: "calculation_failed" });
     expect(game.snapshot).toBe(before);
     vi.restoreAllMocks();
     expect(game.apply(command).ok).toBe(true);
-    expect(game.snapshot.players[0]?.cash).toBe(1620);
-    expect(game.snapshot.players[0]?.position).toBe(2);
-    expect(game.snapshot.random.draws).toBe(3);
+    expect(game.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(1620);
+    expect(game.snapshot.players.find((player) => player.id === command.actor)?.position).toBe(2);
+    expect(game.snapshot.random.draws).toBe(before.random.draws + 3);
   });
 
   it("rolls back pass-start money, landing and RNG on integer overflow", () => {
-    const game = new Game(createMatchConfig(2210), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
+    const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
     for (const kind of ["roll", "skip", "roll"] as const) {
       expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
@@ -57,7 +57,7 @@ describe("atomic commands", () => {
   });
 
   it("rejects repeated purchase and preserves one transfer even if a listener throws", () => {
-    const game = new Game(createMatchConfig(341));
+    const game = new Game(createMatchConfig(940));
     game.apply(legalCommands(game.snapshot, "p1")[0]!);
     game.subscribe(() => { throw new Error("view failed"); });
     const command = legalCommands(game.snapshot, "p1").find((action) => action.kind === "buy")!;
@@ -70,7 +70,7 @@ describe("atomic commands", () => {
   });
 
   it("rejects a transient pass-start overflow even when tax would bring final cash back in range", () => {
-    const game = new Game(createMatchConfig(2210), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
+    const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
     for (const kind of ["roll", "skip", "roll"] as const) {
       expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
@@ -83,7 +83,7 @@ describe("atomic commands", () => {
   });
 
   it("queries and bot actions go through real apply, including unaffordable skip", () => {
-    const game = new Game(createMatchConfig(341), { ...QUICK_RULES, startingCash: 200 });
+    const game = new Game(createMatchConfig(940), { ...QUICK_RULES, startingCash: 200 });
     expect(game.apply(legalCommands(game.snapshot, "p1")[0]!).ok).toBe(true);
     expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "skip")!).ok).toBe(true);
     expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);

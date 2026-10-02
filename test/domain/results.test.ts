@@ -8,7 +8,7 @@ import type { FinancialStats, PlayerId } from "../../src/domain/types";
 import { eventText } from "../../src/ui/eventText";
 
 it("one actual buy and rent payment reconcile cash, ranking and both sides of the financial statement", () => {
-  const game = new Game(createMatchConfig(341), { ...QUICK_RULES, roundLimit: 1 });
+  const game = new Game(createMatchConfig(940), { ...QUICK_RULES, roundLimit: 1 });
   for (const kind of ["roll", "buy", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const snapshot = game.snapshot;
   expect(snapshot.players[0]).toMatchObject({ cash: 1352, statistics: { purchases: 180, rentReceived: 32, rentPaid: 0 } });
@@ -21,7 +21,7 @@ it("one actual buy and rent payment reconcile cash, ranking and both sides of th
 
 it("all real event transfers reconcile with each committed cash balance through complete games, not animation counts", () => {
   const branches = new Set<string>();
-  for (const seed of [341, 101, 2210]) {
+  for (const seed of [940, 768, 17981]) {
     const game = new Game(createMatchConfig(seed));
     const expected = new Map<PlayerId, FinancialStats>(game.snapshot.players.map((player) => [player.id, { ...player.statistics }]));
     const record = (id: PlayerId, field: keyof FinancialStats, amount: number) => {
@@ -66,7 +66,7 @@ it("all real event transfers reconcile with each committed cash balance through 
 });
 
 it("failed candidate money calculation cannot commit any statistic", () => {
-  const game = new Game(createMatchConfig(2210), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
+  const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
   for (const kind of ["roll", "skip", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.activePlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const before = game.snapshot;
   expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: before.revision })).toEqual({ ok: false, reason: "calculation_failed" });

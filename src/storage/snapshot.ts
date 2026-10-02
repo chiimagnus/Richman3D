@@ -38,6 +38,7 @@ export function readSave(value: unknown): StoredGame {
     try { rulesFor(raw.rulesVersion); mapFor(raw.mapId, raw.mapVersion as number); }
     catch (cause) { throw new SaveError("incompatible", { cause }); }
     const snapshot = restoreSnapshot(state);
+    if (!snapshot.config.players.some((player) => player.controller === "human")) throw new Error("存档缺少本地玩家");
     const { rules: _rules, map: _map, ...savedState } = snapshot;
     const result: SaveRecord = { schemaVersion: 1, matchId: raw.matchId, revision: raw.revision as number, savedAt: raw.savedAt as number,
       source: raw.source, mapId: snapshot.config.mapId, mapVersion: snapshot.config.mapVersion, rulesVersion: snapshot.config.rulesVersion, state: savedState };

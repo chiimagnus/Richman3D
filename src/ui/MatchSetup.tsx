@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { GameApp } from "../app/GameApp";
-import { createMatchConfig, normalizeName, SEAT_COLORS } from "../domain/config";
+import { createMatchConfig, normalizeName, SEAT_COLORS, SEAT_IDS } from "../domain/config";
 import { QUICK_RULES, STANDARD_RULES, rulesFor } from "../domain/rules";
 import { mapFor } from "../domain/maps";
 import { chanceCardText, formatMessage, messages } from "../i18n";
@@ -10,8 +10,9 @@ import styles from "./MatchSetup.module.css";
 export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void }) {
   const language = app.getSnapshot().preferences.language;
   const copy = messages(language).setup;
-  const [names, setNames] = useState(["", ""]);
-  const [colors, setColors] = useState<string[]>([SEAT_COLORS[0], SEAT_COLORS[1]]);
+  const [names, setNames] = useState(SEAT_IDS.map(() => ""));
+  const [colors, setColors] = useState<string[]>([...SEAT_COLORS]);
+  const [seats, setSeats] = useState(2);
   const [version, setVersion] = useState(QUICK_RULES.version);
   const [error, setError] = useState(false);
   const rules = rulesFor(version);
@@ -21,13 +22,16 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
     <form onSubmit={(event) => {
       event.preventDefault();
       try {
-        const config = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1);
+        const config = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, seats);
         const players = config.players.map((player, index) => ({ ...player, name: normalizeName(names[index]!), color: colors[index]! }));
         void app.start({ ...config, players, rulesVersion: version });
         onClose();
       } catch { setError(true); }
     }}>
-      {(["p1", "p2"] as const).map((id, index) => <label className={styles.row} key={id}>{copy.names[index === 0 ? "local" : "computer"]}
+      <label className={styles.row}>{copy.seats}<select data-seats value={seats} onChange={(event) => setSeats(Number(event.currentTarget.value))}>
+        {[2, 3, 4].map((count) => <option key={count} value={count}>{formatMessage(copy.seatOption, { count, bots: count - 1 })}</option>)}
+      </select></label>
+      {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{index === 0 ? copy.names.local : formatMessage(copy.computerSeat, { number: index })}
         <input data-name={id} value={names[index]} placeholder={messages(language).players[id]} onChange={(event) => { const next = [...names]; next[index] = event.currentTarget.value; setNames(next); setError(false); }} />
       </label>)}
       <label className={styles.row}>{copy.length}<select data-length value={version} onChange={(event) => setVersion(event.currentTarget.value)}>
@@ -37,7 +41,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
       <p>{formatMessage(copy.moneyRules, { cash: rules.startingCash, bonus: rules.passStartBonus })}</p>
       <details><summary>{copy.advanced}</summary>
         <p>{formatMessage(copy.city, { spaces: map.tiles.length })}</p>
-        {([0, 1] as const).map((index) => <label className={styles.row} key={index}>{formatMessage(copy.color, { player: messages(language).players[index === 0 ? "p1" : "p2"] })}
+        {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(copy.color, { player: messages(language).players[id] })}
           <select data-color={index} value={colors[index]} onChange={(event) => { const next = [...colors]; next[index] = event.currentTarget.value; setColors(next); }}>
             {SEAT_COLORS.map((color, colorIndex) => <option key={color} value={color}>{Object.values(copy.colors)[colorIndex]}</option>)}
           </select>

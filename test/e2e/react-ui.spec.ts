@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 for (const entry of ["http://127.0.0.1:4317/Richman3D/", "http://127.0.0.1:4318/Richman3D/"]) {
   test(`real settings, focus and keyboard interaction: ${entry}`, async ({ page }) => {
+    await page.addInitScript(() => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(940); return array; } }));
     await page.goto(entry);
     await page.locator("[data-start]").click();
     await page.locator("[data-launch]").click();
@@ -35,7 +36,7 @@ for (const entry of ["http://127.0.0.1:4317/Richman3D/", "http://127.0.0.1:4318/
 
 test("normal settlement shows its cause before the bot and changes language without restarting expiry", async ({ page }) => {
   await page.addInitScript(() => {
-    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(1); return array; } });
+    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(6); return array; } });
   });
   await page.goto("./");
   await page.locator("[data-start]").click();

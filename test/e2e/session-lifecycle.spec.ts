@@ -58,7 +58,7 @@ test("20 complete real 20-round matches return to menu with fresh state and rele
   page.on("pageerror", (error) => errors.push(error.message));
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.addInitScript(() => {
-    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(341); return array; } });
+    Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(940); return array; } });
     Object.assign(window, { documentMarker: "same-document" });
   });
   await page.goto("http://127.0.0.1:4318/Richman3D/test/fixtures/lifecycle.html");
@@ -72,7 +72,7 @@ test("20 complete real 20-round matches return to menu with fresh state and rele
     await expect.poll(async () => (await stats()).revision).toBe(0);
     const fresh = await stats();
     expect(fresh.activeWorlds).toBe(1);
-    expect(fresh.state.random.draws).toBe(0);
+    expect(fresh.state.random.draws).toBe(1);
     expect(fresh.state.owners).toEqual({});
     expect(fresh.state.players.map((player: { cash: number }) => player.cash)).toEqual([1500, 1500]);
     expect(matchIds.has(fresh.matchId)).toBe(false);

@@ -16,7 +16,7 @@ function controlledPort() {
 
 describe("session lifecycle and visible order", () => {
   it("explicit application activation waits for the real view, then drives a computer p1 and stops at the human p2", async () => {
-    const base = createMatchConfig(341);
+    const base = createMatchConfig(940);
     const config = { ...base, players: base.players.map((player, index) => ({ ...player, controller: index === 0 ? "bot" as const : "human" as const })) };
     const game = new Game(config);
     const session = new GameSession(game);
@@ -31,7 +31,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("disposal releases activation waiting without a ghost command", async () => {
-    const game = new Game(createMatchConfig(341));
+    const game = new Game(createMatchConfig(940));
     const session = new GameSession(game);
     const waiting = session.activate();
     session.dispose();
@@ -39,7 +39,7 @@ describe("session lifecycle and visible order", () => {
     expect(game.snapshot.revision).toBe(0);
   });
   it("settles cash and exposes the cause before allowing the next bot command", async () => {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     const session = new GameSession(game);
     let release = () => {};
     const presenting = vi.fn<PresentationPort["present"]>(async (_events, _signal, settle) => {
@@ -67,7 +67,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("holds the previous player and balances while the committed result is already final", async () => {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     const session = new GameSession(game);
     const controlled = controlledPort();
     session.bind(controlled.port);
@@ -91,7 +91,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it.each(["pause", "dispose"] as const)("%s ends waiting even if a renderer ignores cancellation; late completion cannot advance", async (action) => {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     const session = new GameSession(game);
     const controlled = controlledPort();
     session.bind(controlled.port);
@@ -108,7 +108,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("skip reveals the final purchase decision without a second command", async () => {
-    const game = new Game(createMatchConfig(341));
+    const game = new Game(createMatchConfig(940));
     const session = new GameSession(game);
     const controlled = controlledPort();
     session.bind(controlled.port);
@@ -122,7 +122,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("binding reconstructs committed state; unmounting does not destroy or replay the match", async () => {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     const session = new GameSession(game);
     const controlled = controlledPort();
     const unbind = session.bind(controlled.port);
@@ -140,7 +140,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("normal completion drives the bot through the same command entrance", async () => {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     const session = new GameSession(game);
     const port: PresentationPort = { sync: vi.fn(), stop: vi.fn(), present: vi.fn(async () => {}) };
     session.bind(port);
@@ -152,7 +152,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("a presentation failure preserves committed money and pauses instead of retrying rules", async () => {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     const session = new GameSession(game);
     session.bind({ sync: vi.fn(), stop: vi.fn(), present: async () => { throw new Error("GPU failed"); } });
     await session.dispatch(legalCommands(game.snapshot, "p1")[0]!);
@@ -166,7 +166,7 @@ describe("session lifecycle and visible order", () => {
   });
 
   it("can resume after rejected stale input, then execute a real roll and purchase once", async () => {
-    const game = new Game(createMatchConfig(341));
+    const game = new Game(createMatchConfig(940));
     const session = new GameSession(game);
     session.bind({ sync() {}, stop() {}, async present() {} });
     const before = game.snapshot;

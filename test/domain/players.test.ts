@@ -6,7 +6,7 @@ import { legalCommands } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 
 it.each([2, 3, 4])("preserves %s configured seats and controller authority through every real saved decision", (size) => {
-  const config = { ...createMatchConfig(341), players: SEAT_IDS.slice(0, size).map((id, index) => ({
+  const config = { ...createMatchConfig(940), players: SEAT_IDS.slice(0, size).map((id, index) => ({
     id, defaultNameKey: id, controller: index === size - 1 ? "human" as const : "bot" as const,
     name: index === size - 1 ? "<b>城市</b>" : null, color: SEAT_COLORS[index]!,
   })) };
@@ -37,11 +37,10 @@ it.each([2, 3, 4])("preserves %s configured seats and controller authority throu
   throw new Error("Multi-seat match did not terminate");
 });
 
-it("rejects empty, singleton, oversized, duplicate and absent-human seats without a two-seat fallback", () => {
+it("rejects empty, singleton, oversized and duplicate seats without a two-seat fallback", () => {
   const config = createMatchConfig();
   for (const players of [[], config.players.slice(0, 1), [...config.players, ...config.players, config.players[0]!],
-    config.players.map((player) => ({ ...player, id: "p1" as const })),
-    config.players.map((player) => ({ ...player, controller: "bot" as const }))]) {
+    config.players.map((player) => ({ ...player, id: "p1" as const }))]) {
     expect(() => new Game({ ...config, players })).toThrow();
   }
 });

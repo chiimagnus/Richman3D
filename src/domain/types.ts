@@ -55,6 +55,7 @@ export type GameSnapshot = {
   readonly rules: RuleSet;
   readonly map: MapDefinition;
   readonly completedRounds: number;
+  readonly turnOrder: readonly PlayerId[];
   readonly players: readonly PlayerState[];
   readonly activePlayerId: PlayerId;
   readonly decision: Decision;

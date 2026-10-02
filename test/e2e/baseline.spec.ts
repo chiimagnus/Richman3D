@@ -7,6 +7,7 @@ test("first screen, cash, board and a real roll reach a legal decision", async (
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const started = Date.now();
+  await page.addInitScript(() => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(940); return array; } }));
   await page.goto("./");
   await page.locator("[data-start]").click();
     await page.locator("[data-launch]").click();

@@ -19,7 +19,7 @@ it("preserves every city coordinate, price and rent", () => {
 
 it("injected map, rule landing, geometry, path wrapping and selectors share the same definition", () => {
   const map = { ...CITY, id: "test-map", version: 7, path: CITY.path.map((point) => ({ x: point.x + 50, z: point.z - 30 })), tiles: CITY.tiles.map((tile) => tile.type === "tax" ? { ...tile, amount: 7 } : tile) };
-  const game = new Game({ ...createMatchConfig(1), mapId: map.id, mapVersion: map.version }, QUICK_RULES, map);
+  const game = new Game({ ...createMatchConfig(6), mapId: map.id, mapVersion: map.version }, QUICK_RULES, map);
   expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 }).ok).toBe(true);
   expect(game.snapshot.players[0]?.cash).toBe(1493);
   expect(currentTile(game.snapshot, "p1")).toMatchObject({ amount: 7 });

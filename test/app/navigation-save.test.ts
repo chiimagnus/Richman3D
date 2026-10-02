@@ -29,7 +29,7 @@ async function fixture() {
 it("a late leave waiting for a rule save cannot cancel the later new-match intent or overwrite its current key", async () => {
   const { app, store, present } = await fixture();
   try {
-    await app.start(createMatchConfig(341));
+    await app.start(createMatchConfig(940));
     const old = app.getSnapshot().session!;
     const original = store.save.bind(store);
     let release = () => {};
@@ -40,12 +40,12 @@ it("a late leave waiting for a rule save cannot cancel the later new-match inten
     const rolling = old.dispatch(legalCommands(old.getSnapshot().committed, "p1")[0]!);
     await vi.waitFor(() => expect(writes).toHaveBeenCalledOnce());
     const leaving = app.leave();
-    const starting = app.start(createMatchConfig(101));
+    const starting = app.start(createMatchConfig(768));
     release();
     await Promise.all([rolling, leaving, starting]);
     const current = app.getSnapshot().session!;
     expect(current.matchId).not.toBe(old.matchId);
-    expect(current.getSnapshot().committed.config.seed).toBe(101);
+    expect(current.getSnapshot().committed.config.seed).toBe(768);
     expect(old.getSnapshot().mode).toBe("disposed");
     expect((await store.read())?.record.matchId).toBe(current.matchId);
     expect((await store.read())?.record.revision).toBe(0);
@@ -58,7 +58,7 @@ it("a late leave waiting for a rule save cannot cancel the later new-match inten
 it("canceling a pending menu continuation cannot create a late restored session", async () => {
   const { app, store } = await fixture();
   try {
-    await app.start(createMatchConfig(341));
+    await app.start(createMatchConfig(940));
     await app.leave();
     const original = store.read.bind(store);
     let release = () => {};
@@ -80,11 +80,11 @@ it("canceling a pending menu continuation cannot create a late restored session"
 it("confirmed import replaces persistence before disposing the old session and waits for explicit continuation", async () => {
   const { app, store, present } = await fixture();
   try {
-    await app.start(createMatchConfig(341));
+    await app.start(createMatchConfig(940));
     const old = app.getSnapshot().session!;
     old.pause();
     const current = await store.readRaw();
-    const incoming = readSave(makeSave(new Game(createMatchConfig(101)).snapshot, crypto.randomUUID(), "local", 1000));
+    const incoming = readSave(makeSave(new Game(createMatchConfig(768)).snapshot, crypto.randomUUID(), "local", 1000));
     const replace = store.replace.bind(store);
     const writing = vi.spyOn(store, "replace").mockImplementationOnce(async (record, expected) => {
       expect(old.getSnapshot().mode).toBe("paused");
@@ -108,16 +108,16 @@ it("confirmed import replaces persistence before disposing the old session and w
 it.each(["unavailable", "conflict"] as const)("failed %s replacement preserves the live session and both stored snapshots", async (kind) => {
   const { app, store } = await fixture();
   try {
-    await app.start(createMatchConfig(341));
+    await app.start(createMatchConfig(940));
     const old = app.getSnapshot().session!;
     const current = await store.readRaw();
     const backup = await store.readRaw("backup");
-    const incoming = readSave(makeSave(new Game(createMatchConfig(101)).snapshot, crypto.randomUUID()));
+    const incoming = readSave(makeSave(new Game(createMatchConfig(768)).snapshot, crypto.randomUUID()));
     vi.spyOn(store, "replace").mockRejectedValueOnce(new SaveError(kind));
     await expect(app.replaceSaved(incoming, current, "imported")).rejects.toMatchObject({ kind });
     expect(app.getSnapshot().session).toBe(old);
     expect(old.getSnapshot().mode).toBe("paused");
-    expect(old.getSnapshot().committed.config.seed).toBe(341);
+    expect(old.getSnapshot().committed.config.seed).toBe(940);
     expect(app.getSnapshot().loading).toBe(false);
     expect(await store.readRaw()).toEqual(current);
     expect(await store.readRaw("backup")).toEqual(backup);

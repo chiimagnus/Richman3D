@@ -8,7 +8,7 @@ import { chanceCardText, formatMessage, messages, playerName } from "../../src/i
 import { tileDetail } from "../../src/rendering/BoardView";
 
 it("separates stable identity, controller, names and observation; snapshots do not freeze the caller", () => {
-  const config = createMatchConfig(341);
+  const config = createMatchConfig(940);
   const players = config.players.map((player, index) => ({ ...player, name: index === 0 ? "<b>城市</b>" : null, controller: index === 0 ? "bot" as const : "human" as const }));
   const game = new Game({ ...config, players });
   expect(observerId(game.snapshot.config)).toBe("p2");
@@ -43,15 +43,16 @@ it("constructs stable 2–4 seat contracts without exposing unimplemented produc
 
 it("RuleSet amounts reach actual cash, structured results and both locale projections", () => {
   const rules = { ...QUICK_RULES, startingCash: 2100, passStartBonus: 333, chanceCards: QUICK_RULES.chanceCards.map((card) => ({ ...card, amount: 17 })) };
-  const chance = new Game(createMatchConfig(101), rules);
-  expect(chance.apply(legalCommands(chance.snapshot, "p1")[0]!).ok).toBe(true);
-  expect(chance.snapshot.players[0]?.cash).toBe(2117);
+  const chance = new Game(createMatchConfig(768), rules);
+  const command = legalCommands(chance.snapshot, chance.snapshot.activePlayerId)[0]!;
+  expect(chance.apply(command).ok).toBe(true);
+  expect(chance.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(2117);
   for (const language of ["en", "zh-CN"] as const) {
     expect(chanceCardText(language, "innovation-bonus", rules.chanceCards[0]!.amount)).toContain("17");
     expect(formatMessage(messages(language).setup.moneyRules, { cash: rules.startingCash, bonus: rules.passStartBonus })).toContain("333");
     expect(tileDetail(chance.snapshot.map.tiles[0]!, language, chance.snapshot.rules)).toContain("333");
   }
-  const lap = new Game(createMatchConfig(2210), rules);
+  const lap = new Game(createMatchConfig(17981), rules);
   for (const kind of ["roll", "skip", "roll", "roll"] as const) {
     const result = lap.apply({ kind, actor: lap.snapshot.activePlayerId, expectedRevision: lap.snapshot.revision });
     expect(result.ok).toBe(true);

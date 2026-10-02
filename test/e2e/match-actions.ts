@@ -1,6 +1,10 @@
 import { expect, type Page } from "@playwright/test";
 import type { SaveRecord } from "../../src/storage/snapshot";
 
+export function expectedCash(value: number): string {
+  return `${value < 0 ? "−" : ""}¥${Math.abs(value).toLocaleString("en-US")}`;
+}
+
 export async function saved(page: Page, key = "current"): Promise<SaveRecord | undefined> {
   return page.evaluate((key) => new Promise((resolve, reject) => {
     const opening = indexedDB.open("richman3d", 1);

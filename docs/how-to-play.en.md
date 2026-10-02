@@ -2,7 +2,7 @@
 
 [中文](how-to-play.md)
 
-Choose **Start Game** in the main menu, enter the two names and match length, then choose **Start match**. The current game supports one local human against a normal computer. Blank names use translated defaults; custom names are trimmed, contain at most 16 visible characters, and do not change with the language. **More options** contains pawn colors.
+Choose **Start Game** in the main menu, select 2–4 seats, enter the names and match length, then choose **Start match**. The current game supports one local human against 1–3 normal computers; multiple humans are not enabled yet. Blank names use translated defaults; custom names are trimmed, contain at most 16 visible characters, and do not change with the language. **More options** contains pawn colors.
 
 **How to play** is available in the menu and during a match, with the same current rules as this guide.
 
@@ -14,7 +14,7 @@ Use **Skip tutorial** at any step, including with Tab and Enter. Changing langua
 
 ## Goal and match length
 
-Both players begin at Start with ¥1,500. Quick matches last 20 full rounds by default; standard matches last 40. A round is one complete pass through the fixed seat order. The final player must finish the purchasing decision before the round counts.
+All players begin at Start with ¥1,500. The rule seed determines a fixed turn order once; Pause shows it, and saves preserve it without reshuffling. Names, colors and configuration order do not choose the first player. Quick matches last 20 full rounds by default; standard matches last 40. A round is one complete pass through that original order, skipping eliminated seats without moving its boundary. The final surviving player must finish the purchasing decision and cross the original last slot before the round counts.
 
 Cash below zero currently means immediate bankruptcy. The last solvent player wins early. At the round limit, rank by **net assets = cash + owned property list prices**, then by cash. If both values are equal, players share the win: seat order is not a tiebreaker.
 
@@ -26,7 +26,7 @@ Buildings, mortgages, debt rescue, auctions, trades and held items are not imple
 2. Two dice determine the automatic movement by their total.
 3. Resolve the landing space using the committed rules.
 4. On an available property, choose **Buy** or **Skip**.
-5. The computer then completes its turn.
+5. The fixed turn order selects the next player; computers act automatically.
 
 Doubles do not grant another turn. You do not manually walk along the board, and there is no jail rule.
 
@@ -43,7 +43,7 @@ Purchased property has an ownership marker in the scene. The action area shows t
 
 ## View and input
 
-Desktop starts in your first-person view without automatically locking the mouse. **Board overview** shows the full board and both pawns; **Your first-person view** returns to your own position. Overview disables mouse-lock control and does not affect money or dice. Touch starts in overview. The current fixed overview has no drag, zoom or property picking.
+Desktop starts in your first-person view without automatically locking the mouse. **Board overview** shows the full board and all pawns; **Your first-person view** returns to your own position. Overview disables mouse-lock control and does not affect money or dice. Touch starts in overview. The current fixed overview has no drag, zoom or property picking.
 
 Choose **Look around** to explicitly lock the mouse and move it to look around. Esc exits mouse lock first. There is no WASD free movement. All economic decisions have screen buttons and keyboard paths, so precise 3D pointing is unnecessary.
 
@@ -84,7 +84,7 @@ Shortcuts only apply to available actions and do not act through inputs, native 
 
 ## Reading the interface
 
-- **Upper left:** both names, cash and the round.
+- **Upper left:** all names, cash and the round.
 - **Upper right:** settings, help, pause and view controls.
 - **Bottom:** the acting player’s space, latest dice and the current action. Practice hints also stay here.
 - **Temporary feedback:** dice and the landing cause, without duplicate purchase confirmations.
@@ -92,6 +92,8 @@ Shortcuts only apply to available actions and do not act through inputs, native 
 At landing, show the committed balance and its cause before allowing the computer to proceed. Controls stay unavailable until the action’s presentation settles. **Skip animation** shows the committed result without applying it again.
 
 ## Results and replay
+
+Bankruptcy eliminates only that seat and returns its properties to the bank, so they stop collecting rent. Historical purchase costs remain in the financial details. Play continues while multiple players survive; only the last solvent player wins early. If you are eliminated, watch the remaining computers or leave through Pause. Skip Animation changes presentation speed, not the rules.
 
 The first result screen explains the winner or tied winners, the ending reason, your rank and net-asset rankings. **Financial details and replay** expands cash, property book value, Start rewards, rent received/paid, fees, chance gains/expenses and purchase costs. Domain transactions own those totals: animation, language changes and rerendering do not accumulate them again.
 

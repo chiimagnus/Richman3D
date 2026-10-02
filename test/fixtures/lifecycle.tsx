@@ -55,7 +55,7 @@ app.store.save = async (record, expected) => {
   return save(record, expected);
 };
 document.addEventListener("keydown", (event) => {
-  if (event.code === "F8") { event.preventDefault(); void app.start(createMatchConfig(1)); }
+  if (event.code === "F8") { event.preventDefault(); void app.start(createMatchConfig(6)); }
   if (event.code === "F10") { event.preventDefault(); releaseSave?.(); releaseSave = null; }
 });
 const root = createRoot(document.querySelector<HTMLDivElement>("#app")!);
@@ -81,8 +81,8 @@ document.querySelector("#release-save")!.addEventListener("click", () => { relea
 document.querySelector("#start")!.addEventListener("click", async () => {
   const size = Number(document.querySelector<HTMLSelectElement>("#seats")!.value);
   const human = Number(document.querySelector<HTMLSelectElement>("#human")!.value);
-  const config = createMatchConfig(341);
-  await app.start({ ...config, seed: size === 2 && human === 0 ? 1 : 341, players: SEAT_IDS.slice(0, size).map((id, index) => ({
+  const config = createMatchConfig(940);
+  await app.start({ ...config, seed: size === 2 ? human === 0 ? 6 : 940 : size === 3 ? 1117 : 1209, players: SEAT_IDS.slice(0, size).map((id, index) => ({
     id, defaultNameKey: id, controller: index === human ? "human" : "bot", name: null, color: SEAT_COLORS[index]!,
   })) });
   await new Promise<void>((resolve) => {

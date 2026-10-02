@@ -12,7 +12,7 @@ const matchId = "00000000-0000-4000-8000-000000000001";
 async function fixture() {
   const factory = new IDBFactory();
   const store = new GameStore(() => factory);
-  const game = new Game(createMatchConfig(341));
+  const game = new Game(createMatchConfig(940));
   const session = new GameSession(game, matchId, "match", { store, expected: null, source: "local" });
   await session.initializeSave();
   const present = vi.fn(async () => {});

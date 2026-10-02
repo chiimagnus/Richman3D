@@ -1,5 +1,5 @@
-.layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
-.dice, .event { position: absolute; top: 26%; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); width: max-content; border: 1px solid var(--border); border-radius: 16px; padding: 16px 24px; background: var(--panel); text-align: center; }
+.layer { grid-area: 2 / 1; position: relative; pointer-events: none; z-index: 3; min-width: 0; align-self: start; }
+.dice, .event { max-width: 100%; width: max-content; margin: 0 auto; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 16px; padding: 16px 24px; background: var(--panel); text-align: center; }
 .dice { display: grid; gap: 8px; }
 .dice strong { font-size: 2.5rem; color: var(--accent); }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

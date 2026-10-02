@@ -2,7 +2,7 @@ import { createMatchConfig } from "../domain/config";
 import type { GameView } from "./GameSession";
 
 const COMPLETED_KEY = "richman3d.tutorial.v1";
-export const tutorialConfig = () => createMatchConfig(341);
+export const tutorialConfig = () => createMatchConfig(940);
 export type TutorialProgress = { readonly started: boolean; readonly inspected: boolean };
 export type TutorialStep = { readonly number: 1 | 2 | 3 | 4 | 5; readonly ready: boolean };
 

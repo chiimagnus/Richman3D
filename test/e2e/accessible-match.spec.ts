@@ -21,7 +21,7 @@ for (const input of ["keyboard", "touch"] as const) {
       const page = await context.newPage();
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
-      await page.addInitScript(() => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(341); return array; } }));
+      await page.addInitScript(() => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(940); return array; } }));
       const activate = async (target: Locator) => {
         if (input === "keyboard") {
           await tabTo(page, target);

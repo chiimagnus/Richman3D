@@ -9,7 +9,7 @@ import { saved, startMatch } from "./match-actions";
 for (const change of ["progress", "new match"] as const) {
   test(`same-origin pages refuse stale writes after ${change}, export local progress and explicitly load latest`, async ({ page, context }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await startMatch(page, 341);
+    await startMatch(page, 940);
     const initial = (await saved(page))!;
     const other = await context.newPage();
     await other.emulateMedia({ reducedMotion: "reduce" });
@@ -54,7 +54,7 @@ test("emulated visibility cancels real presentation, preserves the committed sav
     Reflect.set(window, "testHidden", false);
     Object.defineProperty(document, "hidden", { get: () => Reflect.get(window, "testHidden") });
   });
-  await startMatch(page, 1);
+  await startMatch(page, 6);
   await page.locator("[data-roll]").click();
   await expect.poll(async () => (await saved(page))?.revision).toBe(1);
   const committed = (await saved(page))!;
@@ -88,7 +88,7 @@ test("closing and relaunching a real browser with the same isolated profile rest
   try {
     context = await chromium.launchPersistentContext(directory, options);
     const first = context.pages()[0]!;
-    await startMatch(first, 341);
+    await startMatch(first, 940);
     await first.locator("[data-roll]").click();
     await expect(first.locator("[data-buy]")).toBeEnabled();
     const committed = (await saved(first))!;

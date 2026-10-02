@@ -1,12 +1,14 @@
 import type { GameApp } from "../app/GameApp";
-import { messages } from "../i18n";
+import { formatMessage, messages, playerName } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import { downloadSave } from "../storage/transfer";
 
 export function PauseMenu({ app, onResume, onTransfer }: { app: GameApp; onResume: () => void; onTransfer: () => void }) {
   const copy = messages(app.getSnapshot().preferences.language);
   const session = app.getSnapshot().session!;
+  const snapshot = session.getSnapshot().committed;
   return <PanelHost title={copy.navigation.pause} onClose={onResume}>
+    <p>{formatMessage(copy.setup.turnOrder, { players: snapshot.turnOrder.map((id) => playerName(app.getSnapshot().preferences.language, id, snapshot.config)).join(copy.setup.nameSeparator) })}</p>
     <button onClick={onResume}>{copy.runtime.resume}</button>
     <p>{app.getSnapshot().session?.getSnapshot().save.kind === "saved" ? copy.storage.preserved : copy.storage.unsaved}</p>
     {app.getSnapshot().session?.getSnapshot().save.kind === "unsaved" && <button data-save-retry onClick={() => void app.getSnapshot().session?.retrySave()}>{copy.storage.retry}</button>}

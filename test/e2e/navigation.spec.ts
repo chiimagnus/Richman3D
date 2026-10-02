@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(crypto, "getRandomValues", { value: (array: Uint32Array) => { array.fill(940); return array; } }));
+});
+
 test("menu is light, audio unlock is in the click, one context survives match navigation", async ({ page }) => {
   await page.addInitScript(() => {
     const Original = AudioContext;

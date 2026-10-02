@@ -2,7 +2,7 @@
 
 [中文](README.md) | **English**
 
-A first-person 3D Richman-style browser board game built with **TypeScript + Three.js + WebGL + Vite**. Play a complete 1v1 match against a computer-controlled rival directly in the browser.
+A first-person 3D Richman-style browser board game built with **TypeScript + Three.js + WebGL + Vite**. Play against 1–3 computer-controlled rivals directly in the browser.
 
 **Play online: https://chiimagnus.github.io/Richman3D/**
 
@@ -14,7 +14,7 @@ A first-person 3D Richman-style browser board game built with **TypeScript + Thr
 - Two-dice movement and rewards for passing Start
 - Property purchasing, ownership, and rent settlement
 - Tax spaces, chance events, and bankruptcy rules
-- Single-player 1v1 against a computer-controlled rival
+- Single-player 2–4 seats against 1–3 computers, with a seeded fixed turn order
 - Live Chinese / English switching with saved language preference
 - Compact HUD, persistent settings, and keyboard shortcuts
 - Match setup, 20/40 full-round rankings and financial results

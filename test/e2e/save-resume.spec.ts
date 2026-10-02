@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 
 test("real initial and purchase saves survive refresh, preserving state and the next actual random result", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await start(page, 341);
+  await start(page, 940);
   const initial = (await saved(page))!;
   expect(initial.revision).toBe(0);
   const matchId = await page.locator("[data-match-id]").getAttribute("data-match-id");
@@ -42,7 +42,7 @@ test("real initial and purchase saves survive refresh, preserving state and the 
 });
 
 test("refresh during real dice presentation resumes the committed landing, not its payment or RNG", async ({ page }) => {
-  await start(page, 1);
+  await start(page, 6);
   await page.locator("[data-roll]").click();
   await expect.poll(async () => (await saved(page))?.revision).toBe(1);
   await expect(page.locator("[data-presenting]")).toHaveAttribute("data-presenting", "true");
@@ -74,7 +74,7 @@ test("real storage refusal requires explicit unsaved play and then retries the l
       return original.apply(this, args);
     };
   });
-  await start(page, 341);
+  await start(page, 940);
   const initial = (await saved(page))!;
   const expected = Game.restore(initial.state);
   await page.evaluate(() => Reflect.set(window, "denyStorage", true));
@@ -120,7 +120,7 @@ test("real storage refusal requires explicit unsaved play and then retries the l
 test("saved terminal results survive refresh and leaving without creating another rule turn", async ({ page }) => {
   test.setTimeout(120_000);
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await start(page, 341);
+  await start(page, 940);
   await finishMatch(page);
   const terminal = (await saved(page))!;
   expect(terminal.state.decision.kind).toBe("game_over");
@@ -136,7 +136,7 @@ test("saved terminal results survive refresh and leaving without creating anothe
 });
 
 test("a different browser storage context has no continuation from the first context", async ({ page, browser }) => {
-  await start(page, 341);
+  await start(page, 940);
   expect((await saved(page))!.revision).toBe(0);
   const other = await browser.newContext();
   try {

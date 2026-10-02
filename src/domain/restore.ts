@@ -2,6 +2,7 @@ import { validateConfig } from "./config";
 import { mapFor } from "./maps";
 import { RuleRandom } from "./random";
 import { rulesFor } from "./rules";
+import { initialTurnOrder } from "./turns";
 import { matchResult, netAssets } from "./selectors";
 import type { GameSnapshot, MatchConfig, SavedGameState } from "./types";
 
@@ -28,7 +29,7 @@ export function sameData(first: unknown, second: unknown): boolean {
 }
 
 export function restoreSnapshot(value: unknown): GameSnapshot {
-  const state = record(value, ["revision", "config", "completedRounds", "players", "activePlayerId", "decision", "owners", "lastRoll", "random"]);
+  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "activePlayerId", "decision", "owners", "lastRoll", "random"]);
   const configValue = record(state.config, ["players", "seed", "rulesVersion", "mapId", "mapVersion"]);
   if (!Array.isArray(configValue.players) || configValue.players.length < 2 || configValue.players.length > 4) throw new Error("席位数量无效");
   for (const player of configValue.players) record(player, ["id", "controller", "name", "defaultNameKey", "color"]);
@@ -40,6 +41,8 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   const map = mapFor(config.mapId, config.mapVersion);
   integer(state.revision);
   integer(state.completedRounds, 0, rules.roundLimit);
+  const initialRandom = new RuleRandom(config.seed);
+  if (!sameData(state.turnOrder, initialTurnOrder(config, initialRandom))) throw new Error("固定轮序无效");
   if (!Array.isArray(state.players) || state.players.length !== config.players.length) throw new Error("玩家数量无效");
   const statsKeys = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases"] as const;
   for (const [index, raw] of state.players.entries()) {
@@ -56,7 +59,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   }
   const owners = record(state.owners);
   for (const [propertyId, owner] of Object.entries(owners)) {
-    if (!map.tiles.some((tile) => tile.type === "property" && tile.id === propertyId) || !config.players.some((player) => player.id === owner)) throw new Error("产权引用无效");
+    if (!map.tiles.some((tile) => tile.type === "property" && tile.id === propertyId) || !(state.players as SavedGameState["players"]).some((player) => player.id === owner && !player.bankrupt)) throw new Error("产权引用无效");
   }
   const random = record(state.random, ["version", "inputSeed", "state", "draws"]);
   new RuleRandom(random as SavedGameState["random"]);
@@ -64,8 +67,8 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   if (state.lastRoll !== null && (!Array.isArray(state.lastRoll) || state.lastRoll.length !== 2)) throw new Error("骰子无效");
   if (Array.isArray(state.lastRoll)) {
     state.lastRoll.forEach((face) => integer(face, 1, 6));
-    if (integer(random.draws) < 2 || state.revision === 0) throw new Error("随机游标无效");
-  } else if (random.draws !== 0 || state.revision !== 0) throw new Error("缺少骰子");
+    if (integer(random.draws) < initialRandom.snapshot.draws + 2 || state.revision === 0) throw new Error("随机游标无效");
+  } else if (!sameData(random, initialRandom.snapshot) || state.revision !== 0) throw new Error("缺少骰子");
   const decision = record(state.decision);
   if (!["awaiting_roll", "awaiting_purchase", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
   record(decision, decision.kind === "awaiting_purchase" ? ["kind", "propertyId"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind"]);
@@ -88,14 +91,15 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   for (const player of snapshot.players) {
     netAssets(snapshot, player.id);
     const purchased = map.tiles.reduce((total, tile) => total + (tile.type === "property" && owners[tile.id] === player.id ? BigInt(tile.price) : 0n), 0n);
-    if (purchased !== BigInt(player.statistics.purchases)) throw new Error("购地统计不平");
+    if (!player.bankrupt && purchased !== BigInt(player.statistics.purchases)) throw new Error("购地统计不平");
   }
   if (snapshot.players.reduce((total, player) => total + BigInt(player.statistics.rentReceived) - BigInt(player.statistics.rentPaid), 0n) !== 0n) throw new Error("租金统计不平");
-  if (snapshot.revision === 0 && (snapshot.completedRounds !== 0 || snapshot.activePlayerId !== config.players[0]!.id || decision.kind !== "awaiting_roll" || Object.keys(owners).length !== 0 ||
-      !sameData(random, new RuleRandom(config.seed).snapshot) || snapshot.players.some((player) => player.position !== 0 || player.cash !== rules.startingCash || Object.values(player.statistics).some((amount) => amount !== 0)))) throw new Error("初始状态无效");
+  if (snapshot.revision === 0 && (snapshot.completedRounds !== 0 || snapshot.activePlayerId !== snapshot.turnOrder[0] || decision.kind !== "awaiting_roll" || Object.keys(owners).length !== 0 ||
+      !sameData(random, initialRandom.snapshot) || snapshot.players.some((player) => player.position !== 0 || player.cash !== rules.startingCash || Object.values(player.statistics).some((amount) => amount !== 0)))) throw new Error("初始状态无效");
   return {
     ...snapshot, config: { ...config, players: config.players.map((player) => ({ ...player })) },
     players: snapshot.players.map((player) => ({ ...player, statistics: { ...player.statistics } })),
+    turnOrder: [...snapshot.turnOrder],
     owners: { ...snapshot.owners }, random: { ...snapshot.random }, lastRoll: snapshot.lastRoll ? [...snapshot.lastRoll] : null,
     decision: snapshot.decision.kind === "game_over" ? { kind: "game_over", result: matchResult(snapshot, snapshot.decision.result.reason) } : { ...snapshot.decision },
     rules: { ...rules, chanceCards: rules.chanceCards.map((card) => ({ ...card })) },

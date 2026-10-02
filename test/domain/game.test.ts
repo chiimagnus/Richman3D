@@ -19,7 +19,7 @@ function roll(game: Game): RollResult {
 
 describe("Game", () => {
   it("允许购买地产，并让后来踩中的对手支付租金", () => {
-    const game = new Game(createMatchConfig(341));
+    const game = new Game(createMatchConfig(940));
     expect(roll(game).to).toBe(3);
     act(game, "buy");
     expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
@@ -34,7 +34,7 @@ describe("Game", () => {
   });
 
   it("经过起点获得奖金，再结算落脚格", () => {
-    const game = new Game(createMatchConfig(2210));
+    const game = new Game(createMatchConfig(17981));
     expect(roll(game).to).toBe(12);
     act(game, "skip");
     expect(roll(game).landing).toEqual({ kind: "tax", amount: 80 });
@@ -46,11 +46,11 @@ describe("Game", () => {
   });
 
   it("结算机会格的确定性奖励", () => {
-    const game = new Game(createMatchConfig(101));
+    const game = new Game(createMatchConfig(768));
     const result = roll(game);
     expect(result.to).toBe(2);
     expect(result.landing).toEqual({ kind: "chance", amount: 120, cardId: "innovation-bonus" });
-    expect(game.snapshot.players[0]?.cash).toBe(1620);
+    expect(game.snapshot.players.find((player) => player.id === result.playerId)?.cash).toBe(1620);
     expect(game.snapshot.activePlayerId).toBe("p2");
   });
 
@@ -60,7 +60,7 @@ describe("Game", () => {
   });
 
   it("资金跌破零时结束游戏并确定胜者", () => {
-    const game = new Game(createMatchConfig(1), { ...QUICK_RULES, startingCash: 50 });
+    const game = new Game(createMatchConfig(6), { ...QUICK_RULES, startingCash: 50 });
     const result = roll(game);
     expect(result.to).toBe(4);
     expect(result.landing).toEqual({ kind: "tax", amount: 80 });

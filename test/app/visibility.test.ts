@@ -18,7 +18,7 @@ async function fixture(pendingBot = false) {
   const factory = new IDBFactory();
   const store = new GameStore(() => factory);
   if (pendingBot) {
-    const game = new Game(createMatchConfig(1));
+    const game = new Game(createMatchConfig(6));
     game.apply(legalCommands(game.snapshot, "p1")[0]!);
     await store.save(makeSave(game.snapshot, crypto.randomUUID()), null);
   }
@@ -58,7 +58,7 @@ it("continuation finishing after the page becomes hidden cannot activate a saved
 it("hidden during a committed save preserves payment, cancels presentation and resumes exactly one bot chain explicitly", async () => {
   const { app, store, present, stop, visibility } = await fixture();
   try {
-    await app.start(createMatchConfig(1));
+    await app.start(createMatchConfig(6));
     const session = app.getSnapshot().session!;
     const save = store.save.bind(store);
     let release = () => {};

@@ -4,7 +4,7 @@ import { createMatchConfig } from "../../src/domain/config";
 import { makeSave } from "../../src/storage/snapshot";
 import { downloadRawSave, importSave, MAX_SAVE_BYTES } from "../../src/storage/transfer";
 
-const record = makeSave(new Game(createMatchConfig(341)).snapshot, "00000000-0000-4000-8000-000000000001");
+const record = makeSave(new Game(createMatchConfig(940)).snapshot, "00000000-0000-4000-8000-000000000001");
 
 it("reads a bounded file through complete snapshot validation without executing commands", async () => {
   const file = new File([JSON.stringify(record)], "match.richman.json");

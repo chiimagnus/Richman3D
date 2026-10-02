@@ -33,7 +33,7 @@ async function download(page: Page, selector: string): Promise<SaveRecord> {
 
 async function start(page: Page) {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await startMatch(page, 341);
+  await startMatch(page, 940);
 }
 
 test("export, clear site storage, import with confirmation and continue preserves exact rules and can export again", async ({ page }) => {
@@ -119,7 +119,7 @@ test("damaged current is downloadable verbatim and only confirmed valid backup r
 
 test("invalid backup and a competing write during preview cannot be silently replaced", async ({ page }) => {
   await page.goto("./");
-  const initial = makeSave(new Game(createMatchConfig(341)).snapshot, crypto.randomUUID());
+  const initial = makeSave(new Game(createMatchConfig(940)).snapshot, crypto.randomUUID());
   const raw = { schemaVersion: 99 };
   await expect(page.locator("[data-start]")).toBeVisible();
   await writeRaw(page, { current: raw, backup: raw });
@@ -143,7 +143,7 @@ test("narrow English save preview keeps its file input and confirmation reachabl
   await page.goto("./");
   await page.getByRole("combobox").selectOption("en");
   await page.locator("[data-transfer-open]").click();
-  const initial = makeSave(new Game(createMatchConfig(341)).snapshot, crypto.randomUUID());
+  const initial = makeSave(new Game(createMatchConfig(940)).snapshot, crypto.randomUUID());
   await upload(page, JSON.stringify(initial));
   await expect(page.getByRole("dialog")).toContainText("not a formal challenge score");
   const dialog = page.getByRole("dialog");

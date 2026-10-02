@@ -4,7 +4,7 @@ import { Game } from "../../src/domain/game";
 import { legalCommands } from "../../src/domain/selectors";
 
 it("caches a deeply immutable snapshot until a successful commit", () => {
-  const game = new Game(createMatchConfig(341));
+  const game = new Game(createMatchConfig(940));
   const before = game.snapshot;
   const serialized = JSON.stringify(before);
   expect(game.snapshot).toBe(before);

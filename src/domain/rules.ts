@@ -9,13 +9,13 @@ export type RuleSet = {
 };
 
 export const QUICK_RULES: RuleSet = {
-  version: "city-v1-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
+  version: "city-v2-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
   chanceCards: [
     { id: "innovation-bonus", amount: 120 }, { id: "maintenance-cost", amount: -90 },
     { id: "community-event", amount: 60 }, { id: "traffic-fine", amount: -50 },
   ],
 };
-export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v1-standard", roundLimit: 40 };
+export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v2-standard", roundLimit: 40 };
 
 export function rulesFor(version: string): RuleSet {
   if (version === QUICK_RULES.version) return QUICK_RULES;
