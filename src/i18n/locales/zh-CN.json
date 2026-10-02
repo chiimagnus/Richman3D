@@ -6,15 +6,11 @@
   "worldAria": "3D 大富翁棋盘",
   "hud": {
     "balancesAria": "玩家资金",
-    "enterFirstPerson": "点击画面进入第一人称",
     "recentDiceAria": "最近一次骰子",
     "roll": "掷骰子",
     "buy": "购买",
     "buyWithPrice": "购买 · {price}",
-    "skip": "跳过",
-    "pointerPurchase": "B 购买 ¥{price} · N 跳过 · M 声音 · Esc 退出",
-    "pointerRoll": "Space 掷骰 · M 声音 · Esc 退出",
-    "pointerIdle": "M 声音 · Esc 退出"
+    "skip": "跳过"
   },
   "settings": {
     "title": "设置",

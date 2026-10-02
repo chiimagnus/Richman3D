@@ -6,15 +6,11 @@
   "worldAria": "3D Richman board",
   "hud": {
     "balancesAria": "Player balances",
-    "enterFirstPerson": "Click the scene to enter first-person view",
     "recentDiceAria": "Latest dice roll",
     "roll": "Roll Dice",
     "buy": "Buy",
     "buyWithPrice": "Buy · {price}",
-    "skip": "Skip",
-    "pointerPurchase": "B Buy ¥{price} · N Skip · M Sound · Esc Exit",
-    "pointerRoll": "Space Roll · M Sound · Esc Exit",
-    "pointerIdle": "M Sound · Esc Exit"
+    "skip": "Skip"
   },
   "settings": {
     "title": "Settings",

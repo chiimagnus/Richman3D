@@ -399,24 +399,6 @@ kbd {
   font-family: inherit;
 }
 
-.look-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 91px;
-  translate: -50% 0;
-  max-width: calc(100vw - 32px);
-  color: rgb(202 221 229 / 68%);
-  font-size: 0.66rem;
-  white-space: nowrap;
-  text-shadow: 0 2px 14px rgb(0 0 0 / 70%);
-  transition: opacity 180ms ease;
-}
-
-.hud[data-pointer-locked="true"] .look-hint {
-  color: rgb(226 240 246 / 82%);
-  opacity: 1;
-}
-
 .crosshair {
   position: absolute;
   left: 50%;
@@ -844,10 +826,6 @@ kbd {
 
   .action-buttons button {
     padding: 0 11px;
-  }
-
-  .look-hint {
-    bottom: 84px;
   }
 }
 
