@@ -13,6 +13,13 @@ test("menu is light, audio unlock is in the click, one context survives match na
   await page.goto("./");
   await expect(page.locator("canvas")).toHaveCount(0);
   expect(await page.evaluate(() => Reflect.get(window, "audioAudit").contexts)).toBe(0);
+  await page.getByRole("combobox").selectOption("en");
+  await page.getByRole("combobox").selectOption("zh-CN");
+  await page.locator("[data-settings-open]").click();
+  await page.getByRole("checkbox").uncheck();
+  await page.getByRole("checkbox").check();
+  await page.keyboard.press("Escape");
+  expect(await page.evaluate(() => Reflect.get(window, "audioAudit").contexts)).toBe(0);
   await page.locator("[data-start]").dblclick();
   await page.locator("[data-launch]").dblclick();
   await expect(page.locator("[data-roll]")).toBeEnabled();

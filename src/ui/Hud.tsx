@@ -6,8 +6,9 @@ import { formatCash, formatMessage, messages, playerName, tileName } from "../i1
 import type { Language } from "../i18n/language";
 import styles from "./Hud.module.css";
 import { playerConfig } from "../domain/config";
+import type { TutorialStep } from "../app/tutorial";
 
-export function Hud({ session, language }: { session: GameSession; language: Language }) {
+export function Hud({ session, language, tutorial, onTutorialNext, onTutorialExit }: { session: GameSession; language: Language; tutorial?: TutorialStep | undefined; onTutorialNext?: () => void; onTutorialExit?: (completed: boolean) => void }) {
   const view = useGameView(session);
   const model = actionView(view, language);
   const copy = messages(language);
@@ -17,7 +18,7 @@ export function Hud({ session, language }: { session: GameSession; language: Lan
     if (!view.presenting && view.mode === "running" && document.activeElement === document.body) {
       actions.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     }
-  }, [decisionKind, view.presenting, view.mode, view.attached]);
+  }, [decisionKind, view.presenting, view.mode, view.attached, tutorial?.number]);
   const execute = (kind: "roll" | "buy" | "skip") => {
     const command = model.commands.find((action) => action.kind === kind);
     if (command) void session.dispatch(command);
@@ -34,13 +35,18 @@ export function Hud({ session, language }: { session: GameSession; language: Lan
       <div className={styles.copy}><strong data-tile>{tileName(language, model.tile)}</strong><span data-status>{model.status}</span></div>
       <span data-dice aria-label={copy.hud.recentDiceAria}>{view.displayed.lastRoll ? view.displayed.lastRoll.join(" + ") : "— + —"}</span>
       <div ref={actions} className={styles.actions}>
-        {buying ? <>
+        {tutorial && (tutorial.number === 1 || tutorial.number === 3) ? <button data-tutorial-next disabled={!tutorial.ready} onClick={onTutorialNext}>{copy.tutorial.next}</button> : tutorial?.number === 5 ? <button data-tutorial-finish disabled={!tutorial.ready} onClick={() => onTutorialExit?.(true)}>{copy.tutorial.finish}</button> : buying ? <>
           <button data-buy disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: model.property.price }) : copy.hud.buy}</button>
           <button data-skip disabled={!model.commands.some((action) => action.kind === "skip")} onClick={() => execute("skip")}>{copy.hud.skip}</button>
           {!model.commands.some((action) => action.kind === "buy") && <span>{copy.status.insufficientFunds}</span>}
         </> : <button data-roll disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}</button>}
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
       </div>
+      {tutorial && <div className={styles.tutorial} data-tutorial-step={tutorial.number}>
+        <strong>{formatMessage(copy.tutorial.progress, { step: tutorial.number })}</strong>
+        <p>{copy.tutorial.steps[`step${tutorial.number}`]}</p>
+        <button data-tutorial-skip onClick={() => onTutorialExit?.(false)}>{copy.tutorial.skip}</button>
+      </div>}
     </footer>
   </>;
 }

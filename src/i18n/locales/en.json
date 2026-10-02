@@ -17,7 +17,7 @@
   },
   "settings": {
     "title": "Settings",
-    "returnToGame": "Back to Game",
+    "returnToGame": "Done",
     "sound": "Sound",
     "sensitivity": "Mouse Sensitivity",
     "low": "Low",
@@ -95,6 +95,28 @@
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
     "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
+  },
+  "tutorial": {
+    "start": "Practice tutorial", "review": "Replay tutorial", "progress": "Practice · {step} / 5", "next": "Continue tutorial", "finish": "Finish and set up a match", "skip": "Skip tutorial",
+    "steps": {
+      "step1": "Find your starting cash above. This practice match is separate from normal matches.",
+      "step2": "Roll the real dice to move. The fixed practice seed guarantees an available property.",
+      "step3": "Read the landing space, price and rent in the current action. Continue when you have inspected them.",
+      "step4": "Choose Buy or Skip. Buying spends cash and earns rent when the opponent lands here.",
+      "step5": "Watch the computer finish its real turn. Then return to setup for a fresh match; practice assets do not carry over."
+    }
+  },
+  "help": {
+    "title": "How to play", "close": "Close help",
+    "sections": {
+      "goal": { "title": "Winning and rounds", "body": "Quick matches last {quick} full rounds; standard matches last {standard}. The final seat must finish its decision before the round counts. Rank by cash plus property book value, then cash; equal results tie. The last solvent player wins early." },
+      "turn": { "title": "Your turn", "body": "Roll two dice, move by their total and resolve the landing. Buy an available property or skip it. The computer then acts. Doubles do not grant another turn." },
+      "property": { "title": "Property and rent", "body": "Buying costs the displayed price. Landing on an opponent’s property pays its displayed rent. Your own property costs nothing. There are no buildings, mortgages, auctions, trades or held items yet." },
+      "money": { "title": "Money and events", "body": "Initial cash is ¥{cash}; passing Start earns ¥{bonus}. Tax spaces charge their displayed fee. Chance gives an immediate random gain or expense. Cash below zero currently means bankruptcy, without a debt-rescue phase." },
+      "view": { "title": "View and controls", "body": "Board overview shows the whole board and both pawns. Return to your first-person view for optional mouse look; mouse lock is never automatic. Touch starts in overview. Roll, buy and skip also have screen buttons." },
+      "keys": { "title": "Keyboard", "body": "Space rolls, B buys, N skips and M toggles sound when available. Shortcuts do not activate inside forms or help. Esc first exits mouse lock or the current panel; otherwise it opens Pause. There is no WASD free movement." },
+      "navigation": { "title": "Pause, settings and results", "body": "Settings changes language, sound and mouse sensitivity. Pause offers Resume, Play Again and Main Menu. Leaving or restarting discards an unfinished match: match saving is not available yet. Results explain the winner and expand into cash, property and financial details; replaying the original seed is optional." }
+    }
   },
   "runtime": {
     "title": "Richman 3D",

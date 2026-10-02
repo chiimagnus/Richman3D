@@ -10,13 +10,17 @@ A first-person 3D Richman-style browser board game built with **TypeScript + Thr
 
 ## Features
 
-- First-person 3D board with mouse-look controls
+- First-person 3D board, optional mouse look and full-board overview
 - Two-dice movement and rewards for passing Start
 - Property purchasing, ownership, and rent settlement
 - Tax spaces, chance events, and bankruptcy rules
 - Single-player 1v1 against a computer-controlled rival
 - Live Chinese / English switching with saved language preference
 - Compact HUD, persistent settings, and keyboard shortcuts
+- Match setup, 20/40 full-round rankings and financial results
+- Independent five-step practice and bilingual in-game help (no match saving yet)
+
+Full current rules and controls: **[How to play](docs/how-to-play.en.md)**.
 
 ## Controls
 

@@ -23,7 +23,7 @@ export class GameSession {
   private announcedNoticeId = 0;
   private view: GameView;
 
-  constructor(private readonly game: Game, readonly matchId = "local") {
+  constructor(private readonly game: Game, readonly matchId = "local", readonly purpose: "match" | "tutorial" = "match") {
     this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null };
   }
 

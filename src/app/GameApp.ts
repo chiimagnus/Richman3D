@@ -3,16 +3,18 @@ import { loadPreferences, savePreferences, type GamePreferences } from "../setti
 import type { GameSession } from "./GameSession";
 import { createMatchConfig } from "../domain/config";
 import type { MatchConfig } from "../domain/types";
+import { loadTutorialCompleted, saveTutorialCompleted, tutorialConfig } from "./tutorial";
 
 export type AppView = {
   readonly preferences: GamePreferences;
   readonly session: GameSession | null;
   readonly loading: boolean;
   readonly loadFailed: boolean;
+  readonly tutorialCompleted: boolean;
 };
 
 export class GameApp {
-  private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false };
+  private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false, tutorialCompleted: loadTutorialCompleted() };
   private readonly listeners = new Set<() => void>();
   readonly audio = new GameAudio(this.view.preferences.soundEnabled);
   private request = 0;
@@ -28,7 +30,7 @@ export class GameApp {
     return () => this.listeners.delete(listener);
   };
 
-  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1)): Promise<void> {
+  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1), purpose: "match" | "tutorial" = "match"): Promise<void> {
     if (this.view.loading) return;
     this.audio.unlock();
     const request = ++this.request;
@@ -38,7 +40,7 @@ export class GameApp {
     try {
       const [{ Game }, { GameSession }] = await Promise.all([import("../domain/game"), import("./GameSession"), import("../ui/SceneHost")]);
       if (request !== this.request) return;
-      const session = new GameSession(new Game(config), crypto.randomUUID());
+      const session = new GameSession(new Game(config), crypto.randomUUID(), purpose);
       this.publish({ ...this.view, session, loading: false });
       await session.activate();
     } catch {
@@ -47,8 +49,18 @@ export class GameApp {
   }
 
   restart(replay = false): Promise<void> {
+    if (this.view.session?.purpose === "tutorial") return this.startTutorial();
     const config = this.view.session?.getSnapshot().committed.config;
     return this.start(config ? { ...config, seed: replay ? config.seed : crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 } : undefined);
+  }
+
+  startTutorial(): Promise<void> { return this.start(tutorialConfig(), "tutorial"); }
+
+  finishTutorial(completed: boolean): void {
+    if (this.view.session?.purpose !== "tutorial") return;
+    if (completed) saveTutorialCompleted();
+    this.publish({ ...this.view, tutorialCompleted: this.view.tutorialCompleted || completed });
+    this.leave();
   }
 
   leave(): void {
@@ -62,7 +74,7 @@ export class GameApp {
     if (Object.keys(preferences).every((key) => preferences[key as keyof GamePreferences] === this.view.preferences[key as keyof GamePreferences])) return;
     savePreferences(preferences);
     this.audio.setEnabled(preferences.soundEnabled);
-    if (preferences.soundEnabled) this.audio.unlock();
+    if (this.view.session && preferences.soundEnabled && !this.view.preferences.soundEnabled) this.audio.unlock();
     document.documentElement.lang = preferences.language;
     this.publish({ ...this.view, preferences });
   }
