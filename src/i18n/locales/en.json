@@ -31,16 +31,16 @@
   },
   "status": {
     "insufficientFunds": "Not enough cash to buy this property.",
-    "purchased": "{actor} bought “{propertyName}”.",
+    "purchased": "{actor} paid {amount} to buy “{propertyName}”.",
     "skipped": "{actor} skipped “{propertyName}”.",
     "botActing": "{actor} is taking a turn…",
     "yourTurn": "{actor}'s turn.",
     "winner": "{playerName} won.",
-    "rollPropertyAvailable": "{actor} moved {steps} spaces. This property is available to buy.",
-    "rollRent": "{actor} moved {steps} spaces and paid ¥{amount} rent.",
+    "rollPropertyAvailable": "{actor} moved {steps} spaces to “{propertyName}”, available to buy.",
+    "rollRent": "{actor} moved {steps} spaces and paid {amount} rent to {owner} for “{propertyName}”.",
     "rollTax": "{actor} moved {steps} spaces and paid ¥{amount}.",
     "rollChance": "{actor} moved {steps} spaces: {message}",
-    "rollOwned": "{actor} moved {steps} spaces onto an owned property.",
+    "rollOwned": "{actor} moved {steps} spaces onto their own “{propertyName}”.",
     "rollStart": "{actor} moved {steps} spaces back to Start."
   },
   "feedback": {
@@ -118,6 +118,7 @@
       "property": { "title": "Property and rent", "body": "Buying costs the displayed price. Landing on an opponent’s property pays its displayed rent. Your own property costs nothing. There are no buildings, mortgages, auctions, trades or held items yet." },
       "money": { "title": "Money and events", "body": "Initial cash is ¥{cash}; passing Start earns ¥{bonus}. Tax spaces charge their displayed fee. Chance gives an immediate random gain or expense. Cash below zero currently means bankruptcy: properties return to the bank and stop collecting rent; historical purchase costs remain. There is no debt-rescue phase yet." },
       "view": { "title": "View and controls", "body": "Board overview shows the whole board and all pawns. Return to your first-person view for optional mouse look; mouse lock is never automatic. Touch starts in overview. Roll, buy and skip also have screen buttons." },
+      "assets": { "title": "Public assets and action history", "body": "Choose a seat's cash to inspect cash, property book value, net assets, ownership and current rent. Computers keep playing; a purchasing decision keeps inspection in its action area with one set of purchase controls. Viewing does not execute commands or reveal future random results. Pause and results offer the latest {historyLimit} semantic events, including amounts and rent payees; history is saved and retranslated, never replayed." },
       "keys": { "title": "Keyboard", "body": "Space rolls, B buys, N skips and M toggles sound when available. Shortcuts do not activate inside forms or help. Esc first exits mouse lock or the current panel; otherwise it opens Pause. There is no WASD free movement." },
       "navigation": { "title": "Pause, settings and results", "body": "Settings changes language, sound and mouse sensitivity. Pause and backgrounding settle animation at the committed destination without repeating payments; returning to the foreground requires explicit Resume. Practice does not replace your saved match. Results explain the winner and financial details; original-seed replay is optional." },
       "saving": { "title": "Local saves and recovery", "body": "Actions save before presentation. Main Menu preserves the save; Play Again replaces it. Saving failures offer retry, export or explicit unsaved play. A change from another page pauses this page instead of overwriting it. Import and backup recovery require validation, preview and confirmation. Damaged raw data can be exported and is not automatically erased. Files contain names and the full state: keep them private. Browsers may clear local data." }
@@ -150,6 +151,13 @@
     "unavailable": "Local match storage is unavailable. You may start a match and choose to play without saving.",
     "invalid": "The saved data is damaged or uses an unsupported version. It has not been erased."
   },
+  "assets": {
+    "title": "Public assets", "open": "View {player}'s public assets", "player": "Inspect seat", "seat": "Seat {number} · {player}",
+    "cash": "Cash", "value": "Property book value", "net": "Net assets", "rent": "Current rent", "owner": "Owner", "bank": "Bank",
+    "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect property details", "close": "Close asset view",
+    "bankrupt": "Eliminated; properties returned to the bank.", "publicOnly": "Public assets only; no private cards or future random results."
+  },
+  "history": { "title": "Action history", "count": "Keeping the latest {limit} events; {count} currently stored.", "empty": "No actions yet.", "revision": "Action {revision}", "back": "Close history" },
   "runtime": {
     "title": "Richman 3D",
     "start": "Start Game",

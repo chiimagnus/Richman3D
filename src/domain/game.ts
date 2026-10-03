@@ -7,6 +7,7 @@ import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot } from "./restore";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
+import { HISTORY_LIMIT } from "./types";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -47,6 +48,7 @@ export class Game {
       decision: { kind: "awaiting_roll", actorId: turnOrder[0]! },
       owners: {}, lastRoll: null,
       random: random.snapshot,
+      history: [],
     });
   }
 
@@ -187,7 +189,9 @@ export class Game {
         }
       }
       if (!Number.isSafeInteger(before.revision + 1) || !Number.isSafeInteger(random.snapshot.draws)) throw new RangeError("版本超出整数范围");
-      const snapshot = freeze({ ...before, revision: before.revision + 1, players, owners, turnPlayerId, completedRounds, decision, lastRoll, random: random.snapshot });
+      const revision = before.revision + 1;
+      const history = [...before.history, ...events.map((event) => ({ revision, event }))].slice(-HISTORY_LIMIT);
+      const snapshot = freeze({ ...before, revision, players, owners, turnPlayerId, completedRounds, decision, lastRoll, random: random.snapshot, history });
       result = freeze({ ok: true, snapshot, events });
     } catch {
       return { ok: false, reason: "calculation_failed" };

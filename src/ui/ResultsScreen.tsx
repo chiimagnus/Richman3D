@@ -5,7 +5,7 @@ import { formatCash, formatMessage, messages, playerName, resultTitle } from "..
 import { PanelHost } from "./PanelHost";
 import styles from "./ResultsScreen.module.css";
 
-export function ResultsScreen({ app, snapshot }: { app: GameApp; snapshot: GameSnapshot }) {
+export function ResultsScreen({ app, snapshot, onHistory }: { app: GameApp; snapshot: GameSnapshot; onHistory: () => void }) {
   if (snapshot.decision.kind !== "game_over") return null;
   const result = snapshot.decision.result;
   const preferences = app.getSnapshot().preferences;
@@ -42,6 +42,7 @@ export function ResultsScreen({ app, snapshot }: { app: GameApp; snapshot: GameS
       <button data-replay onClick={() => void app.restart(true)}>{copy.results.replay}</button>
     </details>
     <div className={styles.secondary}>
+      <button data-history-open onClick={onHistory}>{copy.history.title}</button>
       <button onClick={() => app.leave()}>{copy.runtime.leave}</button>
       <label>{copy.settings.language}<select data-result-language value={language} onChange={(event) => app.setPreferences({ ...preferences, language: event.currentTarget.value as "en" | "zh-CN" })}>
         <option value="zh-CN">{copy.settings.languageOptions["zh-CN"]}</option><option value="en">{copy.settings.languageOptions.en}</option>

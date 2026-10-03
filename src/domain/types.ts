@@ -2,6 +2,7 @@ import type { MapDefinition } from "./board";
 import type { RuleSet } from "./rules";
 
 export type PlayerId = "p1" | "p2" | "p3" | "p4";
+export const HISTORY_LIMIT = 100;
 export type PlayerConfig = {
   readonly id: PlayerId;
   readonly controller: "human" | "bot";
@@ -62,6 +63,7 @@ export type GameSnapshot = {
   readonly owners: Readonly<Record<string, PlayerId>>;
   readonly lastRoll: readonly [number, number] | null;
   readonly random: RandomState;
+  readonly history: readonly { readonly revision: number; readonly event: GameEvent }[];
 };
 
 export type SavedGameState = Omit<GameSnapshot, "rules" | "map">;

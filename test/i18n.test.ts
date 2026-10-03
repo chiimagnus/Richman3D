@@ -79,8 +79,8 @@ describe("i18n", () => {
   it("formats JSON message templates", () => {
     expect(
       formatMessage(messages("en").status.purchased, {
-        actor: "You", propertyName: "Harbor Walk",
+        actor: "You", propertyName: "Harbor Walk", amount: "¥180",
       }),
-    ).toBe("You bought “Harbor Walk”.");
+    ).toBe("You paid ¥180 to buy “Harbor Walk”.");
   });
 });

@@ -26,7 +26,7 @@ export function validateConfig(config: MatchConfig): void {
   }
 }
 
-export function playerConfig(config: MatchConfig, id: PlayerId): PlayerConfig {
+export function playerConfig(config: Pick<MatchConfig, "players">, id: PlayerId): PlayerConfig {
   const player = config.players.find((candidate) => candidate.id === id);
   if (!player) throw new Error("席位不存在");
   return player;

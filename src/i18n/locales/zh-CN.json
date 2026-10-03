@@ -31,16 +31,16 @@
   },
   "status": {
     "insufficientFunds": "资金不足，无法购买这块地产。",
-    "purchased": "{actor}购买了「{propertyName}」。",
+    "purchased": "{actor}支付{amount}购买了「{propertyName}」。",
     "skipped": "{actor}跳过了「{propertyName}」。",
     "botActing": "{actor}行动中…",
     "yourTurn": "轮到{actor}了。",
     "winner": "{playerName}获胜。",
-    "rollPropertyAvailable": "{actor}移动 {steps} 格，这块地产可以购买。",
-    "rollRent": "{actor}移动 {steps} 格，支付租金 {amount}。",
+    "rollPropertyAvailable": "{actor}移动 {steps} 格，抵达可购买的「{propertyName}」。",
+    "rollRent": "{actor}移动 {steps} 格，为「{propertyName}」向{owner}支付租金 {amount}。",
     "rollTax": "{actor}移动 {steps} 格，支付费用 {amount}。",
     "rollChance": "{actor}移动 {steps} 格：{message}",
-    "rollOwned": "{actor}移动 {steps} 格，回到自己的地产。",
+    "rollOwned": "{actor}移动 {steps} 格，回到自己的「{propertyName}」。",
     "rollStart": "{actor}移动 {steps} 格，回到起点。"
   },
   "feedback": {
@@ -118,6 +118,7 @@
       "property": { "title": "地产与租金", "body": "购买支付所显示的价格，踩到对手地产支付所显示的租金，自己的地产不收费。当前没有建筑、抵押、拍卖、交易或持有道具。" },
       "money": { "title": "资金与事件", "body": "初始资金{cash}，经过起点获得{bonus}。税收格支付标明费用，机会格立即随机获得收入或支出。当前现金跌破零即破产，地产归还银行、不再收租，历史购地支出保留。尚无债务救济阶段。" },
       "view": { "title": "镜头与按钮", "body": "棋盘总览显示完整棋盘和各席棋子，可返回本人第一人称，鼠标环视是可选操作且不自动锁定。触屏默认总览。掷骰、购买和跳过均有屏幕按钮。" },
+      "assets": { "title": "公开资产与行动历史", "body": "点击席位资金查看现金、地产账面价值、净资产、归属与当前租金，电脑仍会继续行动。购买时查看留在原行动区内，只有一组购买操作。查看不执行规则，也不透露未来随机结果。暂停和结算可查看最近{historyLimit}条语义事件，包含金额与租金收款方；历史随存档保存，切语言重新显示而不重放。" },
       "keys": { "title": "键盘", "body": "Space掷骰，B购买，N跳过，M开关声音，仅在动作可用时生效。表单和帮助中快捷键不会穿透。Esc优先退出鼠标锁定或当前面板，否则打开暂停。没有WASD自由移动。" },
       "navigation": { "title": "暂停、设置与结算", "body": "设置可改语言、声音和鼠标灵敏度。暂停及切后台把动画收敛到已结算位置，不重放付款；回到前台须明确继续。教学不替换正式局存档。结算说明赢家与财务明细，重玩原种子是次要选项。" },
       "saving": { "title": "本地存档与恢复", "body": "行动在演出前自动保存，主菜单保留存档，再来一局替换当前存档。保存失败可重试、导出或明确不保存继续；其他页面改过存档则暂停，不自动覆盖。导入与备份恢复先校验并预览，再确认替换。坏档可导出原始数据，不自动清空。文件含名字与完整局面，请注意隐私；浏览器可能清除本地数据。" }
@@ -150,6 +151,13 @@
     "unavailable": "本地对局存储不可用，可以开局并选择不保存继续。",
     "invalid": "存档损坏或版本不受支持，原数据没有被删除。"
   },
+  "assets": {
+    "title": "公开资产", "open": "查看{player}的公开资产", "player": "查看席位", "seat": "席位{number} · {player}",
+    "cash": "现金", "value": "地产账面价值", "net": "净资产", "rent": "当前租金", "owner": "归属", "bank": "银行",
+    "price": "购买价格", "properties": "拥有的地产", "empty": "没有地产。", "details": "查看地产详情", "close": "关闭资产查看",
+    "bankrupt": "已淘汰，地产已归还银行。", "publicOnly": "仅展示公开资产，不包含手牌或未来随机结果。"
+  },
+  "history": { "title": "行动历史", "count": "保留最近{limit}条事件，当前{count}条。", "empty": "尚无行动。", "revision": "行动{revision}", "back": "关闭历史" },
   "runtime": {
     "title": "Richman 3D",
     "start": "开始游戏",

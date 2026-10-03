@@ -4,7 +4,7 @@ import { RuleRandom } from "./random";
 import { rulesFor } from "./rules";
 import { initialTurnOrder } from "./turns";
 import { matchResult, netAssets } from "./selectors";
-import type { GameSnapshot, MatchConfig, SavedGameState } from "./types";
+import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type LandingResult, type MatchConfig, type PlayerId, type RollResult, type SavedGameState } from "./types";
 
 export function record(value: unknown, keys?: readonly string[]): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value) ||
@@ -29,7 +29,7 @@ export function sameData(first: unknown, second: unknown): boolean {
 }
 
 export function restoreSnapshot(value: unknown): GameSnapshot {
-  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "turnPlayerId", "decision", "owners", "lastRoll", "random"]);
+  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "turnPlayerId", "decision", "owners", "lastRoll", "random", "history"]);
   const configValue = record(state.config, ["players", "seed", "rulesVersion", "mapId", "mapVersion"]);
   if (!Array.isArray(configValue.players) || configValue.players.length < 2 || configValue.players.length > 4) throw new Error("席位数量无效");
   for (const player of configValue.players) record(player, ["id", "controller", "name", "defaultNameKey", "color"]);
@@ -98,6 +98,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
       !sameData(random, initialRandom.snapshot) || snapshot.players.some((player) => player.position !== 0 || player.cash !== rules.startingCash || Object.values(player.statistics).some((amount) => amount !== 0)))) throw new Error("初始状态无效");
   return {
     ...snapshot, config: { ...config, players: config.players.map((player) => ({ ...player })) },
+    history: restoreHistory(state.history, snapshot),
     players: snapshot.players.map((player) => ({ ...player, statistics: { ...player.statistics } })),
     turnOrder: [...snapshot.turnOrder],
     owners: { ...snapshot.owners }, random: { ...snapshot.random }, lastRoll: snapshot.lastRoll ? [...snapshot.lastRoll] : null,
@@ -105,4 +106,85 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     rules: { ...rules, chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
     map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
   };
+}
+
+function restoreHistory(value: unknown, snapshot: GameSnapshot): GameSnapshot["history"] {
+  if (!Array.isArray(value) || value.length > HISTORY_LIMIT || (snapshot.revision === 0 ? value.length !== 0 : value.length === 0)) throw new Error("历史数量无效");
+  let previous = 0;
+  let count = 0;
+  const history = value.map((raw) => {
+    const entry = record(raw, ["revision", "event"]);
+    const revision = integer(entry.revision, 1, snapshot.revision);
+    if (previous && (revision < previous || revision > previous + 1)) throw new Error("历史顺序无效");
+    count = revision === previous ? count + 1 : 1;
+    if (count > 2) throw new Error("历史重复事件");
+    previous = revision;
+    return { revision, event: restoreEvent(entry.event, snapshot) };
+  });
+  if (previous !== snapshot.revision) throw new Error("历史缺少最新提交");
+  return history;
+}
+
+function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
+  const event = record(value);
+  const actor = (value: unknown): PlayerId => {
+    if (!snapshot.config.players.some((player) => player.id === value)) throw new Error("历史玩家无效");
+    return value as PlayerId;
+  };
+  switch (event.kind) {
+    case "turn":
+      record(event, ["kind", "actor"]);
+      return { kind: "turn", actor: actor(event.actor) };
+    case "ended":
+      record(event, ["kind", "result"]);
+      if (snapshot.decision.kind !== "game_over" || !sameData(event.result, snapshot.decision.result)) throw new Error("历史终局无效");
+      return { kind: "ended", result: matchResult(snapshot, snapshot.decision.result.reason) };
+    case "purchased":
+    case "skipped": {
+      record(event, event.kind === "purchased" ? ["kind", "actor", "propertyId", "price"] : ["kind", "actor", "propertyId"]);
+      const tile = snapshot.map.tiles.find((tile) => tile.id === event.propertyId);
+      if (!tile || tile.type !== "property" || event.kind === "purchased" && event.price !== tile.price) throw new Error("历史地产无效");
+      return event.kind === "purchased" ? { kind: "purchased", actor: actor(event.actor), propertyId: tile.id, price: tile.price } : { kind: "skipped", actor: actor(event.actor), propertyId: tile.id };
+    }
+    case "rolled": {
+      record(event, ["kind", "result"]);
+      const result = record(event.result, ["playerId", "dice", "steps", "from", "to", "path", "passedStart", "startBonus", "landing"]);
+      const playerId = actor(result.playerId);
+      if (!Array.isArray(result.dice) || result.dice.length !== 2) throw new Error("历史骰子无效");
+      const dice = [integer(result.dice[0], 1, 6), integer(result.dice[1], 1, 6)] as const;
+      const steps = dice[0] + dice[1];
+      const from = integer(result.from, 0, snapshot.map.tiles.length - 1);
+      const path = Array.from({ length: steps }, (_, offset) => (from + offset + 1) % snapshot.map.tiles.length);
+      const to = path.at(-1)!;
+      const passedStart = path.includes(0);
+      const startBonus = passedStart ? snapshot.rules.passStartBonus : 0;
+      if (result.steps !== steps || result.to !== to || !sameData(result.path, path) || result.passedStart !== passedStart || result.startBonus !== startBonus) throw new Error("历史移动无效");
+      const tile = snapshot.map.tiles[to]!;
+      const landing = record(result.landing);
+      switch (landing.kind) {
+        case "start":
+          record(landing, ["kind"]);
+          if (tile.type !== "start") throw new Error("历史起点无效");
+          break;
+        case "tax":
+          record(landing, ["kind", "amount"]);
+          if (tile.type !== "tax" || landing.amount !== tile.amount) throw new Error("历史税费无效");
+          break;
+        case "chance":
+          record(landing, ["kind", "amount", "cardId"]);
+          if (tile.type !== "chance" || !snapshot.rules.chanceCards.some((card) => card.id === landing.cardId && card.amount === landing.amount)) throw new Error("历史机会无效");
+          break;
+        case "property_available":
+        case "property_owned":
+        case "rent":
+          record(landing, landing.kind === "rent" ? ["kind", "propertyId", "ownerId", "amount"] : landing.kind === "property_available" ? ["kind", "propertyId", "price"] : ["kind", "propertyId"]);
+          if (tile.type !== "property" || landing.propertyId !== tile.id || landing.kind === "property_available" && landing.price !== tile.price || landing.kind === "rent" && (landing.amount !== tile.rent || actor(landing.ownerId) === playerId)) throw new Error("历史落点地产无效");
+          break;
+        default: throw new Error("历史落点无效");
+      }
+      const action: RollResult = { playerId, dice, steps, from, to, path, passedStart, startBonus, landing: { ...landing } as LandingResult };
+      return { kind: "rolled", result: action };
+    }
+    default: throw new Error("历史事件无效");
+  }
 }

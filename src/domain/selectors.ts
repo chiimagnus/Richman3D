@@ -1,5 +1,6 @@
 import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
+import { playerConfig } from "./config";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
@@ -39,6 +40,23 @@ export function netAssets(snapshot: GameSnapshot, id: PlayerId): number {
   const value = player.cash + propertyValue(snapshot, id);
   if (!Number.isSafeInteger(value)) throw new RangeError("资产超出整数范围");
   return value;
+}
+
+export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
+  const tile = snapshot.map.tiles.find((candidate) => candidate.id === propertyId);
+  if (!tile || tile.type !== "property") throw new Error("地产不存在");
+  return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group }, ownerId: snapshot.owners[tile.id] ?? null };
+}
+
+export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
+  const player = snapshot.players.find((candidate) => candidate.id === id);
+  if (!player) throw new Error("玩家不存在");
+  const config = playerConfig(snapshot.config, id);
+  return {
+    player: { id: config.id, controller: config.controller, name: config.name, defaultNameKey: config.defaultNameKey, color: config.color },
+    cash: player.cash, propertyValue: propertyValue(snapshot, id), netAssets: netAssets(snapshot, id), bankrupt: player.bankrupt,
+    properties: snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.owners[tile.id] === id).map((tile) => publicProperty(snapshot, tile.id)),
+  };
 }
 
 export function matchResult(snapshot: GameSnapshot, reason: MatchResult["reason"]): MatchResult {

@@ -1,5 +1,5 @@
 import type { GameEvent, GameSnapshot, PlayerId, RollResult } from "../domain/types";
-import { chanceCardText, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
+import { chanceCardText, formatCash, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
@@ -10,7 +10,7 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
     case "skipped": {
       const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId);
       if (!tile) throw new Error("事件地块不存在");
-      return formatMessage(event.kind === "purchased" ? copy.purchased : copy.skipped, { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile) });
+      return formatMessage(event.kind === "purchased" ? copy.purchased : copy.skipped, { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile), ...(event.kind === "purchased" ? { amount: formatCash(language, event.price) } : {}) });
     }
     case "turn": return formatMessage(copy.yourTurn, { actor: playerName(language, event.actor, snapshot.config) });
     case "ended": return resultTitle(language, event.result, snapshot.config);
@@ -26,18 +26,22 @@ function rollStatus(
   const copy = messages(language).status;
   const actor = playerName(language, actorId, snapshot.config);
   const landing = result.landing;
+  const propertyName = "propertyId" in landing ? tileName(language, snapshot.map.tiles.find((tile) => tile.id === landing.propertyId)!) : "";
 
   switch (landing.kind) {
     case "property_available":
       return formatMessage(copy.rollPropertyAvailable, {
         actor,
         steps: result.steps,
+        propertyName,
       });
     case "rent":
       return formatMessage(copy.rollRent, {
         actor,
         steps: result.steps,
-        amount: landing.amount,
+        amount: formatCash(language, landing.amount),
+        owner: playerName(language, landing.ownerId, snapshot.config),
+        propertyName,
       });
     case "tax":
       return formatMessage(copy.rollTax, {
@@ -55,6 +59,7 @@ function rollStatus(
       return formatMessage(copy.rollOwned, {
         actor,
         steps: result.steps,
+        propertyName,
       });
     case "start":
       return formatMessage(copy.rollStart, {

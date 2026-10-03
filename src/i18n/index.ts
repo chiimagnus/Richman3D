@@ -30,7 +30,7 @@ export function formatMessage(
   });
 }
 
-export function playerName(language: Language, playerId: PlayerId, config: MatchConfig): string {
+export function playerName(language: Language, playerId: PlayerId, config: Pick<MatchConfig, "players">): string {
   const player = playerConfig(config, playerId);
   return player.name ?? messages(language).players[player.defaultNameKey];
 }
