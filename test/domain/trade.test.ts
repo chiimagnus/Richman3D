@@ -245,6 +245,23 @@ it("does not migrate or mutate the previous unpublished rule format", () => {
   expect(JSON.stringify(raw)).toBe(original);
 });
 
+it("retains the used opportunity and restores when bounded history clips the opening proposal or its response", () => {
+  const game = propertyMatch();
+  submit(game);
+  respond(game, "trade_accept");
+  for (let count = 0; count < 100; count += 1) {
+    expect(game.apply({ kind: count % 2 === 0 ? "mortgage" : "redeem", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: "harbor-walk" }).ok).toBe(true);
+    const restored = Game.restore(makeSave(game.snapshot, propertyMatchId).state);
+    expect(restored.snapshot).toEqual(game.snapshot);
+    expect(canProposeTrade(restored.snapshot, "p1")).toBe(false);
+    if (count === 98) expect(game.snapshot.history[0]!.event.kind).toBe("trade_accepted");
+  }
+  expect(game.snapshot.history).toHaveLength(100);
+  expect(game.snapshot.history.some(({ event }) => event.kind.startsWith("trade"))).toBe(false);
+  expect(game.snapshot.players[0]!.cash).toBe(1058);
+  expect(game.snapshot.tradeUsed).toBe(true);
+});
+
 it("the bot responds conservatively using only current public value and records a stable readable reason", () => {
   for (const amount of [180, 181]) {
     const game = propertyMatch();
