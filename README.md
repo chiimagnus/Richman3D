@@ -8,22 +8,6 @@
 
 ![Richman 3D gameplay](public/og-image.png)
 
-## 游戏内容
-
-- 第一人称 3D 棋盘、可选鼠标环视与棋盘总览
-- 双骰移动、经过起点奖励
-- 购买地产、地产归属与租金结算
-- 税收格、机会事件与破产判定
-- 单机2–4席：至少一名真人，其余可选真人或电脑，固定轮序与确认交接
-- 中文 / English 实时切换，并保存语言设置
-- 简洁操作界面、可保存设置与键盘快捷键
-- 开局配置、20/40整轮排名与财务结算
-- 独立五步教学与游戏内双语帮助
-- 正式对局本地自动保存、刷新续玩与保存失败提示
-- 受校验的文件导入导出、手动备份恢复与坏档保全
-
-完整规则与操作方式见 **[游戏玩法说明](docs/how-to-play.md)**。
-
 ## 本地运行
 
 ```bash
@@ -50,6 +34,6 @@ npm run build
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="/Applications/Helium.app/Contents/MacOS/Helium" npm run test:e2e
 ```
 
-浏览器回归使用已安装的 Helium，自动构建并启动独立的生产预览，测试后关闭服务器，报告位于 `test-results/`。原生 Pointer Lock 用例使用有窗口浏览器，其余无头运行；Linux 无桌面环境需在设置可执行路径后用 `xvfb-run -a npm run test:e2e`。其他系统请将 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 设为实际的 Helium 可执行文件。测试使用独立临时配置，不连接日常浏览器，也无需下载 Playwright Chrome。
+浏览器回归使用已安装的 Helium，在后台构建并运行生产预览和开发服务，测试后关闭服务器，报告位于 `test-results/`。其他系统请将 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 设为实际的 Helium 可执行文件。测试使用独立临时配置，不连接日常浏览器，也无需下载 Playwright Chrome。
 
-玩家规则、界面操作或快捷键发生变化时，以 `docs/how-to-play.md` 为用户文档真源并同步更新。
+当前 Playwright 与 Helium 捆绑的 uBlock 后台初始化存在兼容问题，自动化仅在自己的临时测试配置中停用该扩展；不更改日常浏览器配置。此测试边界不代表已验证启用拦截器的日常环境。

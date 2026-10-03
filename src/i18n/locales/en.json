@@ -100,30 +100,6 @@
     "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
-  "tutorial": {
-    "start": "Practice tutorial", "review": "Replay tutorial", "progress": "Practice · {step} / 5", "next": "Continue tutorial", "finish": "Finish and set up a match", "skip": "Skip tutorial",
-    "steps": {
-      "step1": "Find your starting cash above. This practice match is separate from normal matches.",
-      "step2": "Roll the real dice to move. The fixed practice seed guarantees an available property.",
-      "step3": "Read the landing space, price and rent in the current action. Continue when you have inspected them.",
-      "step4": "Choose Buy or Skip. Buying spends cash and earns rent when the opponent lands here.",
-      "step5": "Watch the computer finish its real turn. Then return to setup for a fresh match; practice assets do not carry over."
-    }
-  },
-  "help": {
-    "title": "How to play", "close": "Close help",
-    "sections": {
-      "goal": { "title": "Winning and rounds", "body": "Play 2–4 seats with at least one local human and optional normal computers. Multiple humans confirm Pass the device before playing; restoration requires confirmation again. The seed fixes turn order once; Pause shows it. Eliminated seats are skipped without moving the round boundary. Quick matches last {quick} full rounds; standard matches last {standard}. The final seat must finish its decision before the round counts. Rank by cash plus property book value, then cash; equal results tie. Only the last solvent player wins early. If eliminated, watch or leave from Pause." },
-      "turn": { "title": "Your turn", "body": "Roll two dice, move by their total and resolve the landing. Buy an available property or skip it. The fixed order selects the next player; computers act automatically. Doubles do not grant another turn." },
-      "property": { "title": "Property and rent", "body": "Buying costs the displayed price. Landing on an opponent’s property pays its displayed rent. Your own property costs nothing. There are no buildings, mortgages, auctions, trades or held items yet." },
-      "money": { "title": "Money and events", "body": "Initial cash is ¥{cash}; passing Start earns ¥{bonus}. Tax spaces charge their displayed fee. Chance gives an immediate random gain or expense. Cash below zero currently means bankruptcy: properties return to the bank and stop collecting rent; historical purchase costs remain. There is no debt-rescue phase yet." },
-      "view": { "title": "View and controls", "body": "Board overview shows the whole board and all pawns. Return to your first-person view for optional mouse look; mouse lock is never automatic. Touch starts in overview. Roll, buy and skip also have screen buttons." },
-      "assets": { "title": "Public assets and action history", "body": "Choose a seat's cash to inspect cash, property book value, net assets, ownership and current rent. Computers keep playing; a purchasing decision keeps inspection in its action area with one set of purchase controls. Viewing does not execute commands or reveal future random results. Pause and results offer the latest {historyLimit} semantic events, including amounts and rent payees; history is saved and retranslated, never replayed." },
-      "keys": { "title": "Keyboard", "body": "Space rolls, B buys, N skips and M toggles sound when available. Shortcuts do not activate inside forms or help. Esc first exits mouse lock or the current panel; otherwise it opens Pause. There is no WASD free movement." },
-      "navigation": { "title": "Pause, settings and results", "body": "Settings changes language, sound and mouse sensitivity. Pause and backgrounding settle animation at the committed destination without repeating payments; returning to the foreground requires explicit Resume. Practice does not replace your saved match. Results explain the winner and financial details; original-seed replay is optional." },
-      "saving": { "title": "Local saves and recovery", "body": "Actions save before presentation. Main Menu preserves the save; Play Again replaces it. Saving failures offer retry, export or explicit unsaved play. A change from another page pauses this page instead of overwriting it. Import and backup recovery require validation, preview and confirmation. Damaged raw data can be exported and is not automatically erased. Files contain names and the full state: keep them private. Browsers may clear local data." }
-    }
-  },
   "storage": {
     "transfer": {
       "title": "Import and recover saves", "limit": "Choose a .richman.json file of at most 1 MiB. Reading and validation do not replace your match.",

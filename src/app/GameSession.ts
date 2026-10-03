@@ -33,7 +33,7 @@ export class GameSession {
   private expected: SaveIdentity | null;
   private allowUnsaved = false;
 
-  constructor(private readonly game: Game, readonly matchId = "local", readonly purpose: "match" | "tutorial" = "match",
+  constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
     this.expected = persistence?.expected ?? null;
     this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };

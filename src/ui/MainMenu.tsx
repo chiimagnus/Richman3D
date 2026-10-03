@@ -2,7 +2,7 @@ import type { GameApp } from "../app/GameApp";
 import { formatMessage, messages } from "../i18n";
 import styles from "./App.module.css";
 
-export function MainMenu({ app, onSettings, onStart, onHelp, onTransfer }: { app: GameApp; onSettings: () => void; onStart: () => void; onHelp: () => void; onTransfer: () => void }) {
+export function MainMenu({ app, onSettings, onStart, onTransfer }: { app: GameApp; onSettings: () => void; onStart: () => void; onTransfer: () => void }) {
   const state = app.getSnapshot();
   const copy = messages(state.preferences.language);
   return <main className={styles.menu}>
@@ -14,9 +14,7 @@ export function MainMenu({ app, onSettings, onStart, onHelp, onTransfer }: { app
     {state.loadFailed && <p role="alert">{copy.navigation.loadFailed}</p>}
     {state.loading || state.loadFailed ? <button onClick={() => app.leave()}>{copy.runtime.leave}</button> : <>
       <button data-settings-open onClick={onSettings}>{copy.settings.title}</button>
-      <button data-help-open onClick={onHelp}>{copy.help.title}</button>
       <button data-transfer-open onClick={onTransfer}>{copy.storage.transfer.title}</button>
-      <button data-tutorial-start onClick={() => void app.startTutorial()}>{state.tutorialCompleted ? copy.tutorial.review : copy.tutorial.start}</button>
       <label>{copy.settings.language}<select value={state.preferences.language} onChange={(event) => app.setPreferences({ ...state.preferences, language: event.currentTarget.value as "en" | "zh-CN" })}>
         <option value="zh-CN">{copy.settings.languageOptions["zh-CN"]}</option><option value="en">{copy.settings.languageOptions.en}</option>
       </select></label>

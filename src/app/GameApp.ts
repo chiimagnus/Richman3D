@@ -3,7 +3,6 @@ import { loadPreferences, savePreferences, type GamePreferences } from "../setti
 import type { GameSession } from "./GameSession";
 import { createMatchConfig } from "../domain/config";
 import type { MatchConfig } from "../domain/types";
-import { loadTutorialCompleted, saveTutorialCompleted, tutorialConfig } from "./tutorial";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveRecord, type StoredGame } from "../storage/snapshot";
 
@@ -15,12 +14,11 @@ export type AppView = {
   readonly session: GameSession | null;
   readonly loading: boolean;
   readonly loadFailed: boolean;
-  readonly tutorialCompleted: boolean;
   readonly stored: StoredView;
 };
 
 export class GameApp {
-  private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false, tutorialCompleted: loadTutorialCompleted(), stored: { kind: "loading" } };
+  private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false, stored: { kind: "loading" } };
   private readonly listeners = new Set<() => void>();
   readonly audio = new GameAudio(this.view.preferences.soundEnabled);
   private request = 0;
@@ -37,7 +35,7 @@ export class GameApp {
     return () => this.listeners.delete(listener);
   };
 
-  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1), purpose: "match" | "tutorial" = "match", restored?: StoredGame): Promise<void> {
+  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1), restored?: StoredGame): Promise<void> {
     if (this.view.loading) return;
     this.audio.unlock();
     const request = ++this.request;
@@ -54,10 +52,10 @@ export class GameApp {
     this.publish({ ...this.view, session: null, loading: true, loadFailed: false });
     try {
       const [{ Game }, { GameSession }] = await Promise.all([import("../domain/game"), import("./GameSession"), import("../ui/SceneHost")]);
-      const stored = purpose === "match" ? restored ?? await this.readStored() : null;
+      const stored = restored ?? await this.readStored();
       if (request !== this.request) return;
-      const session = new GameSession(restored ? Game.restore(restored.record.state) : new Game(config), restored?.record.matchId ?? crypto.randomUUID(), purpose,
-        purpose === "match" ? { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local" } : undefined);
+      const session = new GameSession(restored ? Game.restore(restored.record.state) : new Game(config), restored?.record.matchId ?? crypto.randomUUID(),
+        { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local" });
       if (document.hidden) session.pause();
       this.publish({ ...this.view, session, loading: false });
       await session.initializeSave();
@@ -69,12 +67,9 @@ export class GameApp {
   }
 
   restart(replay = false): Promise<void> {
-    if (this.view.session?.purpose === "tutorial") return this.startTutorial();
     const config = this.view.session?.getSnapshot().committed.config;
     return this.start(config ? { ...config, seed: replay ? config.seed : crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 } : undefined);
   }
-
-  startTutorial(): Promise<void> { return this.start(tutorialConfig(), "tutorial"); }
 
   async continueSaved(): Promise<void> {
     if (this.view.loading) return;
@@ -84,7 +79,7 @@ export class GameApp {
     const stored = await this.readStored();
     if (request !== this.request) return;
     this.publish({ ...this.view, loading: false });
-    if (stored) await this.start(stored.snapshot.config, "match", stored);
+    if (stored) await this.start(stored.snapshot.config, stored);
   }
 
   private async readStored(): Promise<StoredGame | null> {
@@ -118,13 +113,6 @@ export class GameApp {
     } finally {
       if (request === this.request && this.view.loading) this.publish({ ...this.view, loading: false });
     }
-  }
-
-  finishTutorial(completed: boolean): void {
-    if (this.view.session?.purpose !== "tutorial") return;
-    if (completed) saveTutorialCompleted();
-    this.publish({ ...this.view, tutorialCompleted: this.view.tutorialCompleted || completed });
-    this.leave();
   }
 
   async leave(discard = false): Promise<void> {

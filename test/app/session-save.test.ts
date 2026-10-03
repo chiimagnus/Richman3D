@@ -13,7 +13,7 @@ async function fixture() {
   const factory = new IDBFactory();
   const store = new GameStore(() => factory);
   const game = new Game(createMatchConfig(940));
-  const session = new GameSession(game, matchId, "match", { store, expected: null, source: "local" });
+  const session = new GameSession(game, matchId, { store, expected: null, source: "local" });
   await session.initializeSave();
   const present = vi.fn(async () => {});
   session.bind({ sync() {}, stop() {}, present });
