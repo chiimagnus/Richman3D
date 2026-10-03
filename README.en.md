@@ -31,9 +31,6 @@ Open the local address shown by Vite in a modern desktop browser.
 npm run typecheck
 npm test -- --run
 npm run build
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="/Applications/Helium.app/Contents/MacOS/Helium" npm run test:e2e
 ```
 
-Browser tests use the installed Helium browser and run the production preview and development server in the background, then shut down the servers. Reports are in `test-results/`. On other systems, point `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the actual Helium executable. Tests use isolated temporary profiles, not your everyday session; no Playwright Chrome download is needed.
-
-Playwright currently has an initialization compatibility issue with Helium's bundled uBlock background page. Automation disables it only in its own temporary test profile, without changing your everyday browser configuration. These tests do not verify an everyday session with the blocker enabled.
+When actual interaction needs checking, use the installed Helium browser on the real game page. This project does not maintain browser automation tests.

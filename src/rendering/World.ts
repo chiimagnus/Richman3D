@@ -85,7 +85,6 @@ export class World {
   }
 
   setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
-    this.canvas.dataset.observer = id ?? "";
     if (id === this.observer) return;
     this.unlockFirstPerson();
     this.observer = id;
@@ -105,7 +104,6 @@ export class World {
     this.cameraRig.setView(view);
     for (const [id, player] of this.players) player.setVisible(view === "overview" || id !== this.observer);
     this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0x07111a, 0.016);
-    this.canvas.dataset.view = view;
   }
 
   landOnTile(index: number, landing: LandingResult): void {
@@ -139,10 +137,6 @@ export class World {
   }
 
   cancelPresentation(): void { this.clock.cancel(); }
-
-  get resourceInfo() {
-    return { ...this.renderer.info.memory, activeAnimations: this.clock.activeCount, canvases: this.canvas.isConnected ? 1 : 0, disposed: this.disposed };
-  }
 
   dispose(): void {
     if (this.disposed) return;

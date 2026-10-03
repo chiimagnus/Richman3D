@@ -8,7 +8,6 @@ import { actionView } from "./viewModel";
 import { formatCash, formatMessage, messages, playerName, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import styles from "./Hud.module.css";
-import { playerConfig } from "../domain/config";
 
 export function Hud({ session, language, onAssets, assetPanel }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; assetPanel: ReactNode }) {
   const view = useGameView(session);
@@ -28,25 +27,25 @@ export function Hud({ session, language, onAssets, assetPanel }: { session: Game
   const buying = view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId && !view.presenting;
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
-      {view.displayed.players.map((player) => <button key={player.id} data-player={player.id} data-assets-open={player.id} aria-label={formatMessage(copy.assets.open, { player: playerName(language, player.id, view.displayed.config) })} onClick={() => onAssets(player.id)}>
-        {playerName(language, player.id, view.displayed.config)} <strong {...(playerConfig(view.displayed.config, player.id).controller === "human" ? { "data-human-cash": true } : { "data-bot-cash": true })}>{formatCash(language, player.cash)}</strong>
+      {view.displayed.players.map((player) => <button key={player.id} id={`assets-open-${player.id}`} aria-label={formatMessage(copy.assets.open, { player: playerName(language, player.id, view.displayed.config) })} onClick={() => onAssets(player.id)}>
+        {playerName(language, player.id, view.displayed.config)} <strong>{formatCash(language, player.cash)}</strong>
       </button>)}
-      <span data-round>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
+      <span>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
     </aside>
-    <footer className={styles.dock} data-revision={view.displayed.revision} data-presenting={view.presenting}>
-      <div className={styles.copy}><strong data-tile>{tileName(language, model.tile)}</strong><span data-status>{model.status}</span></div>
-      <span data-dice aria-label={copy.hud.recentDiceAria}>{view.displayed.lastRoll ? view.displayed.lastRoll.join(" + ") : "— + —"}</span>
-      {buying && model.property && <details className={styles.property} data-purchase-details key={model.property.id}>
+    <footer className={styles.dock}>
+      <div className={styles.copy}><strong>{tileName(language, model.tile)}</strong><span>{model.status}</span></div>
+      <span aria-label={copy.hud.recentDiceAria}>{view.displayed.lastRoll ? view.displayed.lastRoll.join(" + ") : "— + —"}</span>
+      {buying && model.property && <details className={styles.property} key={model.property.id}>
         <summary>{copy.assets.details}</summary><PropertyDetails property={publicProperty(view.displayed, model.property.id)} players={view.displayed.config.players} language={language} />
       </details>}
-      {view.displayed.players.find((player) => player.id === view.viewPlayerId)?.bankrupt && <p data-spectating>{copy.setup.spectating}</p>}
-      {view.save.kind === "unsaved" && view.save.acknowledged && <span data-save-status role="status">{copy.storage.unsaved}</span>}
+      {view.displayed.players.find((player) => player.id === view.viewPlayerId)?.bankrupt && <p>{copy.setup.spectating}</p>}
+      {view.save.kind === "unsaved" && view.save.acknowledged && <span role="status">{copy.storage.unsaved}</span>}
       <div ref={actions} className={styles.actions}>
         {buying ? <>
-          <button data-buy disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: model.property.price }) : copy.hud.buy}</button>
-          <button data-skip disabled={!model.commands.some((action) => action.kind === "skip")} onClick={() => execute("skip")}>{copy.hud.skip}</button>
+          <button disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: model.property.price }) : copy.hud.buy}</button>
+          <button disabled={!model.commands.some((action) => action.kind === "skip")} onClick={() => execute("skip")}>{copy.hud.skip}</button>
           {!model.commands.some((action) => action.kind === "buy") && <span>{copy.status.insufficientFunds}</span>}
-        </> : <button data-roll disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}</button>}
+        </> : <button disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}</button>}
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
       </div>
       {assetPanel && <div className={styles.assets}>{assetPanel}</div>}

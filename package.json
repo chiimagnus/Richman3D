@@ -8,8 +8,7 @@
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.domain.json --noEmit",
-    "test": "vitest --config test/vitest.config.ts",
-    "test:e2e": "playwright test --config test/playwright.config.ts"
+    "test": "vitest --config test/vitest.config.ts"
   },
   "dependencies": {
     "react": "19.3.0",
@@ -17,7 +16,6 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
     "@types/node": "^24.5.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

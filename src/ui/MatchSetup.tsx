@@ -29,16 +29,16 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
         onClose();
       } catch { setError(true); }
     }}>
-      <label className={styles.row}>{copy.seats}<select data-seats value={seats} onChange={(event) => { const count = Number(event.currentTarget.value); setSeats(count); setHumans(Math.min(humans, count)); }}>
+      <label className={styles.row}>{copy.seats}<select value={seats} onChange={(event) => { const count = Number(event.currentTarget.value); setSeats(count); setHumans(Math.min(humans, count)); }}>
         {[2, 3, 4].map((count) => <option key={count} value={count}>{formatMessage(copy.seatOption, { count })}</option>)}
       </select></label>
-      <label className={styles.row}>{copy.humans}<select data-humans value={humans} onChange={(event) => setHumans(Number(event.currentTarget.value))}>
+      <label className={styles.row}>{copy.humans}<select value={humans} onChange={(event) => setHumans(Number(event.currentTarget.value))}>
         {Array.from({ length: seats }, (_, index) => <option key={index} value={index + 1}>{formatMessage(copy.humanOption, { count: index + 1 })}</option>)}
       </select></label>
       {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(index < humans ? copy.humanSeat : copy.computerSeat, { number: index < humans ? index + 1 : index - humans + 1 })}
-        <input data-name={id} value={names[index]} placeholder={messages(language).players[id]} onChange={(event) => { const next = [...names]; next[index] = event.currentTarget.value; setNames(next); setError(false); }} />
+        <input value={names[index]} placeholder={messages(language).players[id]} onChange={(event) => { const next = [...names]; next[index] = event.currentTarget.value; setNames(next); setError(false); }} />
       </label>)}
-      <label className={styles.row}>{copy.length}<select data-length value={version} onChange={(event) => setVersion(event.currentTarget.value)}>
+      <label className={styles.row}>{copy.length}<select value={version} onChange={(event) => setVersion(event.currentTarget.value)}>
         <option value={QUICK_RULES.version}>{formatMessage(copy.quick, { rounds: QUICK_RULES.roundLimit })}</option>
         <option value={STANDARD_RULES.version}>{formatMessage(copy.standard, { rounds: STANDARD_RULES.roundLimit })}</option>
       </select></label>
@@ -46,7 +46,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
       <details><summary>{copy.advanced}</summary>
         <p>{formatMessage(copy.city, { spaces: map.tiles.length })}</p>
         {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(copy.color, { player: messages(language).players[id] })}
-          <select data-color={index} value={colors[index]} onChange={(event) => { const next = [...colors]; next[index] = event.currentTarget.value; setColors(next); }}>
+          <select value={colors[index]} onChange={(event) => { const next = [...colors]; next[index] = event.currentTarget.value; setColors(next); }}>
             {SEAT_COLORS.map((color, colorIndex) => <option key={color} value={color}>{Object.values(copy.colors)[colorIndex]}</option>)}
           </select>
         </label>)}
@@ -54,7 +54,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
       </details>
       {error && <p role="alert">{copy.nameError}</p>}
       {app.getSnapshot().stored.kind === "valid" && <p>{messages(language).storage.replaceWarning}</p>}
-      <button data-launch type="submit">{copy.launch}</button><button type="button" onClick={onClose}>{copy.cancel}</button>
+      <button type="submit">{copy.launch}</button><button type="button" onClick={onClose}>{copy.cancel}</button>
     </form>
   </PanelHost>;
 }

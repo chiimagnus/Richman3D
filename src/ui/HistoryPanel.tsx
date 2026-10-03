@@ -7,9 +7,9 @@ import styles from "./Inspection.module.css";
 export function HistoryPanel({ entries, language, onClose }: { entries: readonly { readonly revision: number; readonly text: string }[]; language: Language; onClose: () => void }) {
   const copy = messages(language).history;
   return <PanelHost title={copy.title} onClose={onClose}>
-    <button data-history-close onClick={onClose}>{copy.back}</button>
+    <button onClick={onClose}>{copy.back}</button>
     <p>{formatMessage(copy.count, { limit: HISTORY_LIMIT, count: entries.length })}</p>
-    {entries.length ? <ol className={styles.history} data-history>
+    {entries.length ? <ol className={styles.history}>
       {[...entries].reverse().map((entry, index) => <li key={index}><strong>{formatMessage(copy.revision, { revision: entry.revision })}</strong><p>{entry.text}</p></li>)}
     </ol> : <p>{copy.empty}</p>}
   </PanelHost>;

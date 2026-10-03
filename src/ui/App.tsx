@@ -40,8 +40,8 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   const [panel, setPanel] = useState<"settings" | "pause" | "transfer" | "history" | { kind: "assets"; playerId: PlayerId } | null>(null);
   const lastPanel = useRef(panel);
   useEffect(() => {
-    if (lastPanel.current === "transfer" && panel !== "transfer") document.querySelector<HTMLButtonElement>("[data-transfer-open]")?.focus();
-    if (lastPanel.current === "history" && (panel === "pause" || panel === null)) document.querySelector<HTMLButtonElement>("[data-history-open]")?.focus();
+    if (lastPanel.current === "transfer" && panel !== "transfer") document.querySelector<HTMLButtonElement>("#transfer-open")?.focus();
+    if (lastPanel.current === "history" && (panel === "pause" || panel === null)) document.querySelector<HTMLButtonElement>("#history-open")?.focus();
     lastPanel.current = panel;
   }, [panel]);
   const view = useGameView(session);
@@ -64,7 +64,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   const closeAssets = () => {
     const playerId = typeof panel === "object" && panel ? panel.playerId : null;
     setPanel(null);
-    if (playerId) document.querySelector<HTMLButtonElement>(`[data-assets-open="${playerId}"]`)?.focus({ preventScroll: true });
+    if (playerId) document.querySelector<HTMLButtonElement>(`#assets-open-${playerId}`)?.focus({ preventScroll: true });
   };
   const assets = view.displayed.players.map((player) => playerAssets(view.displayed, player.id));
   const assetPanel = typeof panel === "object" && panel ? <AssetPanel key={panel.playerId} assets={assets} initialPlayer={panel.playerId} language={preferences.language} onClose={closeAssets} /> : null;
@@ -88,17 +88,17 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
     return () => window.removeEventListener("keydown", keydown);
   }, [app, session, preferences, surface, view, panel]);
   const closeSettings = () => { setPanel(null); void session.resume(); };
-  return <main className={styles.game} data-match-id={session.matchId} data-seed={view.committed.config.seed} data-view-player={view.viewPlayerId ?? ""}>
+  return <main className={styles.game}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
       <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost app={app} session={session} preferences={preferences} /></Suspense>
     </ErrorBoundary>
-    {!ended && <div className={styles.tools}><button data-settings-open onClick={() => { session.pause(); setPanel("settings"); }}>{copy.settings.title}</button><button data-pause onClick={() => { session.pause(); setPanel("pause"); }}>{copy.navigation.pause}</button></div>}
+    {!ended && <div className={styles.tools}><button onClick={() => { session.pause(); setPanel("settings"); }}>{copy.settings.title}</button><button onClick={() => { session.pause(); setPanel("pause"); }}>{copy.navigation.pause}</button></div>}
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
       {!ended && handover === null && surface !== "fault" && <><Hud session={session} language={preferences.language} onAssets={(playerId) => { if (document.pointerLockElement) document.exitPointerLock(); setPanel({ kind: "assets", playerId }); }} assetPanel={surface === "inline_assets" ? assetPanel : null} /><FeedbackLayer session={session} language={preferences.language} /></>}
     </ErrorBoundary>
     {surface === "fault" ? <PanelHost title={copy.runtime.presentation_failed}>
-      <p>{copy.storage.exportWarning}</p><button data-save-export onClick={() => downloadSave(session.exportRecord())}>{copy.storage.export}</button>
-      {view.save.kind === "unsaved" || view.save.kind === "conflict" ? <><p>{copy.storage.discardWarning}</p><button data-unsaved-discard onClick={() => app.leave(true)}>{copy.storage.discard}</button></> : <button onClick={() => app.leave()}>{copy.runtime.leave}</button>}
+      <p>{copy.storage.exportWarning}</p><button onClick={() => downloadSave(session.exportRecord())}>{copy.storage.export}</button>
+      {view.save.kind === "unsaved" || view.save.kind === "conflict" ? <><p>{copy.storage.discardWarning}</p><button onClick={() => app.leave(true)}>{copy.storage.discard}</button></> : <button onClick={() => app.leave()}>{copy.runtime.leave}</button>}
     </PanelHost> : surface === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("pause")} /> : surface === "save" ? <SavePanel app={app} session={session} onTransfer={() => setPanel("transfer")} /> : surface === "results" ? <ResultsScreen app={app} snapshot={view.displayed} onHistory={() => setPanel("history")} /> : surface === "settings" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} /> : surface === "pause" ? <PauseMenu app={app} onResume={closeSettings} onTransfer={() => setPanel("transfer")} onHistory={() => setPanel("history")} /> : surface === "history" ? <HistoryPanel entries={view.displayed.history.map((entry) => ({ revision: entry.revision, text: eventText(preferences.language, entry.event, view.displayed) }))} language={preferences.language} onClose={() => setPanel(ended ? null : "pause")} /> : surface === "assets" ? <PanelHost title={copy.assets.title} onClose={closeAssets}>{assetPanel}</PanelHost> : surface === "handover" && handover && <HandoverScreen session={session} actor={handover} language={preferences.language} onPause={pause} />}
   </main>;
 }

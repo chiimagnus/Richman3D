@@ -62,22 +62,22 @@ export function TransferPanel({ app, onClose }: { app: GameApp; onClose: () => v
 
   return <PanelHost title={copy.transfer.title} onClose={() => { if (phase !== "writing") onClose(); }}>
     <p>{copy.transfer.limit}</p>
-    <label>{copy.transfer.file}<input data-save-import type="file" accept=".richman.json,.json,application/json" disabled={phase !== "ready"} onChange={(event) => {
+    <label>{copy.transfer.file}<input type="file" accept=".richman.json,.json,application/json" disabled={phase !== "ready"} onChange={(event) => {
       const file = event.currentTarget.files?.[0];
       event.currentTarget.value = "";
       if (file) void prepare(file);
     }} /></label>
-    <button data-backup-preview disabled={phase !== "ready"} onClick={() => void prepare()}>{copy.transfer.backup}</button>
+    <button disabled={phase !== "ready"} onClick={() => void prepare()}>{copy.transfer.backup}</button>
     <p>{copy.exportWarning}</p>
-    <button data-raw-export disabled={phase !== "ready"} onClick={() => void exportRaw()}>{copy.transfer.raw}</button>
+    <button disabled={phase !== "ready"} onClick={() => void exportRaw()}>{copy.transfer.raw}</button>
     {phase !== "ready" && <p role="status">{copy.transfer.working}</p>}
     {error && <p role="alert">{copy.transfer.errors[error]}</p>}
     {preview && <section aria-label={copy.transfer.preview}>
-      <p data-snapshot-time>{formatMessage(copy.transfer.savedAt, { time: new Date(preview.game.record.savedAt).toLocaleString(language) })}</p>
+      <p>{formatMessage(copy.transfer.savedAt, { time: new Date(preview.game.record.savedAt).toLocaleString(language) })}</p>
       <p>{copy.transfer.replace}</p>
       {preview.source === "imported" && <p>{copy.transfer.imported}</p>}
-      <button data-transfer-confirm disabled={phase !== "ready"} onClick={() => void confirm()}>{copy.transfer.confirm}</button>
+      <button disabled={phase !== "ready"} onClick={() => void confirm()}>{copy.transfer.confirm}</button>
     </section>}
-    <button data-transfer-cancel disabled={phase === "writing"} onClick={onClose}>{copy.transfer.cancel}</button>
+    <button disabled={phase === "writing"} onClick={onClose}>{copy.transfer.cancel}</button>
   </PanelHost>;
 }

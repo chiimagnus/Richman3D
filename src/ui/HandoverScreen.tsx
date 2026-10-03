@@ -14,8 +14,8 @@ export function HandoverScreen({ session, actor, language, onPause }: { session:
   useEffect(() => { if (ready) confirm.current?.focus({ preventScroll: true }); }, [ready]);
   return <PanelHost title={copy.handover.title} onClose={onPause}>
     <p>{copy.handover.instruction}</p>
-    <p data-handover-actor={actor}><span aria-hidden="true" style={{ color: playerConfig(config, actor).color }}>● </span>{copy.handover.pawn} <strong>{playerName(language, actor, config)}</strong> · {formatMessage(copy.handover.seat, { number: config.players.findIndex((player) => player.id === actor) + 1 })}</p>
-    <button ref={confirm} data-handover-confirm autoFocus disabled={!ready} onClick={() => session.confirmHandover(actor)}>{copy.handover.confirm}</button>
+    <p><span aria-hidden="true" style={{ color: playerConfig(config, actor).color }}>● </span>{copy.handover.pawn} <strong>{playerName(language, actor, config)}</strong> · {formatMessage(copy.handover.seat, { number: config.players.findIndex((player) => player.id === actor) + 1 })}</p>
+    <button ref={confirm} autoFocus disabled={!ready} onClick={() => session.confirmHandover(actor)}>{copy.handover.confirm}</button>
     <button onClick={onPause}>{copy.navigation.pause}</button>
   </PanelHost>;
 }

@@ -28,10 +28,10 @@ export function FeedbackLayer({ session, language }: { session: GameSession; lan
   }, [notice, language, session]);
   const rolled = view.presenting && view.displayed !== view.committed ? view.events.find((event) => event.kind === "rolled") : null;
   return <div className={styles.layer}>
-    {rolled?.kind === "rolled" ? <div className={styles.dice} data-feedback-dice>
+    {rolled?.kind === "rolled" ? <div className={styles.dice}>
       <span>{formatMessage(messages(language).feedback.diceActor, { actor: playerName(language, rolled.result.playerId, view.displayed.config) })}</span>
       <strong>{rolled.result.dice.join(" + ")}</strong>
-    </div> : notice && expired !== notice.id && notice.expiresAt > Date.now() && <p className={styles.event} data-feedback-event>{eventText(language, notice.event, view.displayed)}</p>}
-    <span className={styles.srOnly} aria-live="polite" aria-atomic="true" data-announcement>{announcement}</span>
+    </div> : notice && expired !== notice.id && notice.expiresAt > Date.now() && <p className={styles.event}>{eventText(language, notice.event, view.displayed)}</p>}
+    <span className={styles.srOnly} aria-live="polite" aria-atomic="true">{announcement}</span>
   </div>;
 }

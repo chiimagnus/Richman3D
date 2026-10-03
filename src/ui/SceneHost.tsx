@@ -94,7 +94,7 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
   return <>
     <div ref={host} className={styles.scene} />
     {!failed && <div className={styles.camera}>
-      <button data-view-toggle disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "overview" ? messages(preferences.language).setup.firstPerson : messages(preferences.language).setup.overview}</button>
+      <button disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "overview" ? messages(preferences.language).setup.firstPerson : messages(preferences.language).setup.overview}</button>
       {cameraView === "first_person" && <button disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => {
         const world = resources.current?.world;
         if (locked) world?.unlockFirstPerson();
