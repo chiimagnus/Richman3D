@@ -47,17 +47,17 @@
 - P3-T2完整回归 -> 38项PASS（21.3分钟）；日志`/tmp/richman-p3-pre-transfer-full-e2e.log`。
 - P3-T3保存/导航/传输9项及最终共享路径7项 -> PASS；360px英文确认操作和时间可见、无横向溢出，截图已目检；日志`/tmp/richman-p3-transfer-shared-e2e.log`。
 - P3-T4双页竞争、模拟后台、真实浏览器重启及拒绝存储 -> 5项PASS；日志`/tmp/richman-p3-conflict-e2e.log`。
-- 阶段最终`npm run test:e2e` -> 正在运行，结果见`/tmp/richman-p3-audit-full-e2e.log`及`test-results/results.json`，未提前判为通过。
+- 阶段最终`npm run test:e2e` -> PASS，`test-results/results.json`记录2026-10-02T14:58:43.852Z开始、1467322.932ms（约24.5分钟）、48项expected、0 skipped/unexpected/flaky、errors为空；包括连续20次完整对局资源释放。临时日志已不在当前环境，以保留的实际JSON报告为准。
 - 浏览器持久配置契约：[Playwright launchPersistentContext](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context)。测试只操作自建临时profile并关闭后删除，不使用日常浏览器数据。
 
 ## Gate（是否允许进入下一阶段）
 
-- 结论：尚未判定，等待完整浏览器回归。
-- 理由：各任务针对性验收通过，阶段完整验收尚未收齐；不进入P4。
+- 结论：Go。
+- 理由：各任务针对性验收及阶段完整48项浏览器回归均通过，无新增未解决阻塞finding，允许进入P4。
 
 ## 最终状态与剩余风险
 
-- 当前状态：`Open`
+- 当前状态：`Resolved`
 - 剩余风险：后台事件的单元/浏览器测试使用模拟visibility，不冒称原生真机后台验收。跨页事务与浏览器关闭重启为真实Chromium证据；P11/P12真机、屏幕阅读器、首次试玩仍按用户决定待验收。没有发布、push或远端资源修改。
 
 ## 审计约束

@@ -1,5 +1,5 @@
 version = 1
-current_task_id = ""
+current_task_id = "P4-T7"
 
 [[tasks]]
 id = "P1-T1"
@@ -100,31 +100,31 @@ note = "typecheck/build；148单测；5保存e2e通过。复现并修复读档�
 [[tasks]]
 id = "P4-T1"
 title = "席位模型及所有二人假设的原子迁移"
-status = "pending"
+status = "completed"
 plan = "plan-p4.md#p4-t1"
-commit = ""
-note = ""
+commit = "fe446464675c00090dab9e07330d368f800d701b"
+note = "P2已实现席位通用契约，未重复造模型；154单测/typecheck/build、5真实浏览器回归通过（34.7秒），含3/4席购买租金/mesh映射/刷新、第二真人权限及旧异步销毁；菜单仍两席。"
 
 [[tasks]]
 id = "P4-T2"
 title = "轮序、淘汰与整轮终局"
-status = "pending"
+status = "completed"
 plan = "plan-p4.md#p4-t2"
-commit = ""
-note = ""
+commit = "0a98ae9bdc456fbc7a46b620f7a5546cf081414d"
+note = "172单测/typecheck/build；正式菜单3/4席完整终局与存档一致；最终布局15项、事务/导入/恢复组合22项及根因修复后6项浏览器回归通过。旧随机先手导航用例已固定规则种子并通过。真实淘汰后逐命令可存档、死者产权归银行且不再收租；未发布v1移除，不建迁移链。日志/tmp/richman-p4-t2-{layout,final,elimination}-e2e.log；final组合初有导航失败由elimination组合覆盖修复，不冒称23项全通过。"
 
 [[tasks]]
 id = "P4-T3"
 title = "同机交接与决策操作者"
-status = "pending"
+status = "completed"
 plan = "plan-p4.md#p4-t3"
-commit = ""
-note = ""
+commit = "0acc5ac74ff86e24f8a0ca82d9900d8f2ab5673e"
+note = "180单测/typecheck/build通过；热座、生产/开发键盘语言、权限和故障导出14项浏览器通过，新增重复姓名颜色席位用例另1项通过（初版测试文案定位已纠正）。真实有窗口Chromium锁定交接与双Esc通过；20次资源回落、真实续玩与4真人360px亦已验证。日志/tmp/richman-p4-t3-{verified,duplicate}-e2e.log；保留无头锁定失败的证据，不冒充模拟通过。"
 
 [[tasks]]
 id = "P4-T4"
 title = "地产检查、资产抽屉和可追溯事件"
-status = "pending"
+status = "in_progress"
 plan = "plan-p4.md#p4-t4"
 commit = ""
 note = ""
@@ -363,7 +363,7 @@ note = ""
 
 [[tasks]]
 id = "P12-T2"
-title = "双语玩法、素材来源与隐私说明"
+title = "双语项目入口、素材来源与隐私说明"
 status = "pending"
 plan = "plan-p12.md#p12-t2"
 commit = ""
@@ -382,5 +382,29 @@ id = "P12-T4"
 title = "真实试玩、发布判定与回滚演练"
 status = "pending"
 plan = "plan-p12.md#p12-t4"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P4-T5"
+title = "移除玩法说明与实操教学"
+status = "in_progress"
+plan = "plan-p4.md#p4-t5"
+commit = ""
+note = ""
+
+[[tasks]]
+id = "P4-T6"
+title = "完整移除E2E自动化与专用测试残留"
+status = "completed"
+plan = "plan-p4.md#p4-t6"
+commit = "79883126d697a46b8a4021fa455fa6448aeb1ac9"
+note = "离线npm ci、typecheck、200单测、build通过；删除全部spec/helper/配置/专用fixture/三个依赖包、测试专用DOM/GPU统计、198MiB报告与临时配置和自动化日志。焦点恢复保留原生id；系统后台权限不修改。"
+
+[[tasks]]
+id = "P4-T7"
+title = "合并局内设置与暂停并收敛镜头入口"
+status = "in_progress"
+plan = "plan-p4.md#p4-t7"
 commit = ""
 note = ""
