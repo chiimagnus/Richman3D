@@ -167,7 +167,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
       const tile = map.tiles[active.position]!;
       if (!snapshot.lastRoll || tile.type !== "property" || tile.id !== snapshot.decision.propertyId || snapshot.properties[tile.id]!.ownerId !== null) throw new Error("待购地产无效");
     }
-    if (snapshot.decision.kind === "awaiting_discard" && (!snapshot.lastRoll || map.tiles[active.position]!.type !== "chance" || snapshot.decision.continuation !== "finish_turn")) throw new Error("弃牌后继无效");
+    if (snapshot.decision.kind === "awaiting_discard" && (snapshot.itemUsed || !snapshot.lastRoll || map.tiles[active.position]!.type !== "chance" || snapshot.decision.continuation !== "finish_turn")) throw new Error("弃牌后继无效");
     if (snapshot.decision.kind === "awaiting_debt") {
       const debt = restoreDebt(snapshot.decision.debt, snapshot, active.id);
       const tile = map.tiles[active.position]!;
@@ -319,7 +319,7 @@ function validateCardHistory(snapshot: GameSnapshot, history: GameSnapshot["hist
       consume(active);
     }
     if (event.kind === "paid" && event.debt.source.kind === "chance") { pending = false; discarded.push(event.debt.source.instanceId); }
-    if (event.kind === "liquidated") {
+    if (event.kind === "paid" && event.writtenOff > 0) {
       const count = hands.get(event.actor)!;
       if (complete) discarded.push(...Array<CardInstanceId | null>(count).fill(null));
       hands.set(event.actor, 0);
