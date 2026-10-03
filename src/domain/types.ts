@@ -28,6 +28,10 @@ export type FinancialStats = {
   readonly chanceExpense: number;
   readonly purchases: number;
   readonly purchaseBookValue: number;
+  readonly tradeCashReceived: number;
+  readonly tradeCashPaid: number;
+  readonly tradeBookValueReceived: number;
+  readonly tradeBookValueGiven: number;
   readonly constructionSpent: number;
   readonly constructionRefunds: number;
   readonly constructionSoldCost: number;
@@ -60,6 +64,7 @@ export type Decision =
   | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
   | { readonly kind: "awaiting_debt"; readonly actorId: PlayerId; readonly debt: PendingDebt }
   | AuctionDecision
+  | { readonly kind: "awaiting_trade"; readonly actorId: PlayerId; readonly proposal: TradeProposal }
   | { readonly kind: "game_over"; readonly result: MatchResult };
 
 export type AuctionDecision = {
@@ -80,6 +85,14 @@ export type RandomState = {
   readonly draws: number;
 };
 
+export type TradeTerms = {
+  readonly recipientId: PlayerId;
+  readonly givePropertyIds: readonly string[];
+  readonly receivePropertyIds: readonly string[];
+  readonly cash: { readonly payerId: PlayerId; readonly amount: number } | null;
+};
+export type TradeProposal = TradeTerms & { readonly proposerId: PlayerId; readonly revision: number };
+
 export type GameSnapshot = {
   readonly revision: number;
   readonly config: MatchConfig;
@@ -89,6 +102,7 @@ export type GameSnapshot = {
   readonly turnOrder: readonly PlayerId[];
   readonly players: readonly PlayerState[];
   readonly turnPlayerId: PlayerId;
+  readonly tradeUsed: boolean;
   readonly decision: Decision;
   readonly properties: Readonly<Record<string, PropertyState>>;
   readonly lastRoll: readonly [number, number] | null;
@@ -130,9 +144,13 @@ export type Command = {
   readonly actor: PlayerId;
   readonly expectedRevision: number;
 } & ({ readonly kind: "roll" | "buy" | "skip" | "bankrupt" | "auction_pass" } | { readonly kind: "auction_bid"; readonly amount: number }
+  | { readonly kind: "trade_propose"; readonly terms: TradeTerms }
+  | { readonly kind: "trade_accept" | "trade_reject"; readonly proposalRevision: number }
   | { readonly kind: "upgrade" | "sell_building" | "mortgage" | "redeem"; readonly propertyId: string });
 
 export type GameEvent =
+  | { readonly kind: "trade_proposed"; readonly proposal: TradeProposal }
+  | { readonly kind: "trade_accepted" | "trade_rejected"; readonly proposal: TradeProposal; readonly reason: "fair_value" | "lower_value" | "invalid_trade" | null }
   | { readonly kind: "rolled"; readonly result: RollResult }
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
   | { readonly kind: "upgraded"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 1 | 2 | 3; readonly cost: number }

@@ -7,7 +7,7 @@ import { PropertyDetails } from "./PropertyDetails";
 import type { assetManagementView } from "./viewModel";
 import styles from "./Inspection.module.css";
 
-export function AssetPanel({ assets, initialPlayer, language, management, onCommand, onClose }: { assets: readonly ReturnType<typeof playerAssets>[]; initialPlayer: PlayerId; language: Language; management: ReturnType<typeof assetManagementView>; onCommand: (command: Command) => void; onClose: () => void }) {
+export function AssetPanel({ assets, initialPlayer, language, management, onCommand, onClose, onTrade }: { assets: readonly ReturnType<typeof playerAssets>[]; initialPlayer: PlayerId; language: Language; management: ReturnType<typeof assetManagementView>; onCommand: (command: Command) => void; onClose: () => void; onTrade?: (() => void) | undefined }) {
   const [selected, setSelected] = useState(initialPlayer);
   const copy = messages(language).assets;
   const current = assets.find((asset) => asset.player.id === selected)!;
@@ -26,6 +26,7 @@ export function AssetPanel({ assets, initialPlayer, language, management, onComm
       <dt>{copy.liquidation}</dt><dd>{formatCash(language, current.liquidationValue)}</dd>
     </dl>
     <h3>{copy.properties}</h3>
+    {onTrade && management?.actor === selected && <button id="trade-open" onClick={onTrade}>{messages(language).trade.open}</button>}
     {current.properties.length ? current.properties.map((property) => {
       const options = management?.actor === selected ? management.properties[property.tile.id] : undefined;
       return <details key={property.tile.id} name="asset-property">

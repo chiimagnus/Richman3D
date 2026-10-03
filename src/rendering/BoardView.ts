@@ -77,6 +77,7 @@ export class BoardView {
         const material = existing.material;
         if (material instanceof THREE.MeshStandardMaterial) {
           material.color.set(playerConfig(this.config, ownerId).color);
+          material.emissive.set(playerConfig(this.config, ownerId).color);
         }
         continue;
       }

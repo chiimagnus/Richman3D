@@ -2,7 +2,7 @@ import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
 import { canDeclareBankruptcy, liquidationValue, liquidityOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
-import { canBid, minimumBid } from "./market";
+import { canBid, minimumBid, tradeOption } from "./market";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
@@ -20,6 +20,11 @@ export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.t
 export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Command[] {
   if (snapshot.decision.kind === "game_over" || actor !== snapshot.decision.actorId || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
   const base = { actor, expectedRevision: snapshot.revision };
+  if (snapshot.decision.kind === "awaiting_trade") {
+    const proposal = snapshot.decision.proposal;
+    const response = { ...base, proposalRevision: proposal.revision };
+    return [...(tradeOption(snapshot, proposal.proposerId, proposal).reason === null ? [{ ...response, kind: "trade_accept" as const }] : []), { ...response, kind: "trade_reject" }];
+  }
   if (snapshot.decision.kind === "awaiting_auction") {
     const amount = minimumBid(snapshot, snapshot.decision);
     return [...(amount !== null && canBid(snapshot, snapshot.decision, actor, amount) ? [{ ...base, kind: "auction_bid" as const, amount }] : []), { ...base, kind: "auction_pass" }];

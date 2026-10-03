@@ -1,10 +1,18 @@
-import type { GameEvent, GameSnapshot, PendingDebt, PlayerId, RollResult } from "../domain/types";
+import type { GameEvent, GameSnapshot, PendingDebt, PlayerId, RollResult, TradeProposal } from "../domain/types";
 import { chanceCardText, formatCash, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
+    case "trade_proposed":
+    case "trade_accepted":
+    case "trade_rejected": {
+      const proposal = event.proposal;
+      const copy = messages(language).trade;
+      const reason = event.kind === "trade_proposed" ? null : event.reason;
+      return formatMessage(copy[event.kind], { proposer: playerName(language, proposal.proposerId, snapshot.config), recipient: playerName(language, proposal.recipientId, snapshot.config), terms: tradeTermsText(language, proposal, snapshot) }) + (reason ? " " + copy.botReasons[reason] : "");
+    }
     case "auction_started":
     case "auction_bid":
     case "auction_passed":
@@ -35,6 +43,14 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
     case "turn": return formatMessage(copy.yourTurn, { actor: playerName(language, event.actor, snapshot.config) });
     case "ended": return resultTitle(language, event.result, snapshot.config);
   }
+}
+
+export function tradeTermsText(language: Language, proposal: TradeProposal, snapshot: GameSnapshot): string {
+  const copy = messages(language).trade;
+  const names = (ids: readonly string[]) => ids.map((id) => tileName(language, snapshot.map.tiles.find((tile) => tile.id === id)!)).join(messages(language).setup.nameSeparator) || copy.none;
+  const cash = proposal.cash;
+  return formatMessage(copy.terms, { proposer: playerName(language, proposal.proposerId, snapshot.config), given: names(proposal.givePropertyIds), received: names(proposal.receivePropertyIds),
+    cash: cash ? formatMessage(copy.cashTransfer, { payer: playerName(language, cash.payerId, snapshot.config), receiver: playerName(language, cash.payerId === proposal.proposerId ? proposal.recipientId : proposal.proposerId, snapshot.config), amount: formatCash(language, cash.amount) }) : copy.noCash });
 }
 
 export function debtSourceText(language: Language, debt: PendingDebt, snapshot: GameSnapshot): string {

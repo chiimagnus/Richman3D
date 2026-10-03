@@ -2,12 +2,14 @@ import { legalCommands, pendingProperty } from "./selectors";
 import type { Command, GameSnapshot } from "./types";
 import { playerConfig } from "./config";
 import { liquidityOption, propertyTile, rentFor } from "./economy";
+import { tradeResponseReason } from "./market";
 
 export function chooseBotCommand(snapshot: GameSnapshot): Command | null {
   if (snapshot.decision.kind === "game_over") return null;
   const actor = snapshot.decision.actorId;
   if (playerConfig(snapshot.config, actor).controller !== "bot") return null;
   const commands = legalCommands(snapshot, actor);
+  if (snapshot.decision.kind === "awaiting_trade") return commands.find((command) => command.kind === (tradeResponseReason(snapshot) === "fair_value" ? "trade_accept" : "trade_reject"))!;
   if (snapshot.decision.kind === "awaiting_auction") {
     const bid = commands.find((command) => command.kind === "auction_bid");
     const player = snapshot.players.find((candidate) => candidate.id === actor)!;

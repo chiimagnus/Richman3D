@@ -121,3 +121,31 @@ it("removes bankrupt ownership and buildings once, preserves survivors and resto
   for (const spy of [...spies, ...remainingSpies]) expect(spy).toHaveBeenCalledTimes(1);
   expect(scene.children).toHaveLength(0);
 });
+
+it("updates the traded owner's color and glow without reallocating a marker, and updates both group rent labels", () => {
+  const fillText = vi.fn();
+  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  const game = propertyMatch();
+  const scene = new THREE.Scene();
+  const before = game.snapshot;
+  const board = new BoardView(scene, "en", before.map, before.config, before.rules);
+  board.syncOwnership(before);
+  const markers = scene.getObjectByName("board")!.children.filter((object): object is THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> => object instanceof THREE.Mesh && object.geometry instanceof THREE.CylinderGeometry);
+  const original = markers.filter((marker) => marker.material.color.getHexString() === before.config.players[0]!.color.slice(1));
+  const spies = original.flatMap(trackResources);
+  expect(game.apply({ kind: "trade_propose", actor: "p1", expectedRevision: before.revision, terms: { recipientId: "p2", givePropertyIds: ["neon-avenue"], receivePropertyIds: [], cash: { payerId: "p2", amount: 180 } } }).ok).toBe(true);
+  expect(game.apply({ kind: "trade_accept", actor: "p2", expectedRevision: game.snapshot.revision, proposalRevision: game.snapshot.revision }).ok).toBe(true);
+  fillText.mockClear();
+  board.syncOwnership(game.snapshot);
+  const changed = original.filter((marker) => marker.material.color.getHexString() === before.config.players[1]!.color.slice(1));
+  expect(changed).toHaveLength(1);
+  expect(changed[0]!.material.emissive.getHexString()).toBe(before.config.players[1]!.color.slice(1));
+  expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 140 · Rent 24");
+  expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 180 · Rent 32");
+  for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+  board.syncOwnership(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot);
+  expect(original.every((marker) => marker.parent !== null)).toBe(true);
+  board.dispose();
+  board.dispose();
+  for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+});

@@ -106,7 +106,7 @@
   "results": {
     "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
     "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
-    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "purchaseBookValue": "购入土地账面价值", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "mortgageIncome": "抵押借款收入", "mortgagePrincipalRepaid": "已偿抵押本金", "mortgageFeesPaid": "赎回费用", "mortgagePrincipalReleased": "清算冲销抵押本金", "debtWrittenOff": "无法偿还的债务", "rentLost": "无法收回的租金" },
+    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "purchaseBookValue": "购入土地账面价值", "tradeCashReceived": "交易现金收入", "tradeCashPaid": "交易现金支出", "tradeBookValueReceived": "交易转入土地账面价值", "tradeBookValueGiven": "交易转出土地账面价值", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "mortgageIncome": "抵押借款收入", "mortgagePrincipalRepaid": "已偿抵押本金", "mortgageFeesPaid": "赎回费用", "mortgagePrincipalReleased": "清算冲销抵押本金", "debtWrittenOff": "无法偿还的债务", "rentLost": "无法收回的租金" },
     "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
   },
   "storage": {
@@ -157,6 +157,54 @@
   },
   "debt": {
     "title": "处理固定债务", "pending": "需先处理固定债务，才能继续对局。", "obligation": "{actor}需向{creditor}支付{amount}。", "shortfall": "现金缺口", "automatic": "可以出售建筑或抵押地产。首次筹足现金的操作会自动偿还这笔固定债务，无需再次确认付款。", "autoPayment": "自动偿还债务", "insolvent": "现金加全部可清算收入仍不足偿债。清算会支付实际可得金额、冲销差额，将全部地产归还银行，并淘汰本席。", "solvent": "资产足以偿债时，不允许确认破产。", "bankrupt": "确认清算并淘汰", "rentSource": "{propertyName}的固定租金。", "taxSource": "棋盘固定费用。", "paid": "{actor}已向{creditor}支付{amount}。", "writtenOff": "未付{writtenOff}已冲销。", "liquidated": "{actor}清算资产取得{amount}，本席已淘汰。"
+  },
+  "trade": {
+    "title": "交易提案",
+    "open": "提出交易",
+    "recipient": "接收者",
+    "give": "转出地产",
+    "receive": "转入地产",
+    "none": "无",
+    "cashDirection": "现金方向",
+    "noCash": "不转移现金",
+    "cashAmount": "现金金额",
+    "limit": "每方最多 {limit} 处地产，仅可交易所在组无建筑、未抵押的地产。",
+    "submit": "提交提案",
+    "cancel": "取消草稿",
+    "accept": "接受交易",
+    "reject": "拒绝交易",
+    "effect": "提交会消耗本回合唯一一次提案机会；之后仅由接收者接受或拒绝。",
+    "pending": "等待交易响应",
+    "respond": "{recipient}，请响应 {proposer} 的提案。",
+    "cashBefore": "当前现金",
+    "cashAfter": "成交后现金",
+    "groupsBefore": "现有完整组",
+    "groupsAfter": "成交后完整组",
+    "cashTransfer": "{payer} 向 {receiver} 支付 {amount}",
+    "trade_proposed": "{proposer} 向 {recipient} 提出交易。{terms}",
+    "trade_accepted": "{recipient} 接受 {proposer} 的交易。{terms}",
+    "trade_rejected": "{recipient} 拒绝 {proposer} 的交易，资产不变。{terms}",
+    "terms": "{proposer} 转出：{given}；转入：{received}。{cash}",
+    "groups": {
+      "cyan": "青色组",
+      "amber": "琥珀组",
+      "violet": "紫色组",
+      "emerald": "翡翠组"
+    },
+    "reasons": {
+      "players_invalid": "双方须为不同的存活玩家。",
+      "invalid_terms": "请选择不重复的地产，或输入正整数现金。",
+      "not_owner": "产权已经变化，无法交易。",
+      "group_has_buildings": "请先售完相关同色组的全部建筑。",
+      "mortgaged": "抵押地产不能交易。",
+      "insufficient_cash": "付款方现金不足。",
+      "amount_overflow": "成交后的金额或统计超出安全范围。"
+    },
+    "botReasons": {
+      "fair_value": "接收价值不低于付出，且现金足够。",
+      "lower_value": "接收价值低于付出。",
+      "invalid_trade": "交易条件已失效。"
+    }
   },
   "auction": {
     "title": "地产拍卖", "pending": "地产拍卖须先完成，才能进入下一回合。", "bidder": "{actor}正在竞买「{property}」。",

@@ -67,6 +67,9 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "building_sold":
               case "mortgaged":
               case "redeemed": audio.playPurchase(); break;
+              case "trade_accepted": audio.playPurchase(); break;
+              case "trade_proposed":
+              case "trade_rejected": break;
               case "skipped": break;
               case "auction_started":
               case "auction_bid":

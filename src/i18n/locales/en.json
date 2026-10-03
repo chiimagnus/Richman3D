@@ -106,7 +106,7 @@
   "results": {
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
-    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "mortgageIncome": "Mortgage cash received", "mortgagePrincipalRepaid": "Mortgage principal repaid", "mortgageFeesPaid": "Mortgage redemption fees", "mortgagePrincipalReleased": "Mortgage principal released on liquidation", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
+    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "tradeCashReceived": "Trade cash received", "tradeCashPaid": "Trade cash paid", "tradeBookValueReceived": "Book value of land received in trades", "tradeBookValueGiven": "Book value of land given in trades", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "mortgageIncome": "Mortgage cash received", "mortgagePrincipalRepaid": "Mortgage principal repaid", "mortgageFeesPaid": "Mortgage redemption fees", "mortgagePrincipalReleased": "Mortgage principal released on liquidation", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
   "storage": {
@@ -157,6 +157,54 @@
   },
   "debt": {
     "title": "Settle fixed debt", "pending": "The fixed debt must be resolved before play continues.", "obligation": "{actor} owes {creditor} {amount}.", "shortfall": "Cash shortfall", "automatic": "Sell buildings or mortgage property. The first action that raises enough cash pays this fixed debt automatically; no extra payment confirmation is required.", "autoPayment": "Automatic debt payment", "insolvent": "Even cash plus all liquidation proceeds cannot cover the debt. Liquidation pays the available amount, writes off the rest, returns every property to the bank and eliminates this seat.", "solvent": "Bankruptcy is not available while your assets can cover the debt.", "bankrupt": "Confirm liquidation and elimination", "rentSource": "Fixed rent on {propertyName}.", "taxSource": "Fixed board fee.", "paid": "{actor} paid {creditor} {amount}.", "writtenOff": "Unpaid {writtenOff} was written off.", "liquidated": "{actor} liquidated assets for {amount} and was eliminated."
+  },
+  "trade": {
+    "title": "Trade proposal",
+    "open": "Propose trade",
+    "recipient": "Recipient",
+    "give": "Properties given",
+    "receive": "Properties received",
+    "none": "None",
+    "cashDirection": "Cash direction",
+    "noCash": "No cash transfer",
+    "cashAmount": "Cash amount",
+    "limit": "Up to {limit} properties per side. Transferred land must be unmortgaged, with no buildings anywhere in its color group.",
+    "submit": "Submit proposal",
+    "cancel": "Cancel draft",
+    "accept": "Accept trade",
+    "reject": "Reject trade",
+    "effect": "Submitting uses your only proposal this turn. Only the recipient can then accept or reject it.",
+    "pending": "Waiting for a trade response",
+    "respond": "{recipient}, respond to {proposer}'s proposal.",
+    "cashBefore": "Current cash",
+    "cashAfter": "Cash after trade",
+    "groupsBefore": "Current complete groups",
+    "groupsAfter": "Complete groups after trade",
+    "cashTransfer": "{payer} pays {receiver} {amount}",
+    "trade_proposed": "{proposer} proposed a trade to {recipient}. {terms}",
+    "trade_accepted": "{recipient} accepted {proposer}'s trade. {terms}",
+    "trade_rejected": "{recipient} rejected {proposer}'s trade; assets unchanged. {terms}",
+    "terms": "{proposer} gives: {given}; receives: {received}. {cash}",
+    "groups": {
+      "cyan": "Cyan group",
+      "amber": "Amber group",
+      "violet": "Violet group",
+      "emerald": "Emerald group"
+    },
+    "reasons": {
+      "players_invalid": "Choose two different living players.",
+      "invalid_terms": "Choose non-duplicate land or enter a positive whole cash amount.",
+      "not_owner": "Ownership changed; this trade is no longer valid.",
+      "group_has_buildings": "Sell every building in the affected color groups first.",
+      "mortgaged": "Mortgaged land cannot be traded.",
+      "insufficient_cash": "The payer does not have enough cash.",
+      "amount_overflow": "The resulting amount or statistics exceed the safe range."
+    },
+    "botReasons": {
+      "fair_value": "Incoming value covers outgoing value, with sufficient cash.",
+      "lower_value": "Incoming value is lower than outgoing value.",
+      "invalid_trade": "The trade conditions are no longer valid."
+    }
   },
   "auction": {
     "title": "Property auction", "pending": "The property auction must finish before the next turn.", "bidder": "{actor} is bidding for {property}.",

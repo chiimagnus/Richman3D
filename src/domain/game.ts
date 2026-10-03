@@ -1,15 +1,15 @@
 import { tileAt, validateMap, type MapDefinition } from "./board";
 import { mapFor } from "./maps";
 import { rulesFor, validateRules, type RuleSet } from "./rules";
-import { createMatchConfig, validateConfig } from "./config";
+import { createMatchConfig, playerConfig, validateConfig } from "./config";
 import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
-import { restoreSnapshot } from "./restore";
+import { restoreSnapshot, restoreTradeTerms } from "./restore";
 import { constructionCost, constructionRefund, initialProperties, liquidityOption, mortgageValue, netAssets, obligation, propertyTile, rentFor } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
-import { canBid, nextBidder, startAuction } from "./market";
+import { canBid, canProposeTrade, nextBidder, startAuction, tradeOption, tradeResponseReason } from "./market";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -41,10 +41,11 @@ export class Game {
       config: { ...config, players: config.players.map((player) => ({ ...player })) },
       rules: { ...rules, rentMultipliers: [...rules.rentMultipliers], chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
       map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
-      completedRounds: 0,
+      completedRounds: 0, tradeUsed: false,
       turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
-        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, purchaseBookValue: 0, constructionSpent: 0,
+        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, purchaseBookValue: 0,
+          tradeCashReceived: 0, tradeCashPaid: 0, tradeBookValueReceived: 0, tradeBookValueGiven: 0, constructionSpent: 0,
           constructionRefunds: 0, constructionSoldCost: 0, mortgageIncome: 0, mortgagePrincipalRepaid: 0, mortgageFeesPaid: 0,
           mortgagePrincipalReleased: 0, debtWrittenOff: 0, rentLost: 0 },
       })),
@@ -72,19 +73,20 @@ export class Game {
 
   apply(command: Command): ApplyResult {
     if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
-        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "mortgage", "redeem", "auction_bid", "auction_pass"].includes(command.kind) ||
+        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "mortgage", "redeem", "auction_bid", "auction_pass", "trade_propose", "trade_accept", "trade_reject"].includes(command.kind) ||
         ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
         command.kind === "auction_bid" && (!Number.isSafeInteger(command.amount) || command.amount < 0) ||
+        (command.kind === "trade_accept" || command.kind === "trade_reject") && (!Number.isSafeInteger(command.proposalRevision) || command.proposalRevision < 1) ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
     }
-    const keys = ["actor", "kind", "expectedRevision", ...(command.kind === "auction_bid" ? ["amount"] : ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ? ["propertyId"] : [])];
+    const keys = ["actor", "kind", "expectedRevision", ...(command.kind === "trade_propose" ? ["terms"] : command.kind === "trade_accept" || command.kind === "trade_reject" ? ["proposalRevision"] : command.kind === "auction_bid" ? ["amount"] : ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ? ["propertyId"] : [])];
     if (Object.keys(command).length !== keys.length || keys.some((key) => !Object.hasOwn(command, key))) return { ok: false, reason: "invalid_command" };
     const before = this.state;
     if (command.expectedRevision !== before.revision) return { ok: false, reason: "stale_revision" };
     let result: Extract<ApplyResult, { ok: true }>;
     try {
-      if (!legalCommands(before, command.actor).some((action) => action.kind === command.kind && (!("propertyId" in action) || "propertyId" in command && action.propertyId === command.propertyId))) return { ok: false, reason: "illegal_action" };
+      if (command.kind === "trade_propose" ? !canProposeTrade(before, command.actor) : !legalCommands(before, command.actor).some((action) => action.kind === command.kind && (!("propertyId" in action) || "propertyId" in command && action.propertyId === command.propertyId))) return { ok: false, reason: "illegal_action" };
       const players = before.players.map((player) => ({ ...player, statistics: { ...player.statistics } }));
       const properties = { ...before.properties };
       const random = new RuleRandom(before.random);
@@ -93,6 +95,7 @@ export class Game {
       let decision: Decision = { kind: "awaiting_roll", actorId: player.id };
       let turnPlayerId = before.turnPlayerId;
       let completedRounds = before.completedRounds;
+      let tradeUsed = before.tradeUsed;
       let lastRoll = before.lastRoll;
       const events: GameEvent[] = [];
       let finishTurn = command.kind === "roll" || command.kind === "buy" || command.kind === "skip";
@@ -117,7 +120,31 @@ export class Game {
         events.push({ kind: "paid", actor: player.id, debt, amount, writtenOff: debt.amount - amount });
       };
 
-      if (command.kind === "auction_bid" || command.kind === "auction_pass") {
+      if (command.kind === "trade_propose") {
+        let terms;
+        try { terms = restoreTradeTerms(command.terms, before); } catch { return { ok: false, reason: "invalid_command" }; }
+        if (tradeOption(before, player.id, terms).reason !== null) return { ok: false, reason: "illegal_action" };
+        const proposal = { ...terms, proposerId: player.id, revision: before.revision + 1 };
+        decision = { kind: "awaiting_trade", actorId: terms.recipientId, proposal };
+        tradeUsed = true;
+        events.push({ kind: "trade_proposed", proposal });
+      } else if (command.kind === "trade_accept" || command.kind === "trade_reject") {
+        if (before.decision.kind !== "awaiting_trade" || command.proposalRevision !== before.decision.proposal.revision) return { ok: false, reason: "illegal_action" };
+        const proposal = before.decision.proposal;
+        if (command.kind === "trade_accept") {
+          const option = tradeOption(before, proposal.proposerId, proposal);
+          if (option.candidate === null) return { ok: false, reason: "illegal_action" };
+          for (const next of option.candidate.players) {
+            const target = players.find((entry) => entry.id === next.id)!;
+            target.cash = next.cash;
+            target.statistics = { ...next.statistics };
+          }
+          Object.assign(properties, option.candidate.properties);
+        }
+        decision = { kind: "awaiting_roll", actorId: proposal.proposerId };
+        events.push({ kind: command.kind === "trade_accept" ? "trade_accepted" : "trade_rejected", proposal,
+          reason: playerConfig(before.config, player.id).controller === "bot" ? tradeResponseReason(before) : null });
+      } else if (command.kind === "auction_bid" || command.kind === "auction_pass") {
         if (before.decision.kind !== "awaiting_auction") throw new Error("没有拍卖");
         const auction = before.decision;
         if (command.kind === "auction_bid" && !canBid(before, auction, player.id, command.amount)) return { ok: false, reason: "illegal_action" };
@@ -279,10 +306,12 @@ export class Game {
       const candidate = { ...before, players, properties, decision, lastRoll, random: random.snapshot };
       for (const entry of players) netAssets(candidate, entry.id);
       if (players.filter((entry) => !entry.bankrupt).length === 1) {
+        tradeUsed = false;
         const result = matchResult(candidate, "last_survivor");
         decision = { kind: "game_over", result };
         events.push({ kind: "ended", result });
       } else if (decision.kind === "awaiting_roll" && finishTurn) {
+        tradeUsed = false;
         ({ turnPlayerId, completedRounds } = nextTurn(candidate));
         if (completedRounds >= before.rules.roundLimit) {
           const result = matchResult(candidate, "round_limit");
@@ -296,7 +325,7 @@ export class Game {
       if (!Number.isSafeInteger(before.revision + 1) || !Number.isSafeInteger(random.snapshot.draws)) throw new RangeError("版本超出整数范围");
       const revision = before.revision + 1;
       const history = [...before.history, ...events.map((event) => ({ revision, event }))].slice(-HISTORY_LIMIT);
-      const snapshot = freeze({ ...before, revision, players, properties, turnPlayerId, completedRounds, decision, lastRoll, random: random.snapshot, history });
+      const snapshot = freeze({ ...before, revision, players, properties, turnPlayerId, completedRounds, tradeUsed, decision, lastRoll, random: random.snapshot, history });
       result = freeze({ ok: true, snapshot, events });
     } catch {
       return { ok: false, reason: "calculation_failed" };
