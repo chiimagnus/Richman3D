@@ -76,7 +76,7 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
 }
 
 export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false): Game {
-  const game = new Game(createMatchConfig({ 2: 20, 3: 3, 4: 12 }[seats], seats));
+  const game = new Game(createMatchConfig(3, seats));
   for (let count = 0; count < 400; count += 1) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") break;

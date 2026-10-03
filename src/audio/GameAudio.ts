@@ -56,6 +56,8 @@ export class GameAudio {
 
   playLanding(landing: LandingResult): void {
     switch (landing.kind) {
+      case "movement_card":
+      case "chance_ignored": this.playIncome(); break;
       case "rent":
       case "tax":
         this.playExpense();

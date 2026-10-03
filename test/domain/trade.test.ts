@@ -59,7 +59,7 @@ it("atomically transfers land and cash, recomputes both group rents and records 
   respond(game, "trade_accept");
   const final = game.snapshot;
   expect(final.properties["neon-avenue"]!.ownerId).toBe("p2");
-  expect(final.players.map((player) => player.cash)).toEqual([1960, 1640]);
+  expect(final.players.map((player) => player.cash)).toEqual([before.players[0]!.cash + 180, before.players[1]!.cash - 180]);
   expect(final.players[0]!.statistics).toMatchObject({ purchases: 320, purchaseBookValue: 320, tradeCashReceived: 180, tradeBookValueGiven: 180 });
   expect(final.players[1]!.statistics).toMatchObject({ tradeCashPaid: 180, tradeBookValueReceived: 180 });
   expect(rentFor(before, "harbor-walk")).toBe(36);

@@ -49,7 +49,10 @@
     "rollTax": "{actor}移动 {steps} 格，应付固定费用 {amount}。",
     "rollChance": "{actor}移动 {steps} 格：{message}",
     "rollOwned": "{actor}移动 {steps} 格，回到自己的「{propertyName}」。",
-    "rollStart": "{actor}移动 {steps} 格，回到起点。"
+    "rollStart": "{actor}移动 {steps} 格，回到起点。",
+    "cardMoved": "{actor}：{message}抵达「{destination}」。本次移动不连抽机会卡。",
+    "cardBonus": "本次从起点领取{amount}一次。",
+    "chanceIgnored": "本次移动不连抽机会卡。"
   },
   "feedback": {
     "diceActor": "{actor}掷骰",
@@ -87,7 +90,10 @@
     "innovation-bonus": "城市创新奖金 +{amount}",
     "maintenance-cost": "临时维修支出 {amount}",
     "community-event": "社区活动收益 +{amount}",
-    "traffic-fine": "交通违章罚款 {amount}"
+    "traffic-fine": "交通违章罚款 {amount}",
+    "advance-three": "前进{steps}格，经过起点领取{amount}。",
+    "retreat-three": "后退{steps}格，经过起点不领奖。",
+    "return-start": "传送回起点，仅领取{amount}一次。"
   },
   "setup": {
     "title": "新对局",

@@ -49,8 +49,8 @@ export function tileName(language: Language, tile: BoardTile): string {
   return name;
 }
 
-export function chanceCardText(language: Language, cardId: ChanceCardId, amount: number): string {
-  return formatMessage(messages(language).chanceCards[cardId], { amount });
+export function chanceCardText(language: Language, cardId: ChanceCardId, amount: number, steps = 0): string {
+  return formatMessage(messages(language).chanceCards[cardId], { amount, steps });
 }
 
 export function formatCash(language: Language, value: number): string {

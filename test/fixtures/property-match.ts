@@ -7,7 +7,7 @@ import { makeSave } from "../../src/storage/snapshot";
 export const propertyMatchId = "00000000-0000-4000-8000-000000000005";
 
 export function propertyMatch(): Game {
-  const game = new Game(createMatchConfig(31));
+  const game = new Game(createMatchConfig(392));
   for (let index = 0; index < 100; index += 1) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "awaiting_roll" && snapshot.turnPlayerId === "p1" && snapshot.properties["harbor-walk"]!.ownerId === "p1" &&

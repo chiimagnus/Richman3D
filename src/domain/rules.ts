@@ -1,4 +1,7 @@
-import type { ChanceCardId } from "./types";
+import type { CashCardId, MovementCardId } from "./types";
+
+export type CardDefinition = { readonly kind: "cash"; readonly id: CashCardId; readonly amount: number }
+  | { readonly kind: "move"; readonly id: MovementCardId; readonly direction: "forward" | "backward" | "teleport"; readonly steps: number };
 
 export type RuleSet = {
   readonly version: string;
@@ -11,19 +14,22 @@ export type RuleSet = {
   readonly constructionSalePercent: number;
   readonly mortgagePercent: number;
   readonly mortgageRedemptionPercent: number;
-  readonly chanceCards: readonly { readonly id: ChanceCardId; readonly amount: number }[];
+  readonly chanceCards: readonly CardDefinition[];
 };
 
 export const QUICK_RULES: RuleSet = {
-  version: "city-v9-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
+  version: "city-v10-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
   rentMultipliers: [1, 2, 4, 7], groupRentPercent: 150,
   constructionCostPercent: 50, constructionSalePercent: 50, mortgagePercent: 50, mortgageRedemptionPercent: 10,
   chanceCards: [
-    { id: "innovation-bonus", amount: 120 }, { id: "maintenance-cost", amount: -90 },
-    { id: "community-event", amount: 60 }, { id: "traffic-fine", amount: -50 },
+    { kind: "cash", id: "innovation-bonus", amount: 120 }, { kind: "cash", id: "maintenance-cost", amount: -90 },
+    { kind: "cash", id: "community-event", amount: 60 }, { kind: "cash", id: "traffic-fine", amount: -50 },
+    { kind: "move", id: "advance-three", direction: "forward", steps: 3 },
+    { kind: "move", id: "retreat-three", direction: "backward", steps: 3 },
+    { kind: "move", id: "return-start", direction: "teleport", steps: 1 },
   ],
 };
-export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v9-standard", roundLimit: 40 };
+export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v10-standard", roundLimit: 40 };
 
 export function rulesFor(version: string): RuleSet {
   if (version === QUICK_RULES.version) return QUICK_RULES;
@@ -33,7 +39,10 @@ export function rulesFor(version: string): RuleSet {
 
 export function validateRules(rules: RuleSet): void {
   if (!rules.version || !Number.isSafeInteger(rules.startingCash) || rules.startingCash < 0 || !Number.isSafeInteger(rules.passStartBonus) || rules.passStartBonus < 0 || !Number.isSafeInteger(rules.roundLimit) || rules.roundLimit < 1) throw new RangeError("规则金额或轮数无效");
-  if (rules.chanceCards.length !== 4 || new Set(rules.chanceCards.map((card) => card.id)).size !== 4 || rules.chanceCards.some((card) => !["innovation-bonus", "maintenance-cost", "community-event", "traffic-fine"].includes(card.id) || !Number.isSafeInteger(card.amount))) throw new Error("机会规则无效");
+  if (rules.chanceCards.length !== 7 || new Set(rules.chanceCards.map((card) => card.id)).size !== 7 || rules.chanceCards.some((card) =>
+    card.kind === "cash" ? !["innovation-bonus", "maintenance-cost", "community-event", "traffic-fine"].includes(card.id) || !Number.isSafeInteger(card.amount)
+      : card.kind !== "move" || !["advance-three", "retreat-three", "return-start"].includes(card.id) ||
+        card.direction !== (card.id === "advance-three" ? "forward" : card.id === "retreat-three" ? "backward" : "teleport") || card.steps !== (card.id === "return-start" ? 1 : 3))) throw new Error("机会规则无效");
   if (rules.rentMultipliers.length !== 4 || rules.rentMultipliers.some((value) => !Number.isSafeInteger(value) || value < 1) || !Number.isSafeInteger(rules.groupRentPercent) || rules.groupRentPercent < 100 ||
       [rules.constructionCostPercent, rules.constructionSalePercent, rules.mortgagePercent, rules.mortgageRedemptionPercent].some((value) => !Number.isSafeInteger(value) || value < 0 || value > 100)) throw new Error("地产规则无效");
 }

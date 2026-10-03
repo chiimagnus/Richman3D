@@ -17,7 +17,7 @@ afterEach(() => vi.restoreAllMocks());
 
 function expectConserved(deck: DeckState) {
   const cards = [...deck.drawPile, ...deck.discardPile, ...(deck.pending === null ? [] : [deck.pending])];
-  expect(cards).toHaveLength(8);
+  expect(cards).toHaveLength(cardInstances(QUICK_RULES).length);
   expect(new Set(cards)).toEqual(new Set(cardInstances(QUICK_RULES)));
 }
 
@@ -25,7 +25,7 @@ function botCommand(snapshot: GameSnapshot) {
   return chooseBotCommand({ ...snapshot, config: { ...snapshot.config, players: snapshot.config.players.map((player) => ({ ...player, controller: "bot" })) } })!;
 }
 
-it("owns eight unique immutable instances without consuming random numbers before the first chance landing", () => {
+it("owns fourteen unique immutable instances without consuming random numbers before the first chance landing", () => {
   const config = createMatchConfig(768);
   const game = new Game(config);
   const random = new RuleRandom(config.seed);
@@ -37,19 +37,19 @@ it("owns eight unique immutable instances without consuming random numbers befor
   expectConserved(Game.restore(makeSave(game.snapshot, propertyMatchId).state).snapshot.deck);
 });
 
-it("draws each entity once per eight cards, and only shuffles the discarded pile for subsequent cycles", () => {
+it("draws each entity once per full deck, and only shuffles the discarded pile for subsequent cycles", () => {
   let deck = initialDeck(QUICK_RULES);
   const random = new RuleRandom(768);
   const uninterrupted = new RuleRandom(768);
   let other = initialDeck(QUICK_RULES);
   for (let cycle = 0; cycle < 4; cycle += 1) {
     const drawn: CardInstanceId[] = [];
-    for (let index = 0; index < 8; index += 1) {
+    for (let index = 0; index < cardInstances(QUICK_RULES).length; index += 1) {
       const before = random.snapshot.draws;
       deck = drawCard(deck, QUICK_RULES, random);
       other = drawCard(other, QUICK_RULES, uninterrupted);
       expect(deck).toEqual(other);
-      expect(random.snapshot.draws - before).toBe(index === 0 ? 7 : 0);
+      expect(random.snapshot.draws - before).toBe(index === 0 ? cardInstances(QUICK_RULES).length - 1 : 0);
       expectConserved(deck);
       drawn.push(deck.pending!);
       expect(() => drawCard(deck, QUICK_RULES, random)).toThrow("尚未结算");
@@ -77,10 +77,11 @@ it.each([2, 3, 4])("replays and restores every production command of a %s-seat g
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.reason);
     for (const event of result.events) {
-      if (event.kind === "rolled" && event.result.landing.kind === "chance") {
+      if (event.kind === "rolled" && (event.result.landing.kind === "chance" || event.result.landing.kind === "movement_card")) {
         const landing = event.result.landing;
         drawn.push(landing.instanceId);
-        for (const language of ["en", "zh-CN"] as const) expect(eventText(language, event, result.snapshot)).toContain(chanceCardText(language, landing.cardId, landing.amount));
+        const card = QUICK_RULES.chanceCards.find((card) => card.id === landing.cardId)!;
+        for (const language of ["en", "zh-CN"] as const) expect(eventText(language, event, result.snapshot)).toContain(chanceCardText(language, landing.cardId, card.kind === "cash" ? card.amount : QUICK_RULES.passStartBonus, card.kind === "move" ? card.steps : 0));
       }
     }
     expectConserved(game.snapshot.deck);
@@ -89,8 +90,9 @@ it.each([2, 3, 4])("replays and restores every production command of a %s-seat g
     expect(game.snapshot).toEqual(uninterrupted.snapshot);
   }
   expect(game.snapshot.decision.kind).toBe("game_over");
-  expect(drawn.length).toBeGreaterThanOrEqual(16);
-  for (let offset = 0; offset + 8 <= drawn.length; offset += 8) expect(new Set(drawn.slice(offset, offset + 8))).toEqual(new Set(cardInstances(QUICK_RULES)));
+  const size = cardInstances(QUICK_RULES).length;
+  expect(drawn.length).toBeGreaterThanOrEqual(size);
+  for (let offset = 0; offset + size <= drawn.length; offset += size) expect(new Set(drawn.slice(offset, offset + size))).toEqual(new Set(cardInstances(QUICK_RULES)));
 });
 
 it("keeps an unpaid cash card pending through save, rejects another draw and discards only after one actual rescue payment", () => {
@@ -181,6 +183,7 @@ it("rejects an initial shuffled or pending card state and clones restored arrays
 
 it.each(["en", "zh-CN"] as const)("%s cash-card text uses the rule amount rather than a translated business constant", (language) => {
   for (const card of QUICK_RULES.chanceCards) {
+    if (card.kind !== "cash") continue;
     const amount = card.amount >= 0 ? 174 : -174;
     expect(chanceCardText(language, card.id, amount)).toContain(String(amount));
     expect(chanceCardText(language, card.id, amount)).not.toContain(String(card.amount));

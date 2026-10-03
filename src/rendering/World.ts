@@ -101,6 +101,11 @@ export class World {
     ]);
   }
 
+  teleportPlayer(id: PlayerId, to: number): void {
+    this.players.get(id)!.setPosition(to);
+    if (id === this.observer) this.cameraRig.firstPerson.setPosition(to);
+  }
+
   setView(view: CameraView): void {
     this.cameraRig.setView(view);
     for (const [id, player] of this.players) player.setVisible(view === "overview" || id !== this.observer);

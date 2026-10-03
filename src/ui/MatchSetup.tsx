@@ -50,7 +50,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
             {SEAT_COLORS.map((color, colorIndex) => <option key={color} value={color}>{Object.values(copy.colors)[colorIndex]}</option>)}
           </select>
         </label>)}
-        <ul>{rules.chanceCards.map((card) => <li key={card.id}>{chanceCardText(language, card.id, card.amount)}</li>)}</ul>
+        <ul>{rules.chanceCards.map((card) => <li key={card.id}>{chanceCardText(language, card.id, card.kind === "cash" ? card.amount : rules.passStartBonus, card.kind === "move" ? card.steps : 0)}</li>)}</ul>
       </details>
       {error && <p role="alert">{copy.nameError}</p>}
       {app.getSnapshot().stored.kind === "valid" && <p>{messages(language).storage.replaceWarning}</p>}

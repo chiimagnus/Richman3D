@@ -90,7 +90,7 @@ it("all real event transfers reconcile with each committed cash balance through 
             branches.add("rent");
           } else record(event.actor, source.kind === "tax" ? "taxesPaid" : "chanceExpense", event.amount);
         }
-        if (event.kind === "rolled") {
+        if (event.kind === "rolled" || event.kind === "card_moved") {
           const action = event.result;
           record(action.playerId, "startBonus", action.startBonus);
           if (action.startBonus > 0) branches.add("bonus");

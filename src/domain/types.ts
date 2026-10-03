@@ -1,5 +1,6 @@
 import type { MapDefinition } from "./board";
 import type { RuleSet } from "./rules";
+import type { Movement } from "./movement";
 
 export type PlayerId = "p1" | "p2" | "p3" | "p4";
 export const HISTORY_LIMIT = 100;
@@ -42,7 +43,9 @@ export type FinancialStats = {
   readonly debtWrittenOff: number;
   readonly rentLost: number;
 };
-export type ChanceCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
+export type CashCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
+export type MovementCardId = "advance-three" | "retreat-three" | "return-start";
+export type ChanceCardId = CashCardId | MovementCardId;
 export type CardInstanceId = `${ChanceCardId}:${1 | 2}`;
 export type DeckState = {
   readonly drawPile: readonly CardInstanceId[];
@@ -125,7 +128,9 @@ export type LandingResult =
   | { readonly kind: "property_owned"; readonly propertyId: string }
   | { readonly kind: "rent"; readonly propertyId: string; readonly ownerId: PlayerId; readonly amount: number }
   | { readonly kind: "tax"; readonly amount: number }
-  | { readonly kind: "chance"; readonly amount: number; readonly cardId: ChanceCardId; readonly instanceId: CardInstanceId };
+  | { readonly kind: "chance"; readonly amount: number; readonly cardId: CashCardId; readonly instanceId: CardInstanceId }
+  | { readonly kind: "movement_card"; readonly cardId: MovementCardId; readonly instanceId: CardInstanceId }
+  | { readonly kind: "chance_ignored" };
 
 export type PaymentSource = Extract<LandingResult, { kind: "rent" | "tax" | "chance" }>;
 export type PendingDebt = {
@@ -135,15 +140,17 @@ export type PendingDebt = {
   readonly continuation: "finish_turn";
 };
 
-export type RollResult = {
+export type RollResult = Movement & {
   readonly playerId: PlayerId;
   readonly dice: readonly [number, number];
   readonly steps: number;
-  readonly from: number;
-  readonly to: number;
-  readonly path: readonly number[];
-  readonly passedStart: boolean;
-  readonly startBonus: number;
+  readonly landing: LandingResult;
+};
+
+export type CardMovementResult = Movement & {
+  readonly playerId: PlayerId;
+  readonly cardId: MovementCardId;
+  readonly instanceId: CardInstanceId;
   readonly landing: LandingResult;
 };
 
@@ -159,6 +166,7 @@ export type GameEvent =
   | { readonly kind: "trade_proposed"; readonly proposal: TradeProposal }
   | { readonly kind: "trade_accepted" | "trade_rejected"; readonly proposal: TradeProposal; readonly reason: "fair_value" | "lower_value" | "invalid_trade" | null }
   | { readonly kind: "rolled"; readonly result: RollResult }
+  | { readonly kind: "card_moved"; readonly result: CardMovementResult }
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
   | { readonly kind: "upgraded"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 1 | 2 | 3; readonly cost: number }
   | { readonly kind: "building_sold"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 0 | 1 | 2; readonly cost: number; readonly refund: number }

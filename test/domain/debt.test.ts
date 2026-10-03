@@ -130,14 +130,17 @@ it("a fixed rent bankruptcy liquidates an unmortgaged estate and credits only ac
   const steps = random.integer(6) + random.integer(6) + 2;
   const game = Game.restore({ ...state, turnPlayerId: "p2", decision: { kind: "awaiting_roll", actorId: "p2" }, players: state.players.map((player) => player.id === "p2" ? { ...player, cash: 0, position: (23 - steps) % 20,
     statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash } } : player) });
-  expect(game.apply({ kind: "roll", actor: "p2", expectedRevision: state.revision }).ok).toBe(true);
+  const rolled = game.apply({ kind: "roll", actor: "p2", expectedRevision: state.revision });
+  expect(rolled.ok).toBe(true);
   const before = game.snapshot;
   expect(before.decision).toMatchObject({ kind: "awaiting_debt", debt: { amount: 336, creditorId: "p1" } });
-  expect(before.players[1]!.cash).toBe(200);
+  const bonus = rolled.ok ? rolled.events.find((event) => event.kind === "rolled")!.result.startBonus : 0;
+  expect(before.players[1]!.cash).toBe(bonus);
+  const available = bonus + 120;
   expect(game.apply({ kind: "bankrupt", actor: "p2", expectedRevision: before.revision }).ok).toBe(true);
-  expect(game.snapshot.players[0]!.cash).toBe(before.players[0]!.cash + 320);
-  expect(game.snapshot.players[0]!.statistics.rentLost).toBe(16);
-  expect(game.snapshot.players[1]).toMatchObject({ cash: 0, bankrupt: true, statistics: { mortgageIncome: 120, mortgagePrincipalReleased: 120, rentPaid: before.players[1]!.statistics.rentPaid + 320, debtWrittenOff: 16 } });
+  expect(game.snapshot.players[0]!.cash).toBe(before.players[0]!.cash + available);
+  expect(game.snapshot.players[0]!.statistics.rentLost).toBe(336 - available);
+  expect(game.snapshot.players[1]).toMatchObject({ cash: 0, bankrupt: true, statistics: { mortgageIncome: 120, mortgagePrincipalReleased: 120, rentPaid: before.players[1]!.statistics.rentPaid + available, debtWrittenOff: 336 - available } });
   expect(game.snapshot.properties["skyline-road"]).toEqual({ ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] });
   expect(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot).toEqual(game.snapshot);
 });
@@ -205,7 +208,7 @@ it("a failing creditor credit atomically rolls back rescue, transfer, property a
   const debtState = makeSave(game.snapshot, propertyMatchId).state;
   const cash = Number.MAX_SAFE_INTEGER - propertyValue(game.snapshot, "p2");
   const rich = Game.restore({ ...debtState, players: debtState.players.map((player) => player.id === "p2" ? { ...player, cash,
-    statistics: { ...player.statistics, chanceIncome: player.statistics.chanceIncome + cash - player.cash } } : player) });
+    statistics: { ...player.statistics, chanceIncome: Number(BigInt(player.statistics.chanceIncome) + BigInt(cash) - BigInt(player.cash)) } } : player) });
   const before = rich.snapshot;
   const command: Command = { kind: "mortgage", propertyId: "neon-avenue", actor: "p1", expectedRevision: before.revision };
   expect(rich.apply(command)).toEqual({ ok: false, reason: "calculation_failed" });

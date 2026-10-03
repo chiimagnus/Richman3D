@@ -58,7 +58,7 @@ it.each(kinds)("retries a failed %s save without replaying any payment, ownershi
     await session.dispatch(command);
     expect(game.snapshot).toBe(committed);
     expect(save).toHaveBeenCalledTimes(2);
-    expect(committed.players.map((player) => player.cash)).toEqual(kind === "auction_pass" ? [1500, 1490] : kind === "trade_accept" ? [1960, 1640] : pending.state.players.map((player) => player.cash));
+    expect(committed.players.map((player) => player.cash)).toEqual(kind === "auction_pass" ? [1500, 1490] : pending.state.players.map((player) => player.cash + (kind === "trade_accept" ? player.id === "p1" ? 180 : -180 : 0)));
     save.mockRestore();
   } finally { session.dispose(); }
 });

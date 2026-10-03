@@ -5,6 +5,13 @@ import type { Language } from "../i18n/language";
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
+    case "card_moved": {
+      const result = event.result;
+      const card = snapshot.rules.chanceCards.find((card) => card.id === result.cardId)!;
+      return formatMessage(copy.cardMoved, { actor: playerName(language, result.playerId, snapshot.config),
+        message: chanceCardText(language, result.cardId, snapshot.rules.passStartBonus, card.kind === "move" ? card.steps : 0),
+        destination: tileName(language, snapshot.map.tiles[result.to]!) }) + (result.startBonus > 0 ? " " + formatMessage(copy.cardBonus, { amount: formatCash(language, result.startBonus) }) : "");
+    }
     case "trade_proposed":
     case "trade_accepted":
     case "trade_rejected": {
@@ -72,6 +79,12 @@ function rollStatus(
   const propertyName = "propertyId" in landing ? tileName(language, snapshot.map.tiles.find((tile) => tile.id === landing.propertyId)!) : "";
 
   switch (landing.kind) {
+    case "movement_card": {
+      const card = snapshot.rules.chanceCards.find((card) => card.id === landing.cardId)!;
+      return formatMessage(copy.rollChance, { actor, steps: result.steps,
+        message: chanceCardText(language, landing.cardId, snapshot.rules.passStartBonus, card.kind === "move" ? card.steps : 0) });
+    }
+    case "chance_ignored": return copy.chanceIgnored;
     case "property_available":
       return formatMessage(copy.rollPropertyAvailable, {
         actor,

@@ -11,6 +11,7 @@ import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSna
 import { HISTORY_LIMIT } from "./types";
 import { advanceAuction, canBid, canProposeTrade, startAuction, tradeOption, tradeResponseReason } from "./market";
 import { cardType, discardCard, drawCard, initialDeck } from "./cards";
+import { movement } from "./movement";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -159,51 +160,54 @@ export class Game {
       } else if (command.kind === "roll") {
         const dice = [random.integer(6) + 1, random.integer(6) + 1] as const;
         const steps = dice[0] + dice[1];
-        const from = player.position;
-        const path = Array.from({ length: steps }, (_, offset) => (from + offset + 1) % before.map.tiles.length);
-        const to = path.at(-1);
-        if (to === undefined) throw new Error("移动路径为空");
-        const passedStart = path.includes(0);
-        const startBonus = passedStart ? before.rules.passStartBonus : 0;
-        if (passedStart) player.cash = cashAfterChange(player.cash, startBonus);
-        player.position = to;
+        const move = movement(player.position, before.map.tiles.length, "forward", steps, before.rules, true);
+        player.cash = cashAfterChange(player.cash, move.startBonus);
+        player.position = move.to;
         lastRoll = dice;
-        const tile = tileAt(before.map, to);
-        let landing: LandingResult;
-        switch (tile.type) {
-          case "start": landing = { kind: "start" }; break;
-          case "tax":
-            landing = { kind: "tax", amount: tile.amount };
-            break;
-          case "chance": {
-            deck = drawCard(deck, before.rules, random);
-            const instanceId = deck.pending!;
-            const card = before.rules.chanceCards.find((candidate) => candidate.id === cardType(instanceId));
-            if (!card) throw new Error("机会卡无效");
-            if (card.amount >= 0) {
-              player.cash = cashAfterChange(player.cash, card.amount);
-              deck = discardCard(deck, instanceId);
+        const resolveLanding = (drawChance: boolean): LandingResult => {
+          const tile = tileAt(before.map, player.position);
+          switch (tile.type) {
+            case "start": return { kind: "start" };
+            case "tax": return { kind: "tax", amount: tile.amount };
+            case "chance": {
+              if (!drawChance) return { kind: "chance_ignored" };
+              deck = drawCard(deck, before.rules, random);
+              const instanceId = deck.pending!;
+              const card = before.rules.chanceCards.find((candidate) => candidate.id === cardType(instanceId));
+              if (!card) throw new Error("机会卡无效");
+              if (card.kind === "move") return { kind: "movement_card", cardId: card.id, instanceId };
+              if (card.amount >= 0) {
+                player.cash = cashAfterChange(player.cash, card.amount);
+                deck = discardCard(deck, instanceId);
+              }
+              return { kind: "chance", amount: card.amount, cardId: card.id, instanceId };
             }
-            landing = { kind: "chance", amount: card.amount, cardId: card.id, instanceId };
-            break;
-          }
-          case "property": {
-            const ownerId = properties[tile.id]!.ownerId;
-            if (!ownerId) {
-              decision = { kind: "awaiting_purchase", actorId: player.id, propertyId: tile.id };
-              landing = { kind: "property_available", propertyId: tile.id, price: tile.price };
-            } else if (ownerId === player.id) {
-              landing = { kind: "property_owned", propertyId: tile.id };
-            } else {
+            case "property": {
+              const ownerId = properties[tile.id]!.ownerId;
+              if (!ownerId) {
+                decision = { kind: "awaiting_purchase", actorId: player.id, propertyId: tile.id };
+                return { kind: "property_available", propertyId: tile.id, price: tile.price };
+              }
+              if (ownerId === player.id) return { kind: "property_owned", propertyId: tile.id };
               const owner = players.find((candidate) => candidate.id === ownerId);
               if (!owner) throw new Error("产权玩家不存在");
-              const amount = rentFor(before, tile.id);
-              landing = { kind: "rent", propertyId: tile.id, ownerId, amount };
+              return { kind: "rent", propertyId: tile.id, ownerId, amount: rentFor(before, tile.id) };
             }
-            break;
           }
+        };
+        let landing = resolveLanding(move.drawChance);
+        events.push({ kind: "rolled", result: { playerId: player.id, dice, steps, ...move, landing } });
+        if (landing.kind === "movement_card") {
+          const { instanceId, cardId } = landing;
+          const card = before.rules.chanceCards.find((candidate) => candidate.id === cardId);
+          if (!card || card.kind !== "move") throw new Error("移动牌无效");
+          const next = movement(player.position, before.map.tiles.length, card.direction, card.steps, before.rules, false);
+          player.cash = cashAfterChange(player.cash, next.startBonus);
+          player.position = next.to;
+          deck = discardCard(deck, instanceId);
+          landing = resolveLanding(next.drawChance);
+          events.push({ kind: "card_moved", result: { playerId: player.id, cardId, instanceId, ...next, landing } });
         }
-        events.push({ kind: "rolled", result: { playerId: player.id, dice, steps, from, to, path, passedStart, startBonus, landing } });
         const debt = obligation(landing);
         if (debt) {
           if (player.cash >= debt.amount) pay(debt, debt.amount);
@@ -302,7 +306,7 @@ export class Game {
             record(source.ownerId, "rentLost", event.writtenOff);
           } else record(event.actor, source.kind === "tax" ? "taxesPaid" : "chanceExpense", event.amount);
         }
-        if (event.kind === "rolled") {
+        if (event.kind === "rolled" || event.kind === "card_moved") {
           const action = event.result;
           record(action.playerId, "startBonus", action.startBonus);
           const landing = action.landing;

@@ -49,7 +49,10 @@
     "rollTax": "{actor} moved {steps} spaces; fixed fee due: ¥{amount}.",
     "rollChance": "{actor} moved {steps} spaces: {message}",
     "rollOwned": "{actor} moved {steps} spaces onto their own “{propertyName}”.",
-    "rollStart": "{actor} moved {steps} spaces back to Start."
+    "rollStart": "{actor} moved {steps} spaces back to Start.",
+    "cardMoved": "{actor}: {message} Arrived at “{destination}”. No further Chance card is drawn on this move.",
+    "cardBonus": "Received {amount} from Start once.",
+    "chanceIgnored": "No further Chance card is drawn on this move."
   },
   "feedback": {
     "diceActor": "{actor} · Dice Roll",
@@ -87,7 +90,10 @@
     "innovation-bonus": "City innovation bonus +{amount}",
     "maintenance-cost": "Emergency maintenance {amount}",
     "community-event": "Community event income +{amount}",
-    "traffic-fine": "Traffic fine {amount}"
+    "traffic-fine": "Traffic fine {amount}",
+    "advance-three": "Advance {steps} spaces; passing Start earns ¥{amount}.",
+    "retreat-three": "Move back {steps} spaces; crossing Start earns nothing.",
+    "return-start": "Teleport to Start and receive ¥{amount} once."
   },
   "setup": {
     "title": "New match",

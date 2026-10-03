@@ -16,6 +16,7 @@ export type GameView = {
   readonly presenting: boolean;
   readonly attached: boolean;
   readonly events: readonly GameEvent[];
+  readonly presentationEvent: GameEvent | null;
   readonly error: "presentation_failed" | "command_rejected" | null;
   readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
   readonly save: SaveView;
@@ -36,7 +37,7 @@ export class GameSession {
   constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
     this.expected = persistence?.expected ?? null;
-    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
+    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
   }
 
   getSnapshot = (): GameView => this.view;
@@ -152,7 +153,7 @@ export class GameSession {
 
   pause(): void {
     if (this.view.mode === "disposed") return;
-    this.publish({ mode: "paused", displayed: this.game.snapshot, viewPlayerId: this.nextViewPlayer() });
+    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, viewPlayerId: this.nextViewPlayer() });
     this.queue.cancel();
     try {
       this.port?.stop();
@@ -178,12 +179,12 @@ export class GameSession {
     if (this.view.mode === "disposed") return;
     this.queue.cancel();
     try { this.port?.stop(); } catch { }
-    this.publish({ mode: "paused", displayed: this.game.snapshot, error: "presentation_failed" });
+    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, error: "presentation_failed" });
   }
 
   dispose(): void {
     if (this.view.mode === "disposed") return;
-    this.publish({ mode: "disposed", displayed: this.game.snapshot, attached: false, presenting: false });
+    this.publish({ mode: "disposed", displayed: this.game.snapshot, presentationEvent: null, attached: false, presenting: false });
     this.queue.cancel();
     this.port?.stop();
     this.port = null;
@@ -201,20 +202,20 @@ export class GameSession {
           return;
         }
         const port = this.port;
-        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presenting: true, error: null });
+        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, presenting: true, error: null });
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
-        const event = result.events.find((entry) => entry.kind === "paid" || entry.kind === "auction_ended") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
-        const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_auction" && result.snapshot.decision.kind !== "awaiting_trade" && !("actor" in event && ["purchased", "upgraded", "building_sold", "mortgaged", "redeemed"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
+        const event = result.events.find((entry) => entry.kind === "paid" || entry.kind === "auction_ended") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
+        const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_auction" && result.snapshot.decision.kind !== "awaiting_trade" && !("actor" in event && ["purchased", "upgraded", "building_sold", "mortgaged", "redeemed"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available");
         let settled = false;
         const settle = () => {
           if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;
           settled = true;
           const duration = meaningful ? 1750 : 0;
-          this.publish({ displayed: result.snapshot, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration } : null });
+          this.publish({ displayed: result.snapshot, presentationEvent: null, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration } : null });
           return duration;
         };
-        const finished = await this.queue.run(port, result.events, settle);
+        const finished = await this.queue.run(port, result.events, settle, (event) => this.publish({ presentationEvent: event }));
         if (this.getSnapshot().mode === "disposed") return;
         settle();
         this.publish({ displayed: this.game.snapshot, presenting: false, viewPlayerId: this.nextViewPlayer() });
@@ -225,7 +226,7 @@ export class GameSession {
     } catch {
       if (this.view.mode !== "disposed") this.failPresentation();
     } finally {
-      if (this.view.mode !== "disposed") this.publish({ presenting: false, displayed: this.game.snapshot, viewPlayerId: this.nextViewPlayer() });
+      if (this.view.mode !== "disposed") this.publish({ presenting: false, displayed: this.game.snapshot, presentationEvent: null, viewPlayerId: this.nextViewPlayer() });
     }
   }
 

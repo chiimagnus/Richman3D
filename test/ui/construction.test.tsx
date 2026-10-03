@@ -14,7 +14,7 @@ it.each(["en", "zh-CN"] as const)("%s projects domain rent/cost/cash and capture
   const view = session.getSnapshot();
   const management = assetManagementView(view)!;
   const option = management.properties["neon-avenue"]!.upgrade;
-  expect(option).toMatchObject({ cost: 90, currentRent: 48, nextRent: 96, remainingCash: 1690, reason: null, command: { kind: "upgrade", propertyId: "neon-avenue", expectedRevision: 40 } });
+  expect(option).toMatchObject({ cost: 90, currentRent: 48, nextRent: 96, remainingCash: 1690, reason: null, command: { kind: "upgrade", propertyId: "neon-avenue", expectedRevision: view.displayed.revision } });
   expect(management.properties["skyline-road"]).toBeUndefined();
   expect(JSON.stringify(management)).not.toMatch(/random|draws|statistics|history/);
   const assets = game.snapshot.players.map((player) => playerAssets(game.snapshot, player.id));

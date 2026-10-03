@@ -7,6 +7,7 @@ import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
 import type { Command } from "../../src/domain/types";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
+import { RuleRandom } from "../../src/domain/random";
 
 function auctionMatch(seats = 2, cash?: readonly number[]): Game {
   let game = new Game(createMatchConfig(940, seats));
@@ -238,10 +239,18 @@ it("a bidder below the new minimum can still pass without borrowing or canceling
 
 it("skips a real eliminated seat during bidding without moving the ordinary-turn boundary", () => {
   const checkpoint = builtRentDebtMatch();
-  const state = makeSave(checkpoint.snapshot, propertyMatchId).state;
-  const game = Game.restore({ ...state, completedRounds: checkpoint.snapshot.rules.roundLimit - 1 });
+  let game = checkpoint;
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
-  for (let count = 0; count < 30 && game.snapshot.decision.kind !== "awaiting_purchase"; count += 1) expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
+  const lastPlayer = game.snapshot.turnOrder.filter((id) => !game.snapshot.players.find((player) => player.id === id)!.bankrupt).at(-1)!;
+  for (let count = 0; count < 30 && (game.snapshot.decision.kind !== "awaiting_roll" || game.snapshot.turnPlayerId !== lastPlayer); count += 1) expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
+  const state = makeSave(game.snapshot, propertyMatchId).state;
+  const random = new RuleRandom(state.random);
+  const steps = random.integer(6) + random.integer(6) + 2;
+  const destination = game.snapshot.map.tiles.findIndex((tile) => tile.type === "property" && game.snapshot.properties[tile.id]!.ownerId === null);
+  expect(destination).toBeGreaterThanOrEqual(0);
+  game = Game.restore({ ...state, completedRounds: game.snapshot.rules.roundLimit - 1,
+    players: state.players.map((player) => player.id === lastPlayer ? { ...player, position: (destination - steps + game.snapshot.map.tiles.length) % game.snapshot.map.tiles.length } : player) });
+  expect(game.apply({ kind: "roll", actor: lastPlayer, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
   const before = game.snapshot;
   expect(game.apply({ kind: "skip", actor: before.turnPlayerId, expectedRevision: before.revision }).ok).toBe(true);

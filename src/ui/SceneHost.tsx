@@ -41,7 +41,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
       unbind = session.bind({
         sync: (snapshot) => activeWorld.sync(snapshot),
         stop: () => { activeWorld.cancelPresentation(); audio.stop(); },
-        present: async (events, signal, settle) => {
+        present: async (events, signal, settle, show) => {
           let settled = false;
           const feedback = async () => {
             if (settled || signal.aborted) return;
@@ -57,6 +57,19 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
                 audio.playRoll();
                 if (!await activeWorld.wait(520, signal)) return;
                 await activeWorld.movePlayer(event.result.playerId, event.result.path, () => audio.playStep(), signal);
+                if (signal.aborted) return;
+                activeWorld.landOnTile(event.result.to, event.result.landing);
+                audio.playLanding(event.result.landing);
+                if (event.result.landing.kind === "movement_card") {
+                  show(event);
+                  if (!await activeWorld.wait(900, signal)) return;
+                }
+                break;
+              }
+              case "card_moved": {
+                show(event);
+                if (event.result.direction === "teleport") activeWorld.teleportPlayer(event.result.playerId, event.result.to);
+                else await activeWorld.movePlayer(event.result.playerId, event.result.path, () => audio.playStep(), signal);
                 if (signal.aborted) return;
                 activeWorld.landOnTile(event.result.to, event.result.landing);
                 audio.playLanding(event.result.landing);
