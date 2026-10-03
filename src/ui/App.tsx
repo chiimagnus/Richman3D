@@ -32,6 +32,11 @@ const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: 
 export function App({ app }: { app: GameApp }) {
   const state = useSyncExternalStore(app.subscribe, app.getSnapshot);
   const [panel, setPanel] = useState<"settings" | "setup" | "transfer" | null>(null);
+  const lastPanel = useRef(panel);
+  useEffect(() => {
+    if (lastPanel.current === "transfer" && panel === "settings") document.querySelector<HTMLButtonElement>("#transfer-open")?.focus({ preventScroll: true });
+    lastPanel.current = panel;
+  }, [panel]);
   return state.session ? <GamePlay key={state.session.matchId} app={app} session={state.session} preferences={state.preferences} /> : <>
     <MainMenu app={app} onSettings={() => setPanel("settings")} onStart={() => setPanel("setup")} />
     {panel === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("settings")} /> : panel === "settings" ? <SettingsPanel app={app} preferences={state.preferences} onClose={() => setPanel(null)}><button id="transfer-open" onClick={() => setPanel("transfer")}>{messages(state.preferences.language).storage.transfer.title}</button></SettingsPanel> : panel === "setup" && <MatchSetup app={app} onClose={() => setPanel(null)} />}

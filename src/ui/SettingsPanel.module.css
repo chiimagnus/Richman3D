@@ -1,5 +1,5 @@
 .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding-block: 14px; border-bottom: 1px solid var(--border); line-height: 1.5; }
-.row select { min-width: 0; max-width: 100%; width: 180px; }
+.row select { min-width: 0; max-width: 100%; width: 240px; }
 .row input { appearance: none; position: relative; flex: 0 0 44px; width: 44px; height: 26px; margin: 9px 0; border: 1px solid var(--border); border-radius: 20px; background: #234453; cursor: pointer; }
 .row input::before { content: ""; position: absolute; inset: 3px auto auto 3px; width: 18px; height: 18px; border-radius: 50%; background: #d0e0e7; }
 .row input:checked { background: var(--accent); border-color: transparent; }
