@@ -1,5 +1,5 @@
 version = 1
-current_task_id = "P4-T7"
+current_task_id = "P5-T5"
 
 [[tasks]]
 id = "P1-T1"
@@ -124,47 +124,47 @@ note = "180单测/typecheck/build通过；热座、生产/开发键盘语言、�
 [[tasks]]
 id = "P4-T4"
 title = "地产检查、资产抽屉和可追溯事件"
-status = "in_progress"
+status = "completed"
 plan = "plan-p4.md#p4-t4"
-commit = ""
-note = ""
+commit = "50be7141288f00036de24c23440c3773ce4bde38"
+note = "207单测/typecheck/build；背景Helium真实购买与收租、续玩后资产投影、购买内联查看无第二dialog；历史100条及坏历史拒绝18单测；只读查看/历史/存档/语言/暂停前后完整存档state一致，revision1/RNG3保持。"
 
 [[tasks]]
 id = "P5-T1"
 title = "单一地产状态与经济计算"
-status = "pending"
+status = "completed"
 plan = "plan-p5.md#p5-t1"
-commit = ""
-note = ""
+commit = "e2db641f74c2c4e7ed5c72e972013e238aa387e7"
+note = "237单测/typecheck/build/diff-check通过；后台Helium seed1407买齐青色组实际租金48、余额1228/1262，刷新revision11/RNG18保持。canonical properties替换owners，整数计算/净资产溢出原子回滚；v2不迁移不删除原档。"
 
 [[tasks]]
 id = "P5-T2"
 title = "建筑升级与可见成长"
-status = "pending"
+status = "completed"
 plan = "plan-p5.md#p5-t2"
-commit = ""
-note = ""
+commit = "1b847748c778b5e4513f872748e070206158616c"
+note = "255单测/typecheck/build/diff-check通过；后台Helium六次均衡升级现金1228→748、revision11→17、RNG18保持，真实保存恢复一致。三级高度与场景一致；只读单帧渲染GPU89/23保持，退出0/0；焦点恢复标题，双语390px目检。后台native Enter未测通过，不抢焦点。"
 
 [[tasks]]
 id = "P5-T3"
 title = "出售建筑、抵押与赎回"
-status = "pending"
+status = "completed"
 plan = "plan-p5.md#p5-t3"
-commit = ""
-note = ""
+commit = "ac82e421a617223abfb0831f9a069b7070480c49"
+note = "275单测/typecheck/build/diff-check；后台Helium均衡出售退款240、抵押90/零租记录、赎回本金90费用9；重复点击一次、随机游标保持、刷新state一致，旧未发布格式无兼容链。"
 
 [[tasks]]
 id = "P5-T4"
 title = "固定债务与救济决策"
-status = "pending"
+status = "completed"
 plan = "plan-p5.md#p5-t4"
-commit = ""
-note = ""
+commit = "e1fd07f44988001ed0b2dd67ad28bf15c201f387"
+note = "309单测/typecheck/build/diff-check；后台Helium债务30/120抵押90自动结清，欠租44清算只付30、冲销14；保存/刷新与终局一致。非负现金/固定债务/原子救济、电脑可终止，旧负现金路径删除，city-v6不建旧格式兼容。"
 
 [[tasks]]
 id = "P5-T5"
 title = "破产清算与多人终局一致"
-status = "pending"
+status = "in_progress"
 plan = "plan-p5.md#p5-t5"
 commit = ""
 note = ""
@@ -388,10 +388,10 @@ note = ""
 [[tasks]]
 id = "P4-T5"
 title = "移除玩法说明与实操教学"
-status = "in_progress"
+status = "completed"
 plan = "plan-p4.md#p4-t5"
-commit = ""
-note = ""
+commit = "921dcb4e359da701c54da8a7396471c92427918c"
+note = "207单测/typecheck/build；源码/测试/README/CI无tutorial、HelpPanel、旧教学入口；中文直接开局、英文购买/租金与真实存档续玩保留余额和偏好。后续后台Helium验收不重建E2E，真机与首玩继续待完成。"
 
 [[tasks]]
 id = "P4-T6"
@@ -404,7 +404,7 @@ note = "离线npm ci、typecheck、200单测、build通过；删除全部spec/he
 [[tasks]]
 id = "P4-T7"
 title = "合并局内设置与暂停并收敛镜头入口"
-status = "in_progress"
+status = "completed"
 plan = "plan-p4.md#p4-t7"
-commit = ""
-note = ""
+commit = "1adf486c56b47cdad3e7d16f0e61119ee2609392"
+note = "主实现b3075d6；焦点/英文选项修复1adf486；207单测/typecheck/build。背景Helium确认单设置入口、Esc暂停、B在N按钮获焦仍只买一次、购买180/租金32/真实续玩；主菜单与局内返回存档/历史入口焦点，完整readonly state不变。390px双语及放大布局截图目检不横溢；原生前台PointerLock成功、真实触屏/屏幕阅读器/浏览器原生200%缩放未复验，依用户要求不抢焦点。"
