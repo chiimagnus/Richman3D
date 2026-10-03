@@ -14,15 +14,21 @@
 
 ### 实体牌库与抽弃牌总量守恒
 
-**文件与锚点：** `Game::resolveLanding` 的 CHANCE_CARDS 随机分支、random、types、snapshot、FeedbackLayer、i18n JSON；新增 `src/domain/cards.ts`、`test/domain/deck.test.ts`、`test/e2e/chance-deck.spec.ts`。
+**文件与锚点：** `src/domain/game.ts` 的 roll/chance 与共用 pay、`random.ts`、`types.ts`、`restore.ts`、`rules.ts`、`storage/snapshot.ts`、`ui/eventText.ts` 与 i18n JSON；新增 `src/domain/cards.ts`、`test/domain/deck.test.ts`，扩充实际会话与存档回归。不恢复已删除的 E2E 框架。
 
 **步骤：** 首先把现有四种现金事件改为每类两个实例的八张开发牌库；洗牌、抽取和弃置通过规则随机源，移除旧的每次独立随机选事件数组。实例 ID 和类型 ID 分离；牌库顺序、弃牌堆和当前待结算卡保存进快照。抽牌后先归入待结算区域，现金足够则结算后弃置，不足则债务清算结束后再弃置；不能在待债务时既在弃牌堆又仍待结算。
 
 现金牌的金额由规则定义，JSON 只含名字和带金额占位符的说明，不在两种语言里分别写死 +120 等业务数值。牌库空时洗弃牌堆，洗牌不触碰手牌；本任务尚无手牌，所以不会放入不能使用的道具。卡牌展示保留“某人抽到了什么、实际金额、资金变化”的语义事件，可切换语言重绘。
 
-**验证：** 初始八实例唯一、八次抽牌后重洗、保存再抽与不刷新一致；抽负面牌进入债务后刷新，不能再抽一次或重复扣钱；不同语言均显示规则金额。运行 `npm test -- --run test/domain/deck.test.ts test/domain/debt.test.ts` 和 chance-deck 浏览器用例。
+初始快照保存八张有序未抽实例；第一次抽牌命令中先洗再抽。只有初始满堆且弃牌/pending 为空时才需要首洗，重洗后同命令已取出一张，不增加重复的初始化标记。洗牌、抽取、经济结算和随机游标一起原子提交。现有 rolled/chance 与 paid 结构化事件增加实例引用即可拥有完整语义，不叠加重复播报事件。规则开发版本升至 city-v9；未知旧版本保全、不迁移。
+
+**验证：** 初始八实例唯一、八次抽牌后重洗、保存再抽与不刷新一致；抽负面牌进入债务后刷新，不能再抽一次或重复扣钱；不同语言均显示规则金额。运行领域/会话针对性 Vitest 以及 typecheck、全量单测、build；实际交互用已安装 Helium 后台验收，仅管理本任务页面，不激活或抢焦点。
 
 **原子提交：** `feat: 用可恢复实体牌库替代独立随机事件`。
+
+**执行证据（2026-10-04）：** city-v9 八实例已接入真实 Game.apply 的洗/抽/现金结算与共用 pay 弃牌；移除每次 independent random.integer(4) 分支。恢复拒绝未知/重复/丢失实例、pending/债务/历史不匹配及未抽卡进入弃堆，输入数组不保留别名。2/3/4 席正式 40 轮对局逐命令存档恢复与连续重洗完全一致；溢出与中途洗牌失败保持完整状态/RNG，电脑救济及破产均结束实际付款后弃置，保存失败重试不重执行。旧种子 fixture 改用真实目标地产命令序列，不加兼容规则。
+
+Helium 自有后台目标 `35854AC6D0F11FBB0AFF95299ACC1D2D`：真实导入负面牌债务，revision3/现金30/pending maintenance-cost:2，刷新及切语言完整 state 不变；展开地产并滚动抵押按钮，连续真实 DOM 点击两次仅 revision4/现金40/实付90/弃堆一个实例/RNG13保持。结清后交接 p2，刷新完整 state 不变。390px 双语债务和经营后果截图已目检无横溢，`/tmp/richman-p7-t1-{negative.richman,pending-browser,paid-browser}.json` 与 `/tmp/richman-p7-t1-debt-{390-zh,390-en,action-390-en}.png`。仅自有页解除冻结以完成异步，document.hidden 始终 true；未激活页，不把后台 DOM 点击或模拟宽度当作前台原生键盘/真机性能证据。该页与4330预览服务已关闭。typecheck、50文件428单测、build、diff-check；SceneHost 507.69kB 的既有预算警告仍属 P11，不压掉警告。
 
 ## P7-T2
 

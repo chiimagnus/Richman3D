@@ -1,5 +1,5 @@
 version = 1
-current_task_id = "P6-T2"
+current_task_id = "P7-T1"
 
 [[tasks]]
 id = "P1-T1"
@@ -180,23 +180,23 @@ note = "353单测/typecheck/build/diff-check；顺序拍卖、基线电脑、热
 [[tasks]]
 id = "P6-T2"
 title = "原子交易提案与接受拒绝"
-status = "in_progress"
+status = "completed"
 plan = "plan-p6.md#p6-t2"
-commit = ""
-note = ""
+commit = "72f88cca66252e93e9cff87dd9bf68406f86a24a"
+note = "390单测/typecheck/build/diff-check；原子产权/现金交易、双边守恒、整组建筑限制、基线电脑、热座/保存与v8恢复；后台Helium接受/拒绝/草稿取消及刷新完整state一致，无重复成交。"
 
 [[tasks]]
 id = "P6-T3"
 title = "市场中断、交接和可解释记录闭环"
-status = "pending"
+status = "completed"
 plan = "plan-p6.md#p6-t3"
-commit = ""
-note = ""
+commit = "8d57fec9d18c0080f2a8f72ad1d855c53d065096"
+note = "402单测/typecheck/build/diff-check；市场重试/中断重绑/100条历史截断/CAS竞争；后台Helium三席电脑拍卖30与交易10、双页面冲突不覆盖，双语历史和刷新state一致。"
 
 [[tasks]]
 id = "P7-T1"
 title = "实体牌库与抽弃牌总量守恒"
-status = "pending"
+status = "in_progress"
 plan = "plan-p7.md#p7-t1"
 commit = ""
 note = ""

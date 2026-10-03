@@ -34,7 +34,7 @@
 
 **依赖：** P6-T1。
 
-**文件与锚点：** market、Game.apply、economy/净资产、AssetPanel、HandoverScreen、snapshot；新增 `src/ui/TradePanel.tsx`、`test/domain/trade.test.ts`、`test/e2e/trade.spec.ts`。
+**文件与锚点：** market 的 tradeOption/tradePropertyReason/canProposeTrade、Game.apply、selectors、bot、restoreSnapshot、AssetPanel、App、GameSession、BoardView；新增 `src/ui/TradePanel.tsx`、`test/domain/trade.test.ts`、`test/app/trade-save.test.ts`、`test/ui/trade.test.tsx`，扩充独立财务对账和真实标记资源回归。遵守现行 AGENTS.md，不重建 E2E、教程或玩法文档。
 
 **步骤：** 自己掷骰前可提一份双方各最多三地产、单向现金差额的提案。提交前展示双方增减、现金余额、整组增减；提案提交后暂停原回合，接收者只可接受/拒绝。取消仅适用于尚未提交的草稿；提交后由接收者完成响应，发起者不再拥有并行取消通道，避免与单一decision.actorId冲突。暂停仍可用，但不撤销提案。响应临时改变 decision actor，不改 activePlayerId/round。接受时校验提案版本、当前产权、涉及地块所在同色组全部无建筑、所转移地块无抵押、双方存活、足够现金，全部通过才原子交换。不能只查所选地块level=0，却把仍有其他建筑的完整组拆散。拒绝或提交前取消草稿均不改资产；只有实际提交提案才算本回合一次机会，避免连续刷弹窗。
 
@@ -44,21 +44,31 @@
 
 **原子提交：** `feat: 增加可恢复的双边地产交易`。
 
+**实际验证：** typecheck、47 文件390项单测、build、diff-check通过。交易只提交一次候选现金/产权/双边统计，独立事件账本覆盖真实成交及其后整局；两/三/四席、初次掷骰前现金交易、近MAX_SAFE金额/净资产/累计统计、整组建筑、抵押、淘汰席、过期与重复响应、历史提案匹配、未发布v7原档保全均覆盖。接收者电脑按当前公开标价响应，理由在领域事件中固定，不随成交后产权或语言重新推断。规则升至 city-v8，无永久兼容链。
+
+后台Helium真实导入11版青色整组快照，经资产入口创建草稿；取消后完整state一致且焦点回到trade-open。180.5不能提交；180真实提交双击仅11→12，双方现金不变、普通回合仍p1，交接p2。待响应刷新完整state一致；响应面Esc暂停不撤销，只有接受/拒绝。接受双击仅12→13，p1/p2现金1228/1262→1408/1082，neon归p2；标记color/emissive同为ffb75e，场景标记数量3。成交后完整刷新一致。另一次实际拒绝双击仅12→13，现金/产权不变、tradeUsed=true，刷新完整一致。390px中文草稿、英文响应均无页面/dialog横溢并目检，截图/tmp/richman-p6-t2-{draft-390-zh,response-390-en}.png；对应待响应/成交/拒绝state位于/tmp/richman-p6-t2-{pending,final,rejected}.json。浏览器自身冻结后台页时仅恢复本任务target生命周期，document.hidden始终true，未激活标签/前台；该条件不是自然后台性能证据。原生前台按键、真实200%缩放、触屏/屏幕阅读器未测，不冒称通过。重建dist导致旧页面动态资源404时走现有加载失败保全/刷新菜单，存档未丢失，未新增兼容补丁。
+
 ## P6-T3
 
 ### 市场中断、交接和可解释记录闭环
 
 **依赖：** P6-T2。
 
-**文件与锚点：** AuctionPanel、TradePanel、HandoverScreen、HistoryPanel、GameStore、snapshot；新增 `test/e2e/market-recovery.spec.ts`，扩充 `test/storage/snapshot.test.ts`。
+**文件与锚点：** AuctionPanel、TradePanel、HandoverScreen、HistoryPanel、GameStore、snapshot；在现有 Vitest 会话/存储测试补组合恢复与冲突回归，通过后台 Helium 验收生产页面，不新增 E2E 专用 fixture。
 
 **步骤：** 复核所有市场决策的序列化字段与当前 actor，恢复显示同一个最高报价/提案，不清空弃权者、不再次询价。拍卖弃权通过明确命令，交易仅在草稿阶段可取消；已提交提案由接收者接受/拒绝。Esc遵守PanelHost的暂停/返回优先级，不默默撤销已提交市场决策。交接先隐藏前一操作者草稿；公开拍卖价格不需要额外假“隐私模式”。事件记录明确谁报价、谁成交、双方产权变化及未成交原因，恢复/切语言不会重记。
 
-完善费用、整组改变和报价范围的中英说明，输入按游戏整数货币，不受中文逗号/英文小数格式影响；UI 可以格式化显示，命令必须传整数。T1/T2各自交付时就同步游戏内玩法并删除旧入口和样式，本任务只查跨功能组合，不能以这里的“收口”允许前面留下未接入按钮或旧skip逻辑。
+完善费用、整组改变和报价范围的中英操作文案，输入按游戏整数货币，不受中文逗号/英文小数格式影响；UI 可以格式化显示，命令必须传整数。T1/T2各自交付时就删除旧入口和样式，本任务只查跨功能组合，不重建用户已要求删除的教学/玩法说明，不能以这里的“收口”允许前面留下未接入按钮或旧skip逻辑。
 
 **验证：** 拍卖首价/最后弃权/待成交、交易待响应/接受结果后的刷新矩阵；两标签冲突后不能把过期报价覆盖；按 Tab/Enter/Space 操作不会同时触发底层骰子；真实三席含两个真人和一个电脑完成一笔拍卖及交易。
 
 **原子提交：** `test: 补齐市场决策的恢复与同机交接闭环`（包含发现问题的最小修复，不只增测试）。
+
+**实际验证：** `test/app/market-recovery.test.ts` 的11项真实GameSession/GameStore回归覆盖auction_bid/最终auction_pass/trade_accept/trade_reject的保存拒绝→重试、未完成表现→暂停→场景重绑→迟到完成、两仓库CAS竞争、混合三席电脑响应。没有新增生产兜底或第二层状态管理器。`test/domain/trade.test.ts` 再补100条历史边界：第99条融资后response处于最早保留项，第100条后proposal/response均截掉，逐条实际保存恢复仍tradeUsed=true，不允许再提案；实际抵押赎回余额1058，与台账相符。
+
+后台Helium三席p1/p2真人+p3电脑，seed940：p2放弃直接购地，p3实际10首价；p1报20后第二本任务页面提交旧30，出现明确冲突暂停，current完整record保持20与revision4不变；冲突页“载入最新存档”恢复revision4，不覆盖。p2弃权后p3实际30，最后p1弃权前刷新highest/withdrawnIds/actor/full state不变，成交只扣p3 30；跳过表现后电脑真实掷骰回自己地产，返回p1且无额外市场轮次。p1经草稿向p3支付10，提交双击只产生revision9/10，电脑接受理由fair_value，p1/p2/p3现金1490/1500/1480，回合p1/rounds0/RNG保持。双语真实历史15条完整state一致，最终刷新一致，neon标记color/emissive均b58cff。证据/tmp/richman-p6-t3-{auction-pending,winning-bid,last-pass-pending,before-trade,final}.json。两个本任务target与4329预览均关闭，未操作用户标签。
+
+隐藏页CDP Space没有推进底层骰子或修改报价；Tab未移动focus、Enter未提交，不能宣称原生键盘验收通过。源码与领域回归证明市场阶段无roll权限、单一dialog和原生form/button路径；真实前台键盘/200%缩放/触屏/屏幕阅读器继续归P11实测待办，不为验收抢焦点。背景冻结只恢复任务target生命周期（仍hidden），不作后台时钟/性能证明。完整typecheck、48文件402项test、build与diff-check通过；现有scene >500kB警告继续由P11性能实验核对。
 
 ## 阶段结束检查
 
