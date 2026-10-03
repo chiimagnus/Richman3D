@@ -1,7 +1,7 @@
 import { Game } from "../../src/domain/game";
 import { RuleRandom } from "../../src/domain/random";
 import { makeSave } from "../../src/storage/snapshot";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { propertyMatch, propertyMatchId } from "./property-match";
 import { createMatchConfig } from "../../src/domain/config";
@@ -69,7 +69,7 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
         return restored;
       }
     }
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.decision.kind === "game_over" ? "p1" : snapshot.decision.actorId).find((candidate) => candidate.kind === "roll" || candidate.kind === "skip" || candidate.kind === "auction_pass");
+    const command = (chooseBotAction(observeBot(snapshot), "normal")?.command ?? null) ?? legalCommands(snapshot, snapshot.decision.kind === "game_over" ? "p1" : snapshot.decision.actorId).find((candidate) => candidate.kind === "roll" || candidate.kind === "skip" || candidate.kind === "auction_pass");
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a rent checkpoint");
   }
   throw new Error("No suitable real owned rent property");

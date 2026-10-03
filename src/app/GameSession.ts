@@ -1,5 +1,5 @@
 import { Game } from "../domain/game";
-import { chooseBotCommand } from "../domain/bot";
+import { chooseBotAction, observeBot } from "../domain/bot";
 import { observerId, playerConfig } from "../domain/config";
 import type { Command, GameEvent, GameSnapshot, PlayerId } from "../domain/types";
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
@@ -106,7 +106,7 @@ export class GameSession {
         if (this.view.attached || this.view.mode === "disposed" || this.view.error) { unsubscribe(); resolve(); }
       });
     });
-    const command = chooseBotCommand(this.game.snapshot);
+    const command = (chooseBotAction(observeBot(this.game.snapshot), "normal")?.command ?? null);
     if (command) await this.enqueue(command);
   }
   claimAnnouncement(id: number): boolean {
@@ -166,7 +166,7 @@ export class GameSession {
     await this.work;
     if (this.view.mode !== "paused" || !this.port || this.view.error === "presentation_failed") return;
     this.publish({ mode: "running", error: null });
-    const command = chooseBotCommand(this.game.snapshot);
+    const command = (chooseBotAction(observeBot(this.game.snapshot), "normal")?.command ?? null);
     if (command) await this.enqueue(command);
   }
 
@@ -221,7 +221,7 @@ export class GameSession {
         this.publish({ displayed: this.game.snapshot, presenting: false, viewPlayerId: this.nextViewPlayer() });
         if (!finished || this.port !== port || this.view.mode !== "running") return;
         port.sync(this.game.snapshot);
-        command = chooseBotCommand(this.game.snapshot);
+        command = (chooseBotAction(observeBot(this.game.snapshot), "normal")?.command ?? null);
       }
     } catch {
       if (this.view.mode !== "disposed") this.failPresentation();

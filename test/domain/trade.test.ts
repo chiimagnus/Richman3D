@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { canProposeTrade, tradeOption, tradeResponseReason } from "../../src/domain/market";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { rentFor } from "../../src/domain/economy";
 import { netAssets } from "../../src/domain/economy";
@@ -268,7 +268,7 @@ it("the bot responds conservatively using only current public value and records 
     const game = propertyMatch();
     submit(game, { ...terms, cash: { payerId: "p2", amount } });
     expect(tradeResponseReason(game.snapshot)).toBe(amount === 180 ? "fair_value" : "lower_value");
-    const command = chooseBotCommand(game.snapshot)!;
+    const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!;
     expect(command.kind).toBe(amount === 180 ? "trade_accept" : "trade_reject");
     expect(game.apply(command).ok).toBe(true);
     const event = game.snapshot.history.at(-1)!.event;

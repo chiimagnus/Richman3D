@@ -6,7 +6,7 @@ import { constructionRefund, discountedCost, netAssets, upgradeOption } from "..
 import { makeSave } from "../../src/storage/snapshot";
 import { eventText } from "../../src/ui/eventText";
 import { messages } from "../../src/i18n";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import type { Command, ItemCardId } from "../../src/domain/types";
 import { fullHandCheckpoint, itemCheckpoint, itemFineCheckpoint, itemLandingCheckpoint } from "../fixtures/items";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
@@ -207,7 +207,7 @@ it("baseline computers can use a held item and discard only the just-drawn fourt
   for (const game of [itemCheckpoint("controlled-dice"), fullHandCheckpoint()]) {
     const before = game.snapshot;
     const botView = { ...before, config: { ...before.config, players: before.config.players.map((player) => ({ ...player, controller: "bot" as const })) } };
-    const command = chooseBotCommand(botView)!;
+    const command = (chooseBotAction(observeBot(botView), "normal")?.command ?? null)!;
     expect(command.kind).toBe(before.decision.kind === "awaiting_discard" ? "discard_item" : "use_item");
     if (command.kind === "discard_item") expect(command.instanceId).toBe(before.players[0]!.hand.at(-1));
     expect(game.apply(command).ok).toBe(true);

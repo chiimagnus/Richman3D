@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands, playerAssets } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
@@ -39,7 +39,7 @@ it.each([2, 3, 4] as const)("liquidates real built groups in a %s-seat game, tra
       const snapshot = game.snapshot;
       expect(snapshot.turnPlayerId).not.toBe("p1");
       expect(legalCommands(snapshot, "p1")).toEqual([]);
-      expect(game.apply(chooseBotCommand(snapshot)!).ok).toBe(true);
+      expect(game.apply((chooseBotAction(observeBot(snapshot), "normal")?.command ?? null)!).ok).toBe(true);
       const committed = game.snapshot;
       game = Game.restore(readSave(makeSave(committed, propertyMatchId)).record.state);
       expect(game.snapshot).toEqual(committed);

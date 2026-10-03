@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { createMatchConfig, observerId, SEAT_COLORS, SEAT_IDS } from "../../src/domain/config";
 import { Game } from "../../src/domain/game";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 
@@ -29,7 +29,7 @@ it.each([2, 3, 4])("preserves %s configured seats and controller authority throu
     for (const player of config.players.filter((player) => player.id !== actor)) {
       expect(legalCommands(snapshot, player.id)).toEqual([]);
     }
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.decision.actorId).at(-1)!;
+    const command = (chooseBotAction(observeBot(snapshot), "normal")?.command ?? null) ?? legalCommands(snapshot, snapshot.decision.actorId).at(-1)!;
     expect(command).toBeDefined();
     const result = game.apply(command);
     expect(result.ok).toBe(true);

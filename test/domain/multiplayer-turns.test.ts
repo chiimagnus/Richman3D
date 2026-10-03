@@ -4,7 +4,7 @@ import { Game } from "../../src/domain/game";
 import { nextTurn, initialTurnOrder } from "../../src/domain/turns";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { CITY } from "../../src/domain/maps/city";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 
@@ -79,7 +79,7 @@ it("runs four internal computer seats through the same commands without adding a
   const base = createMatchConfig(940, 4);
   const game = new Game({ ...base, players: base.players.map((player) => ({ ...player, controller: "bot" })) });
   for (let count = 0; count < 400 && game.snapshot.decision.kind !== "game_over"; count += 1) {
-    const command = chooseBotCommand(game.snapshot);
+    const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null);
     expect(command).not.toBeNull();
     expect(game.apply(command!).ok).toBe(true);
   }
@@ -109,7 +109,7 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
     expect(readSave(makeSave(restored.snapshot, record.matchId)).snapshot).toEqual(restored.snapshot);
     expect(restored.snapshot.players[0]).toEqual(eliminated);
     if (restored.snapshot.decision.kind === "game_over") return;
-    expect(restored.apply(chooseBotCommand(restored.snapshot)!).ok).toBe(true);
+    expect(restored.apply((chooseBotAction(observeBot(restored.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
   }
   throw new Error("Surviving computers did not terminate");
 });

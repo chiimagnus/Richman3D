@@ -3,7 +3,7 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { cardInstances, cardType } from "../../src/domain/cards";
 import { legalCommands } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { RuleRandom } from "../../src/domain/random";
 import { QUICK_RULES, STANDARD_RULES } from "../../src/domain/rules";
 import { makeSave, readSave } from "../../src/storage/snapshot";
@@ -65,7 +65,7 @@ it.each(["human", "bot"] as const)("cleans pending, active and private hands onc
   expect(before.activeItem?.instanceId).toBe("rent-waiver:1");
   expect(before.history.length).toBeLessThan(100);
   game = recover(before);
-  const bankruptcy = controller === "bot" ? chooseBotCommand(game.snapshot)! : legalCommands(game.snapshot, "p1").find((command) => command.kind === "bankrupt")!;
+  const bankruptcy = controller === "bot" ? (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)! : legalCommands(game.snapshot, "p1").find((command) => command.kind === "bankrupt")!;
   expect(bankruptcy.kind).toBe("bankrupt");
   const result = execute(game, bankruptcy);
   expect(result.events.map((event) => event.kind)).toEqual(["liquidated", "paid", "ended"]);

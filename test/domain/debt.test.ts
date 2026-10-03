@@ -3,7 +3,7 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { RuleRandom } from "../../src/domain/random";
 import { legalCommands } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { canDeclareBankruptcy, liquidationValue, propertyValue } from "../../src/domain/economy";
 import type { Command } from "../../src/domain/types";
@@ -96,7 +96,7 @@ it("a debt bot chooses legal higher levels and finishes rescue instead of sellin
   const game = Game.restore({ ...state, config: { ...state.config, players: state.config.players.map((player) => ({ ...player, controller: player.id === "p1" ? "bot" : "human" })) } });
   for (let count = 0; count < 20 && game.snapshot.decision.kind === "awaiting_debt"; count += 1) {
     const before = game.snapshot;
-    const command = chooseBotCommand(before);
+    const command = (chooseBotAction(observeBot(before), "normal")?.command ?? null);
     expect(command).not.toBeNull();
     expect(legalCommands(before, "p1")).toContainEqual(command);
     expect(game.apply(command!).ok).toBe(true);
@@ -113,8 +113,8 @@ it("a computer with no recoverable assets confirms a complete, saved liquidation
   const state = makeSave(checkpoint.snapshot, propertyMatchId).state;
   const game = Game.restore({ ...state, config: { ...state.config, players: state.config.players.map((player) => ({ ...player, controller: player.id === "p1" ? "bot" : "human" })) },
     players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 30, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + 160 } } : player) });
-  expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
-  const command = chooseBotCommand(game.snapshot)!;
+  expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
+  const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!;
   expect(command.kind).toBe("bankrupt");
   expect(game.apply(command).ok).toBe(true);
   expect(game.snapshot.players[0]).toMatchObject({ cash: 0, bankrupt: true, statistics: { mortgagePrincipalReleased: 160, debtWrittenOff: 90 } });

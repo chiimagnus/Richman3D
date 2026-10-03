@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cardInstances, cardType, discardCard, drawCard, initialDeck } from "../../src/domain/cards";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { RuleRandom } from "../../src/domain/random";
 import { QUICK_RULES, STANDARD_RULES } from "../../src/domain/rules";
 import { initialTurnOrder } from "../../src/domain/turns";
@@ -22,7 +22,7 @@ function expectConserved(deck: DeckState, snapshot?: GameSnapshot) {
 }
 
 function botCommand(snapshot: GameSnapshot) {
-  return chooseBotCommand({ ...snapshot, config: { ...snapshot.config, players: snapshot.config.players.map((player) => ({ ...player, controller: "bot" })) } })!;
+  return (chooseBotAction(observeBot({ ...snapshot, config: { ...snapshot.config, players: snapshot.config.players.map((player) => ({ ...player, controller: "bot" })) } }), "normal")?.command ?? null)!;
 }
 
 it("owns twenty-four unique immutable instances without consuming random numbers before the first chance landing", () => {
@@ -126,7 +126,7 @@ it("a bankrupt computer writes off the unpayable card once, discards its entity 
     players: state.players.map((player) => player.id === "p1" ? { ...player, statistics: { ...player.statistics, mortgageIncome: 100, taxesPaid: player.statistics.taxesPaid + 100 } } : player),
   });
   const before = game.snapshot;
-  const command = chooseBotCommand(before)!;
+  const command = (chooseBotAction(observeBot(before), "normal")?.command ?? null)!;
   expect(command.kind).toBe("bankrupt");
   expect(game.apply(command).ok).toBe(true);
   expect(game.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: 0, statistics: { chanceExpense: 0, debtWrittenOff: 90 } });

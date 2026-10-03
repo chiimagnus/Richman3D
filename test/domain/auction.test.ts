@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { legalCommands, playerAssets } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
 import type { Command } from "../../src/domain/types";
@@ -139,14 +139,14 @@ it("rejects wrong actors, bids below the new minimum and unrelated actions", () 
 
 it("computer bidders apply the same cash reserve and price ceiling through real commands", () => {
   const game = auctionMatch(2, [10, 269]);
-  expect(chooseBotCommand(game.snapshot)?.kind).toBe("auction_pass");
+  expect((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)?.kind).toBe("auction_pass");
   respond(game, "auction_pass");
   expect(game.snapshot.decision).toMatchObject({ actorId: "p1" });
   const normal = auctionMatch();
-  expect(chooseBotCommand(normal.snapshot)).toMatchObject({ kind: "auction_bid", amount: 10, actor: "p2" });
-  expect(normal.apply(chooseBotCommand(normal.snapshot)!).ok).toBe(true);
+  expect((chooseBotAction(observeBot(normal.snapshot), "normal")?.command ?? null)).toMatchObject({ kind: "auction_bid", amount: 10, actor: "p2" });
+  expect(normal.apply((chooseBotAction(observeBot(normal.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
   respond(normal, "auction_bid", 180);
-  expect(chooseBotCommand(normal.snapshot)?.kind).toBe("auction_pass");
+  expect((chooseBotAction(observeBot(normal.snapshot), "normal")?.command ?? null)?.kind).toBe("auction_pass");
 });
 
 it("the final ordinary turn waits for auction completion before round-limit ranking", () => {
@@ -242,7 +242,7 @@ it("skips a real eliminated seat during bidding without moving the ordinary-turn
   let game = checkpoint;
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const lastPlayer = game.snapshot.turnOrder.filter((id) => !game.snapshot.players.find((player) => player.id === id)!.bankrupt).at(-1)!;
-  for (let count = 0; count < 30 && (game.snapshot.decision.kind !== "awaiting_roll" || game.snapshot.turnPlayerId !== lastPlayer); count += 1) expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
+  for (let count = 0; count < 30 && (game.snapshot.decision.kind !== "awaiting_roll" || game.snapshot.turnPlayerId !== lastPlayer); count += 1) expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
   const state = makeSave(game.snapshot, propertyMatchId).state;
   const random = new RuleRandom(state.random);
   const steps = random.integer(6) + random.integer(6) + 2;
