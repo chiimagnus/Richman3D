@@ -24,13 +24,19 @@
 
 **原子提交：** `refactor: 以公开局面和合法动作统一电脑策略`。
 
+**执行证据（2026-10-04）：** 同一domain/bot.ts实际构造BotObservation字段：自己hand/cash、公开位置/现金/产权/租金/规则、当前decision和有限合法命令；不包含config/seed/random/deck/history或其他hand。经济候选由既有upgradeOption/liquidityOption/rentFor查询计算，策略不伪造GameSnapshot或重算经济规则。单入口chooseBotAction返回command+理由类别；GameSession三处实际推进与原有测试调用者全部迁移，旧chooseBotCommand已删除，无兼容wrapper。清算损失同分按稳定propertyId排序，不依赖候选枚举顺序，不消耗规则随机数。本任务保留既有基线优先级和260储备，difficulty仅normal内部参数；三档策略与用户选择仍由T2接通，不把标签当作已实现功能。
+
+新增test/domain/bot.test.ts九项与test/app/bot-policy.test.ts两项：隐藏字段任意改变不影响观察/决策、私有手牌及产权投影不保留可改输入别名、实际六种待决策都有合法出口、错actor/过期/重复命令照常拒绝、债务无候选抛明确错误而不造endTurn、清算同分重排一致、2/3/4全电脑内部确定性整局逐状态恢复。真实会话故意注入错误策略命令后资金/RNG/保存current不变且无backup写入。用户入口仍至少一真人，不新增产品调试模式。
+
+验证：66项债务/命令/后台/牌库针对回归、11项新策略/会话回归；最终typecheck、59文件553项全测、build、diff-check通过；旧入口源码/测试搜索零命中。本任务无UI改动，不新增浏览器验收声明，508.42kB预算警告仍可见。
+
 ## P8-T2
 
 ### 三档决策与全玩法策略闭环
 
 **依赖：** P8-T1。
 
-**文件与锚点：** bot、economy、market、cards、selectors、MatchSetup、双语 JSON；扩充 bot 用例，新增 `test/domain/bot-decisions.test.ts`、`test/e2e/bot-difficulty.spec.ts`。
+**文件与锚点：** bot、economy、market、cards、selectors、MatchSetup、双语 JSON；扩充 bot 用例，新增 `test/domain/bot-decisions.test.ts`、真实会话难度回归与UI投影检查；遵守当前 AGENTS，不重建E2E，实际难度选择/购买/HUD/设置只用后台Helium验收。
 
 **步骤：** 简单档按较高现金储备、有限建设、保守拍卖与少量即时可用道具作决策；普通档考虑完成同色组、建设后余额和公开下一次落点风险；困难档进一步比较可计算的收益与现金风险、对手完成组的机会成本、拍卖最高承受价及交易双方组合价值。所有档次都遵守同一合法动作和信息边界。
 

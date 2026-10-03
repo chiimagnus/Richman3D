@@ -1,5 +1,5 @@
 version = 1
-current_task_id = "P7-T1"
+current_task_id = "P8-T2"
 
 [[tasks]]
 id = "P1-T1"
@@ -196,47 +196,47 @@ note = "402单测/typecheck/build/diff-check；市场重试/中断重绑/100条�
 [[tasks]]
 id = "P7-T1"
 title = "实体牌库与抽弃牌总量守恒"
-status = "in_progress"
+status = "completed"
 plan = "plan-p7.md#p7-t1"
-commit = ""
-note = ""
+commit = "42db820"
+note = "原子提交42db820及plan-p7既有后台Helium证据已核对；本轮复跑typecheck、50文件428单测、build、diff-check通过。未发布旧格式保全、不迁移。"
 
 [[tasks]]
 id = "P7-T2"
 title = "前进、后退、传送与落点链"
-status = "pending"
+status = "completed"
 plan = "plan-p7.md#p7-t2"
-commit = ""
-note = ""
+commit = "3db27ce"
+note = "统一规则移动/十四实体卡/追加动画与共享付款恢复；typecheck、53文件476单测、build、diff-check。后台Helium反向11→10→9→8、购买双击一次、移动税债刷新/抵押自动付款与deck/RNG不变；390px双语真实画面见plan-p7证据。"
 
 [[tasks]]
 id = "P7-T3"
 title = "五种持有道具与手牌交互"
-status = "pending"
+status = "completed"
 plan = "plan-p7.md#p7-t3"
-commit = ""
-note = ""
+commit = "fc233acb703784c0197bca1aca649589621ddfd7"
+note = "五种道具/24实体、使用额度/单一active/第四张弃牌/恢复与清理、私有收牌投影接入；typecheck、56文件520测试、build、diff-check及Helium后台真实双语窄屏/确认取消/刷新/后续回合/弃新牌通过；原生前台键盘/真机/200%缩放未测，508.42kB预算警告保留。"
 
 [[tasks]]
 id = "P7-T4"
 title = "卡牌恢复、隐私、过期与淘汰清理"
-status = "pending"
+status = "completed"
 plan = "plan-p7.md#p7-t4"
-commit = ""
-note = ""
+commit = "61a7432ae8060a7bc21f4f97beb7dd5b87aa5bb6"
+note = "22条组合回归；修复完整历史清算弃牌次序与截断历史非法第四张；四席十手牌+active+pending、交易/拍卖/末轮/重洗及十二类卡；typecheck、57文件542测试、build、diff-check通过。T4未改UI，复用T3后台真实隐私/刷新证据，不称真机已验收。"
 
 [[tasks]]
 id = "P8-T1"
 title = "合法动作投影与独立策略入口"
-status = "pending"
+status = "completed"
 plan = "plan-p8.md#p8-t1"
-commit = ""
-note = ""
+commit = "dfecdb23e7b85edf8a8cf24c8e8e49e6df7fc749"
+note = "显式BotObservation去除rng/seed/deck/history/对手手牌，唯一策略返回命令+理由，真实会话/全部测试迁移且旧入口删除；11新回归与66针对，typecheck、59文件553测试、build、diff-check通过；三档尚属T2。"
 
 [[tasks]]
 id = "P8-T2"
 title = "三档决策与全玩法策略闭环"
-status = "pending"
+status = "in_progress"
 plan = "plan-p8.md#p8-t2"
 commit = ""
 note = ""
