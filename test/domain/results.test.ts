@@ -7,6 +7,7 @@ import { legalCommands } from "../../src/domain/selectors";
 import { netAssets, propertyValue } from "../../src/domain/economy";
 import type { FinancialStats, PlayerId } from "../../src/domain/types";
 import { eventText } from "../../src/ui/eventText";
+import { builtRentDebtMatch, debtMatch, rentDebtMatch } from "../fixtures/debt-match";
 
 it("one actual buy and rent payment reconcile cash, ranking and both sides of the financial statement", () => {
   const game = new Game(createMatchConfig(940), { ...QUICK_RULES, roundLimit: 1 });
@@ -22,8 +23,7 @@ it("one actual buy and rent payment reconcile cash, ranking and both sides of th
 
 it("all real event transfers reconcile with each committed cash balance through complete games, not animation counts", () => {
   const branches = new Set<string>();
-  for (const seed of [940, 768, 17981]) {
-    const game = new Game(createMatchConfig(seed));
+  for (const game of [...[940, 768, 17981].map((seed) => new Game(createMatchConfig(seed))), builtRentDebtMatch(), debtMatch(30, 3), rentDebtMatch(30, true)]) {
     const expected = new Map<PlayerId, FinancialStats>(game.snapshot.players.map((player) => [player.id, { ...player.statistics }]));
     const record = (id: PlayerId, field: keyof FinancialStats, amount: number) => {
       const previous = expected.get(id)!;
@@ -31,20 +31,49 @@ it("all real event transfers reconcile with each committed cash balance through 
     };
     for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) {
       const before = game.snapshot;
-      const command = chooseBotCommand(before) ?? legalCommands(before, before.turnPlayerId).find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : "roll"))!;
+      const actions = legalCommands(before, before.turnPlayerId);
+      const command = chooseBotCommand(before) ?? actions.find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll")) ?? actions[0]!;
       const result = game.apply(command);
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.reason);
       for (const event of result.events) {
         if (event.kind === "purchased") { record(event.actor, "purchases", event.price); branches.add("purchase"); }
+        if (event.kind === "upgraded") record(event.actor, "constructionSpent", event.cost);
+        if (event.kind === "building_sold" || event.kind === "liquidated") {
+          record(event.actor, "constructionSoldCost", event.kind === "building_sold" ? event.cost : event.constructionCost);
+          record(event.actor, "constructionRefunds", event.kind === "building_sold" ? event.refund : event.constructionRefund);
+          branches.add("sale");
+        }
+        if (event.kind === "mortgaged") record(event.actor, "mortgageIncome", event.principal);
+        if (event.kind === "redeemed") {
+          record(event.actor, "mortgagePrincipalRepaid", event.principal);
+          record(event.actor, "mortgageFeesPaid", event.fee);
+        }
+        if (event.kind === "liquidated") {
+          record(event.actor, "mortgageIncome", event.mortgageIncome);
+          record(event.actor, "mortgagePrincipalReleased", event.principalReleased);
+          branches.add("liquidation");
+        }
+        if (event.kind === "paid") {
+          record(event.actor, "debtWrittenOff", event.writtenOff);
+          const source = event.debt.source;
+          if (source.kind === "rent") {
+            record(event.actor, "rentPaid", event.amount);
+            record(source.ownerId, "rentReceived", event.amount);
+            record(source.ownerId, "rentLost", event.writtenOff);
+            branches.add("rent");
+          } else record(event.actor, source.kind === "tax" ? "taxesPaid" : "chanceExpense", event.amount);
+        }
         if (event.kind === "rolled") {
           const action = event.result;
           record(action.playerId, "startBonus", action.startBonus);
           if (action.startBonus > 0) branches.add("bonus");
           const landing = action.landing;
-          if (landing.kind === "tax") { record(action.playerId, "taxesPaid", landing.amount); branches.add("tax"); }
-          if (landing.kind === "chance") { record(action.playerId, landing.amount >= 0 ? "chanceIncome" : "chanceExpense", Math.abs(landing.amount)); branches.add(landing.amount >= 0 ? "chance_income" : "chance_expense"); }
-          if (landing.kind === "rent") { record(action.playerId, "rentPaid", landing.amount); record(landing.ownerId, "rentReceived", landing.amount); branches.add("rent"); }
+          if (landing.kind === "tax") branches.add("tax");
+          if (landing.kind === "chance") {
+            if (landing.amount >= 0) record(action.playerId, "chanceIncome", landing.amount);
+            branches.add(landing.amount >= 0 ? "chance_income" : "chance_expense");
+          }
         }
         eventText("en", event, result.snapshot);
         eventText("zh-CN", event, result.snapshot);
@@ -53,7 +82,8 @@ it("all real event transfers reconcile with each committed cash balance through 
       for (const player of result.snapshot.players) {
         const totals = expected.get(player.id)!;
         expect(player.statistics).toEqual(totals);
-        expect(player.cash).toBe(result.snapshot.rules.startingCash + totals.startBonus + totals.rentReceived + totals.chanceIncome - totals.rentPaid - totals.taxesPaid - totals.chanceExpense - totals.purchases);
+        expect(player.cash).toBe(result.snapshot.rules.startingCash + totals.startBonus + totals.rentReceived + totals.chanceIncome + totals.constructionRefunds + totals.mortgageIncome
+          - totals.rentPaid - totals.taxesPaid - totals.chanceExpense - totals.purchases - totals.constructionSpent - totals.mortgagePrincipalRepaid - totals.mortgageFeesPaid);
         expect(netAssets(result.snapshot, player.id)).toBe(player.cash + propertyValue(result.snapshot, player.id));
       }
       expect(game.snapshot).toBe(result.snapshot);
@@ -63,7 +93,7 @@ it("all real event transfers reconcile with each committed cash balance through 
     }
     expect(game.snapshot.decision.kind).toBe("game_over");
   }
-  expect([...branches].sort()).toEqual(["bonus", "chance_expense", "chance_income", "purchase", "rent", "tax"]);
+  expect([...branches].sort()).toEqual(["bonus", "chance_expense", "chance_income", "liquidation", "purchase", "rent", "sale", "tax"]);
 });
 
 it("failed candidate money calculation cannot commit any statistic", () => {
