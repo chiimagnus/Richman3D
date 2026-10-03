@@ -47,10 +47,9 @@ npm run dev
 npm run typecheck
 npm test -- --run
 npm run build
-npx playwright install chromium
-npm run test:e2e
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="/Applications/Helium.app/Contents/MacOS/Helium" npm run test:e2e
 ```
 
-浏览器回归自动构建并启动独立的生产预览，测试后关闭服务器，报告位于 `test-results/`。原生 Pointer Lock 的两个用例使用有窗口浏览器，其余无头运行；Linux 无桌面环境需用 `xvfb-run -a npm run test:e2e`。可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指定已有 Chromium 内核的可执行文件；测试使用独立临时配置，不连接日常浏览器。
+浏览器回归使用已安装的 Helium，自动构建并启动独立的生产预览，测试后关闭服务器，报告位于 `test-results/`。原生 Pointer Lock 用例使用有窗口浏览器，其余无头运行；Linux 无桌面环境需在设置可执行路径后用 `xvfb-run -a npm run test:e2e`。其他系统请将 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 设为实际的 Helium 可执行文件。测试使用独立临时配置，不连接日常浏览器，也无需下载 Playwright Chrome。
 
 玩家规则、界面操作或快捷键发生变化时，以 `docs/how-to-play.md` 为用户文档真源并同步更新。
