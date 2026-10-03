@@ -91,9 +91,9 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
   } : player) });
   expect(restored.apply(legalCommands(restored.snapshot, "p1")[0]!).ok).toBe(true);
   expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: -50, statistics: { purchases: 200 } });
-  expect(Object.values(restored.snapshot.owners)).not.toContain("p1");
+  expect(Object.values(restored.snapshot.properties).map((property) => property.ownerId)).not.toContain("p1");
   const invalid = makeSave(restored.snapshot, record.matchId);
-  const ghostEstate = { ...invalid.state, owners: { ...invalid.state.owners, "river-market": "p1" } };
+  const ghostEstate = { ...invalid.state, properties: { ...invalid.state.properties, "river-market": { ...invalid.state.properties["river-market"]!, ownerId: "p1" as const } } };
   expect(() => Game.restore(ghostEstate)).toThrow("产权引用无效");
   expect(() => readSave({ ...invalid, state: ghostEstate })).toThrow("invalid");
   const eliminated = restored.snapshot.players[0]!;

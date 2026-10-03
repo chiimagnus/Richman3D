@@ -1,7 +1,12 @@
 import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
-import { legalCommands, netAssets, playerAssets, propertyValue, publicProperty } from "../../src/domain/selectors";
+import { legalCommands, playerAssets, publicProperty } from "../../src/domain/selectors";
+import { netAssets, propertyValue } from "../../src/domain/economy";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PropertyDetails } from "../../src/ui/PropertyDetails";
+import { messages } from "../../src/i18n";
 
 it("projects actual purchases and rent through public fields without changing state or leaking rule data", () => {
   const game = new Game(createMatchConfig(940));
@@ -11,9 +16,9 @@ it("projects actual purchases and rent through public fields without changing st
   const before = game.snapshot;
   const owner = playerAssets(before, "p1");
   expect(owner).toMatchObject({ cash: 1352, propertyValue: 180, netAssets: 1532, bankrupt: false, properties: [{ ownerId: "p1", tile: { id: "neon-avenue", price: 180, rent: 32 } }] });
-  expect(Object.keys(owner).sort()).toEqual(["bankrupt", "cash", "netAssets", "player", "properties", "propertyValue"]);
+  expect(Object.keys(owner).sort()).toEqual(["bankrupt", "cash", "liquidationValue", "netAssets", "player", "properties", "propertyValue"]);
   expect(Object.keys(owner.player).sort()).toEqual(["color", "controller", "defaultNameKey", "id", "name"]);
-  expect(Object.keys(owner.properties[0]!).sort()).toEqual(["ownerId", "tile"]);
+  expect(Object.keys(owner.properties[0]!).sort()).toEqual(["bookValue", "constructionCosts", "level", "liquidationValue", "mortgagePrincipal", "ownerId", "rent", "tile"]);
   for (const id of ["p1", "p2"] as const) {
     const assets = playerAssets(before, id);
     expect(assets.propertyValue).toBe(propertyValue(before, id));
@@ -32,4 +37,25 @@ it.each([2, 3, 4])("exposes each of %s public seats, not the first-human private
   for (const player of game.snapshot.players) {
     expect(playerAssets(game.snapshot, player.id)).toMatchObject({ player: { id: player.id }, cash: 1500, properties: [], netAssets: 1500 });
   }
+});
+
+it.each(["en", "zh-CN"] as const)("%s renders the same actual rent, mortgage and liquidation projection", (language) => {
+  const game = new Game(createMatchConfig(940));
+  const base = game.snapshot;
+  const snapshot = { ...base, properties: { ...base.properties,
+    "harbor-walk": { ...base.properties["harbor-walk"]!, ownerId: "p1" as const },
+    "neon-avenue": { ...base.properties["neon-avenue"]!, ownerId: "p1" as const },
+  } };
+  const property = publicProperty(snapshot, "neon-avenue");
+  const html = renderToStaticMarkup(createElement(PropertyDetails, { property, players: snapshot.config.players, language }));
+  expect(html).toContain(messages(language).assets.rent);
+  expect(html).toContain("¥48");
+  expect(html).toContain(messages(language).assets.liquidation);
+  expect(html).toContain("¥90");
+  expect(html).toContain(messages(language).assets.mortgagePrincipal);
+  property.constructionCosts.push(90);
+  property.tile.price = 0;
+  expect(snapshot.properties["neon-avenue"]!.constructionCosts).toEqual([]);
+  expect(publicProperty(snapshot, "neon-avenue").bookValue).toBe(180);
+  expect(game.snapshot).toBe(base);
 });

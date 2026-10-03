@@ -8,6 +8,7 @@ import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
+import { rentFor } from "../domain/economy";
 
 const GROUP_COLORS = {
   cyan: 0x1da9c5,
@@ -24,6 +25,8 @@ export class BoardView {
   private readonly tileLabels = new Map<number, THREE.Mesh>();
   private readonly tilePulses = new Map<number, number>();
   private readonly markerPops = new Map<THREE.Mesh, number>();
+  private readonly tileDetails = new Map<number, string>();
+  private snapshot: GameSnapshot | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -44,25 +47,18 @@ export class BoardView {
     }
 
     this.language = language;
-    this.map.tiles.forEach((tile, index) => {
-      const label = this.tileLabels.get(index);
-      if (!label || !(label.material instanceof THREE.MeshBasicMaterial)) {
-        return;
-      }
-
-      label.material.map?.dispose();
-      label.material.map = createTileLabelTexture(tile, language, this.rules);
-      label.material.needsUpdate = true;
-    });
+    this.map.tiles.forEach((tile, index) => this.updateLabel(tile, index, true));
   }
 
   syncOwnership(snapshot: GameSnapshot): void {
-    for (const tile of this.map.tiles) {
+    this.snapshot = snapshot;
+    for (const [index, tile] of this.map.tiles.entries()) {
       if (tile.type !== "property") {
         continue;
       }
 
-      const ownerId = snapshot.owners[tile.id];
+      this.updateLabel(tile, index);
+      const ownerId = snapshot.properties[tile.id]!.ownerId;
       const existing = this.ownerMarkers.get(tile.id);
 
       if (!ownerId) {
@@ -96,6 +92,17 @@ export class BoardView {
       this.object.add(marker);
       this.ownerMarkers.set(tile.id, marker);
     }
+  }
+
+  private updateLabel(tile: BoardTile, index: number, force = false): void {
+    const detail = tileDetail(tile, this.language, this.rules, this.snapshot);
+    if (!force && this.tileDetails.get(index) === detail) return;
+    const label = this.tileLabels.get(index)!;
+    const material = label.material as THREE.MeshBasicMaterial;
+    material.map?.dispose();
+    material.map = createTileLabelTexture(tile, this.language, this.rules, detail);
+    material.needsUpdate = true;
+    this.tileDetails.set(index, detail);
   }
 
   pulseTile(index: number, landing: LandingResult): void {
@@ -176,6 +183,7 @@ export class BoardView {
       label.position.set(0, 0.205, 0);
       label.rotation.x = -Math.PI / 2;
       this.tileLabels.set(index, label);
+      this.tileDetails.set(index, tileDetail(tile, this.language, this.rules));
       tileGroup.add(label);
 
     });
@@ -188,6 +196,8 @@ export class BoardView {
     this.tileLabels.clear();
     this.tilePulses.clear();
     this.markerPops.clear();
+    this.tileDetails.clear();
+    this.snapshot = null;
   }
 
   private buildCenter(): void {
@@ -314,6 +324,7 @@ function createTileLabelTexture(
   tile: BoardTile,
   language: Language,
   rules: RuleSet,
+  detail = tileDetail(tile, language, rules),
 ): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
@@ -337,7 +348,7 @@ function createTileLabelTexture(
 
   context.fillStyle = "rgba(224, 241, 249, 0.72)";
   context.font = "600 28px system-ui, sans-serif";
-  context.fillText(tileDetail(tile, language, rules), 256, 166, 420);
+  context.fillText(detail, 256, 166, 420);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -345,7 +356,7 @@ function createTileLabelTexture(
   return texture;
 }
 
-export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet): string {
+export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, snapshot: GameSnapshot | null = null): string {
   const copy = messages(language).board;
 
   switch (tile.type) {
@@ -358,7 +369,7 @@ export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet):
     case "property":
       return formatMessage(copy.propertyDetail, {
         price: tile.price,
-        rent: tile.rent,
+        rent: snapshot ? rentFor(snapshot, tile.id) : tile.rent,
       });
   }
 }

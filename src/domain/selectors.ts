@@ -1,6 +1,7 @@
 import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
+import { liquidationValue, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor } from "./economy";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
@@ -21,31 +22,19 @@ export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly
   if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }];
   const property = pendingProperty(snapshot);
   const player = snapshot.players.find((candidate) => candidate.id === actor);
-  if (!property || !player || property.id !== currentTile(snapshot, actor).id || snapshot.owners[property.id]) return [];
+  if (!property || !player || property.id !== currentTile(snapshot, actor).id || snapshot.properties[property.id]!.ownerId !== null) return [];
   return [
     ...(player.cash >= property.price ? [{ ...base, kind: "buy" as const }] : []),
     { ...base, kind: "skip" },
   ];
 }
 
-export function propertyValue(snapshot: GameSnapshot, id: PlayerId): number {
-  const value = snapshot.map.tiles.reduce((total, tile) => total + (tile.type === "property" && snapshot.owners[tile.id] === id ? tile.price : 0), 0);
-  if (!Number.isSafeInteger(value)) throw new RangeError("地产价值超出整数范围");
-  return value;
-}
-
-export function netAssets(snapshot: GameSnapshot, id: PlayerId): number {
-  const player = snapshot.players.find((candidate) => candidate.id === id);
-  if (!player) throw new Error("玩家不存在");
-  const value = player.cash + propertyValue(snapshot, id);
-  if (!Number.isSafeInteger(value)) throw new RangeError("资产超出整数范围");
-  return value;
-}
-
 export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
-  const tile = snapshot.map.tiles.find((candidate) => candidate.id === propertyId);
-  if (!tile || tile.type !== "property") throw new Error("地产不存在");
-  return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group }, ownerId: snapshot.owners[tile.id] ?? null };
+  const tile = propertyTile(snapshot.map, propertyId);
+  const property = snapshot.properties[propertyId]!;
+  return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group },
+    ...property, constructionCosts: [...property.constructionCosts], rent: rentFor(snapshot, tile.id),
+    bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(tile, property, snapshot.rules) };
 }
 
 export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
@@ -54,8 +43,8 @@ export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
   const config = playerConfig(snapshot.config, id);
   return {
     player: { id: config.id, controller: config.controller, name: config.name, defaultNameKey: config.defaultNameKey, color: config.color },
-    cash: player.cash, propertyValue: propertyValue(snapshot, id), netAssets: netAssets(snapshot, id), bankrupt: player.bankrupt,
-    properties: snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.owners[tile.id] === id).map((tile) => publicProperty(snapshot, tile.id)),
+    cash: player.cash, propertyValue: propertyValue(snapshot, id), netAssets: netAssets(snapshot, id), liquidationValue: liquidationValue(snapshot, id), bankrupt: player.bankrupt,
+    properties: snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === id).map((tile) => publicProperty(snapshot, tile.id)),
   };
 }
 

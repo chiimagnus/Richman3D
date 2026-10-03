@@ -6,6 +6,7 @@ import { disposeObject } from "../../src/rendering/disposeObject";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { CITY } from "../../src/domain/maps/city";
 import { createMatchConfig } from "../../src/domain/config";
+import { formatMessage, messages } from "../../src/i18n";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -21,7 +22,8 @@ it("BoardView renders injected coordinates, ownership color and RuleSet label am
     const root = scene.getObjectByName("board")!;
     expect(root.children[0]!.position.toArray()).toEqual([60.5, 0, -14.5]);
     expect(fillText.mock.calls.some((call) => String(call[0]).includes("333"))).toBe(true);
-    board.syncOwnership({ ...new Game(config, rules, map).snapshot, owners: { "neon-avenue": "p2" } });
+    const snapshot = new Game(config, rules, map).snapshot;
+    board.syncOwnership({ ...snapshot, properties: { ...snapshot.properties, "neon-avenue": { ...snapshot.properties["neon-avenue"]!, ownerId: "p2" } } });
     const marker = root.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.CylinderGeometry) as THREE.Mesh;
     expect((marker.material as THREE.MeshStandardMaterial).color.getHexString()).toBe("ffb75e");
     board.dispose();
@@ -37,7 +39,7 @@ it("removed ownership markers are disposed before rebuilding, not just detached"
   const scene = new THREE.Scene();
   const snapshot = new Game().snapshot;
   const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
-  const owned = { ...snapshot, owners: { "neon-avenue": "p1" as const } };
+  const owned = { ...snapshot, properties: { ...snapshot.properties, "neon-avenue": { ...snapshot.properties["neon-avenue"]!, ownerId: "p1" as const } } };
   board.syncOwnership(owned);
   const root = scene.getObjectByName("board")!;
   const marker = root.children.find((child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.CylinderGeometry) as THREE.Mesh;
@@ -65,4 +67,30 @@ it("disposes each shared resource exactly once within its owner", () => {
   const disposed = [geometry, material, texture].map((resource) => vi.spyOn(resource, "dispose"));
   disposeObject(root);
   for (const spy of disposed) expect(spy).toHaveBeenCalledTimes(1);
+});
+
+it("updates actual group rents and localized labels without reallocating unchanged textures", () => {
+  const fillText = vi.fn();
+  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillText }) }) });
+  const snapshot = new Game(createMatchConfig(940)).snapshot;
+  const owned = { ...snapshot, properties: { ...snapshot.properties,
+    "harbor-walk": { ...snapshot.properties["harbor-walk"]!, ownerId: "p1" as const },
+    "neon-avenue": { ...snapshot.properties["neon-avenue"]!, ownerId: "p1" as const },
+  } };
+  const scene = new THREE.Scene();
+  const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
+  try {
+    fillText.mockClear();
+    board.syncOwnership(owned);
+    expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 180 · Rent 48");
+    fillText.mockClear();
+    board.syncOwnership(owned);
+    expect(fillText).not.toHaveBeenCalled();
+    board.setLanguage("zh-CN");
+    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 180, rent: 48 }));
+    fillText.mockClear();
+    board.syncOwnership({ ...owned, properties: { ...owned.properties, "harbor-walk": { ...owned.properties["harbor-walk"]!, mortgagePrincipal: 70 } } });
+    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 180, rent: 32 }));
+    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 140, rent: 0 }));
+  } finally { board.dispose(); }
 });

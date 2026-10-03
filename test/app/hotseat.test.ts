@@ -80,7 +80,7 @@ it("restoring a purchasing decision does not restore the previous local authoriz
   expect(restored.snapshot).toEqual(snapshot);
   expect(session.confirmHandover("p1")).toBe(true);
   await session.dispatch(legalCommands(restored.snapshot, "p1").find((command) => command.kind === "buy")!);
-  expect(restored.snapshot.owners["neon-avenue"]).toBe("p1");
+  expect(restored.snapshot.properties["neon-avenue"]!.ownerId).toBe("p1");
   expect(session.handoverActor).toBe("p2");
 });
 

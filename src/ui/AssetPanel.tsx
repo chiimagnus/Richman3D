@@ -22,6 +22,7 @@ export function AssetPanel({ assets, initialPlayer, language, onClose }: { asset
       <dt>{copy.cash}</dt><dd>{formatCash(language, current.cash)}</dd>
       <dt>{copy.value}</dt><dd>{formatCash(language, current.propertyValue)}</dd>
       <dt>{copy.net}</dt><dd>{formatCash(language, current.netAssets)}</dd>
+      <dt>{copy.liquidation}</dt><dd>{formatCash(language, current.liquidationValue)}</dd>
     </dl>
     <h3>{copy.properties}</h3>
     {current.properties.length ? current.properties.map((property) => <details key={property.tile.id}>

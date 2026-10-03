@@ -22,7 +22,7 @@ describe("Game", () => {
     const game = new Game(createMatchConfig(940));
     expect(roll(game).to).toBe(3);
     act(game, "buy");
-    expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
+    expect(game.snapshot.properties["neon-avenue"]!.ownerId).toBe("p1");
     expect(game.snapshot.players[0]?.cash).toBe(1320);
     expect(game.snapshot.turnPlayerId).toBe("p2");
     expect(roll(game).landing).toEqual({

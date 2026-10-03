@@ -6,6 +6,7 @@ import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot } from "./restore";
+import { initialProperties, netAssets, rentFor } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
 
@@ -37,7 +38,7 @@ export class Game {
     this.state = freeze({
       revision: 0,
       config: { ...config, players: config.players.map((player) => ({ ...player })) },
-      rules: { ...rules, chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
+      rules: { ...rules, rentMultipliers: [...rules.rentMultipliers], chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
       map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
       completedRounds: 0,
       turnOrder,
@@ -46,7 +47,7 @@ export class Game {
       })),
       turnPlayerId: turnOrder[0]!,
       decision: { kind: "awaiting_roll", actorId: turnOrder[0]! },
-      owners: {}, lastRoll: null,
+      properties: initialProperties(map), lastRoll: null,
       random: random.snapshot,
       history: [],
     });
@@ -81,7 +82,7 @@ export class Game {
     let result: Extract<ApplyResult, { ok: true }>;
     try {
       const players = before.players.map((player) => ({ ...player, statistics: { ...player.statistics } }));
-      const owners = { ...before.owners };
+      const properties = { ...before.properties };
       const random = new RuleRandom(before.random);
       const player = players.find((candidate) => candidate.id === command.actor);
       if (!player) throw new Error("玩家不存在");
@@ -119,7 +120,7 @@ export class Game {
             break;
           }
           case "property": {
-            const ownerId = owners[tile.id];
+            const ownerId = properties[tile.id]!.ownerId;
             if (!ownerId) {
               decision = { kind: "awaiting_purchase", actorId: player.id, propertyId: tile.id };
               landing = { kind: "property_available", propertyId: tile.id, price: tile.price };
@@ -128,9 +129,10 @@ export class Game {
             } else {
               const owner = players.find((candidate) => candidate.id === ownerId);
               if (!owner) throw new Error("产权玩家不存在");
-              player.cash = cashAfterChange(player.cash, -tile.rent);
-              owner.cash = cashAfterChange(owner.cash, tile.rent);
-              landing = { kind: "rent", propertyId: tile.id, ownerId, amount: tile.rent };
+              const amount = rentFor(before, tile.id);
+              player.cash = cashAfterChange(player.cash, -amount);
+              owner.cash = cashAfterChange(owner.cash, amount);
+              landing = { kind: "rent", propertyId: tile.id, ownerId, amount };
             }
             break;
           }
@@ -141,7 +143,7 @@ export class Game {
         if (!property) throw new Error("待购地产不存在");
         if (command.kind === "buy") {
           player.cash = cashAfterChange(player.cash, -property.price);
-          owners[property.id] = player.id;
+          properties[property.id] = { ...properties[property.id]!, ownerId: player.id };
           events.push({ kind: "purchased", actor: player.id, propertyId: property.id, price: property.price });
         } else {
           events.push({ kind: "skipped", actor: player.id, propertyId: property.id });
@@ -169,10 +171,11 @@ export class Game {
       }
       if (player.cash < 0) {
         player.bankrupt = true;
-        for (const [propertyId, ownerId] of Object.entries(owners)) if (ownerId === player.id) delete owners[propertyId];
+        for (const [propertyId, property] of Object.entries(properties)) if (property.ownerId === player.id) properties[propertyId] = { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] };
         decision = { kind: "awaiting_roll", actorId: player.id };
       }
-      const candidate = { ...before, players, owners, decision, lastRoll, random: random.snapshot };
+      const candidate = { ...before, players, properties, decision, lastRoll, random: random.snapshot };
+      for (const entry of players) netAssets(candidate, entry.id);
       if (players.filter((entry) => !entry.bankrupt).length === 1) {
         const result = matchResult(candidate, "last_survivor");
         decision = { kind: "game_over", result };
@@ -191,7 +194,7 @@ export class Game {
       if (!Number.isSafeInteger(before.revision + 1) || !Number.isSafeInteger(random.snapshot.draws)) throw new RangeError("版本超出整数范围");
       const revision = before.revision + 1;
       const history = [...before.history, ...events.map((event) => ({ revision, event }))].slice(-HISTORY_LIMIT);
-      const snapshot = freeze({ ...before, revision, players, owners, turnPlayerId, completedRounds, decision, lastRoll, random: random.snapshot, history });
+      const snapshot = freeze({ ...before, revision, players, properties, turnPlayerId, completedRounds, decision, lastRoll, random: random.snapshot, history });
       result = freeze({ ok: true, snapshot, events });
     } catch {
       return { ok: false, reason: "calculation_failed" };

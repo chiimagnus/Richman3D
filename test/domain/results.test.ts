@@ -3,7 +3,8 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { chooseBotCommand } from "../../src/domain/bot";
-import { legalCommands, netAssets, propertyValue } from "../../src/domain/selectors";
+import { legalCommands } from "../../src/domain/selectors";
+import { netAssets, propertyValue } from "../../src/domain/economy";
 import type { FinancialStats, PlayerId } from "../../src/domain/types";
 import { eventText } from "../../src/ui/eventText";
 

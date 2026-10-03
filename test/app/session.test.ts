@@ -26,7 +26,7 @@ describe("session lifecycle and visible order", () => {
     await activation;
     expect(game.snapshot.turnPlayerId).toBe("p2");
     expect(game.snapshot.revision).toBe(2);
-    expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
+    expect(game.snapshot.properties["neon-avenue"]!.ownerId).toBe("p1");
     expect(game.snapshot.players[0]?.cash).toBe(1320);
   });
 
@@ -181,7 +181,7 @@ describe("session lifecycle and visible order", () => {
     await session.dispatch(legalCommands(game.snapshot, "p1")[0]!);
     expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
     await session.dispatch(legalCommands(game.snapshot, "p1").find((command) => command.kind === "buy")!);
-    expect(game.snapshot.owners["neon-avenue"]).toBe("p1");
+    expect(game.snapshot.properties["neon-avenue"]!.ownerId).toBe("p1");
     expect(game.snapshot.players[0]?.cash).toBe(1352);
     expect(game.snapshot.revision).toBe(3);
   });

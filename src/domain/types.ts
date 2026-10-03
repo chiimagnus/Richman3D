@@ -38,6 +38,13 @@ export type PlayerState = {
   readonly statistics: FinancialStats;
 };
 
+export type PropertyState = {
+  readonly ownerId: PlayerId | null;
+  readonly level: 0 | 1 | 2 | 3;
+  readonly mortgagePrincipal: number;
+  readonly constructionCosts: readonly number[];
+};
+
 export type Decision =
   | { readonly kind: "awaiting_roll"; readonly actorId: PlayerId }
   | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
@@ -60,7 +67,7 @@ export type GameSnapshot = {
   readonly players: readonly PlayerState[];
   readonly turnPlayerId: PlayerId;
   readonly decision: Decision;
-  readonly owners: Readonly<Record<string, PlayerId>>;
+  readonly properties: Readonly<Record<string, PropertyState>>;
   readonly lastRoll: readonly [number, number] | null;
   readonly random: RandomState;
   readonly history: readonly { readonly revision: number; readonly event: GameEvent }[];

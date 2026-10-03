@@ -31,6 +31,8 @@ it("does not retain mutable external state or accept injected rules under a regi
   const restored = Game.restore(readSave(raw).record.state);
   raw.state.players[0].cash = 0;
   raw.state.config.players[0].name = "changed";
+  raw.state.properties["neon-avenue"].constructionCosts.push(90);
+  raw.state.properties["neon-avenue"].ownerId = "p2";
   expect(restored.snapshot).toEqual(game.snapshot);
   expect(() => makeSave({ ...game.snapshot, rules: { ...game.snapshot.rules, startingCash: 9 } }, matchId)).toThrow();
 });
@@ -54,9 +56,9 @@ it.each([
   (raw: any) => { raw.state.turnOrder.reverse(); },
   (raw: any) => { delete raw.state.turnOrder; },
   (raw: any) => { raw.rulesVersion = raw.state.config.rulesVersion = "city-v1-quick"; },
-  (raw: any) => { raw.state.owners["city-tax"] = "p1"; },
-  (raw: any) => { raw.state.owners["neon-avenue"] = "p4"; },
-  (raw: any) => { raw.state.owners["neon-avenue"] = "p1"; },
+  (raw: any) => { raw.state.properties["city-tax"] = { ownerId: "p1", level: 0, mortgagePrincipal: 0, constructionCosts: [] }; },
+  (raw: any) => { raw.state.properties["neon-avenue"].ownerId = "p4"; },
+  (raw: any) => { raw.state.properties["neon-avenue"].ownerId = "p1"; },
   (raw: any) => { raw.state.decision = { kind: "awaiting_purchase", propertyId: "neon-avenue" }; },
   (raw: any) => { raw.state.decision = { kind: "game_over", result: { reason: "last_survivor", winnerIds: ["p1"], rankings: [] } }; },
   (raw: any) => { raw.state.completedRounds = 20; },
@@ -85,7 +87,7 @@ it("rejects an owned pending purchase and tampered final rankings", () => {
   const game = new Game(createMatchConfig(940));
   game.apply(legalCommands(game.snapshot, "p1")[0]!);
   const pending = makeSave(game.snapshot, matchId);
-  expect(() => readSave({ ...pending, state: { ...pending.state, owners: { "neon-avenue": "p2" } } })).toThrow();
+  expect(() => readSave({ ...pending, state: { ...pending.state, properties: { ...pending.state.properties, "neon-avenue": { ...pending.state.properties["neon-avenue"]!, ownerId: "p2" } } } })).toThrow();
   for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) game.apply(chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!);
   const terminal = JSON.parse(JSON.stringify(makeSave(game.snapshot, matchId)));
   terminal.state.decision.result.rankings[0].netAssets += 1;

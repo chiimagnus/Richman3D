@@ -134,6 +134,7 @@
   "assets": {
     "title": "公开资产", "open": "查看{player}的公开资产", "player": "查看席位", "seat": "席位{number} · {player}",
     "cash": "现金", "value": "地产账面价值", "net": "净资产", "rent": "当前租金", "owner": "归属", "bank": "银行",
+    "liquidation": "资产可清算收入", "level": "建筑等级", "mortgagePrincipal": "未偿抵押本金",
     "price": "购买价格", "properties": "拥有的地产", "empty": "没有地产。", "details": "查看地产详情", "close": "关闭资产查看",
     "bankrupt": "已淘汰，地产已归还银行。", "publicOnly": "仅展示公开资产，不包含手牌或未来随机结果。"
   },

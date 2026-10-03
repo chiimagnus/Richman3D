@@ -3,6 +3,7 @@ import { legalCommands, pendingProperty, currentTile } from "../domain/selectors
 import { formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import { playerConfig } from "../domain/config";
 import type { Language } from "../i18n/language";
+import { rentFor } from "../domain/economy";
 
 export function actionView(view: GameView, language: Language) {
   const snapshot = view.displayed;
@@ -17,7 +18,7 @@ export function actionView(view: GameView, language: Language) {
   const insufficientFunds = property !== null && choices.some((command) => command.kind === "skip") && !choices.some((command) => command.kind === "buy");
   const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
     ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
-    : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: property.rent })
+    : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
     : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
   return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };

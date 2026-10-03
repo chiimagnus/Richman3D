@@ -64,7 +64,7 @@ describe("atomic commands", () => {
     expect(game.apply(command).ok).toBe(true);
     const committed = game.snapshot;
     expect(committed.players[0]?.cash).toBe(1320);
-    expect(committed.owners["neon-avenue"]).toBe("p1");
+    expect(committed.properties["neon-avenue"]!.ownerId).toBe("p1");
     expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
     expect(game.snapshot).toBe(committed);
   });
@@ -91,7 +91,7 @@ describe("atomic commands", () => {
     expect(command.kind).toBe("skip");
     expect(game.apply(command).ok).toBe(true);
     expect(game.snapshot.turnPlayerId).toBe("p1");
-    expect(game.snapshot.owners).toEqual({});
+    expect(Object.values(game.snapshot.properties).every((property) => property.ownerId === null)).toBe(true);
   });
 
   it("reproduces the same snapshots and semantic events for a seed and commands", () => {

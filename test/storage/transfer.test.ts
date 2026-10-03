@@ -27,7 +27,7 @@ it.each([
   ["future schema", JSON.stringify({ ...record, schemaVersion: 99 }), "incompatible"],
   ["unknown rules", JSON.stringify({ ...record, rulesVersion: "future", state: { ...record.state, config: { ...record.state.config, rulesVersion: "future" } } }), "incompatible"],
   ["duplicate players", JSON.stringify({ ...record, state: { ...record.state, players: [record.state.players[0], record.state.players[0]] } }), "invalid"],
-  ["invalid ownership", JSON.stringify({ ...record, state: { ...record.state, owners: { "neon-avenue": "missing" } } }), "invalid"],
+  ["invalid ownership", JSON.stringify({ ...record, state: { ...record.state, properties: { ...record.state.properties, "neon-avenue": { ...record.state.properties["neon-avenue"], ownerId: "missing" } } } }), "invalid"],
 ])("rejects %s without accepting a partial state", async (_label, content, kind) => {
   await expect(importSave(new File([content], "bad.json"))).rejects.toMatchObject({ kind });
 });
