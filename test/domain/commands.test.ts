@@ -41,9 +41,9 @@ describe("atomic commands", () => {
     expect(game.snapshot).toBe(before);
     vi.restoreAllMocks();
     expect(game.apply(command).ok).toBe(true);
-    expect(game.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(1620);
+    expect(game.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(1560);
     expect(game.snapshot.players.find((player) => player.id === command.actor)?.position).toBe(2);
-    expect(game.snapshot.random.draws).toBe(before.random.draws + 3);
+    expect(game.snapshot.random.draws).toBe(before.random.draws + 9);
   });
 
   it("rolls back pass-start money, landing and RNG on integer overflow", () => {

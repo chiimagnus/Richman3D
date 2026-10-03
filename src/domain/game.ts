@@ -10,6 +10,7 @@ import { constructionCost, constructionRefund, initialProperties, liquidityOptio
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
 import { advanceAuction, canBid, canProposeTrade, startAuction, tradeOption, tradeResponseReason } from "./market";
+import { cardType, discardCard, drawCard, initialDeck } from "./cards";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -41,7 +42,7 @@ export class Game {
       config: { ...config, players: config.players.map((player) => ({ ...player })) },
       rules: { ...rules, rentMultipliers: [...rules.rentMultipliers], chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
       map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
-      completedRounds: 0, tradeUsed: false,
+      completedRounds: 0, tradeUsed: false, deck: initialDeck(rules),
       turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
         statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, purchaseBookValue: 0,
@@ -96,6 +97,7 @@ export class Game {
       let turnPlayerId = before.turnPlayerId;
       let completedRounds = before.completedRounds;
       let tradeUsed = before.tradeUsed;
+      let deck = before.deck;
       let lastRoll = before.lastRoll;
       const events: GameEvent[] = [];
       let finishTurn = command.kind === "roll" || command.kind === "buy" || command.kind === "skip";
@@ -118,6 +120,7 @@ export class Game {
           creditor.cash = cashAfterChange(creditor.cash, amount);
         }
         events.push({ kind: "paid", actor: player.id, debt, amount, writtenOff: debt.amount - amount });
+        if (debt.source.kind === "chance") deck = discardCard(deck, debt.source.instanceId);
       };
 
       if (command.kind === "trade_propose") {
@@ -173,10 +176,15 @@ export class Game {
             landing = { kind: "tax", amount: tile.amount };
             break;
           case "chance": {
-            const card = before.rules.chanceCards[random.integer(before.rules.chanceCards.length)];
+            deck = drawCard(deck, before.rules, random);
+            const instanceId = deck.pending!;
+            const card = before.rules.chanceCards.find((candidate) => candidate.id === cardType(instanceId));
             if (!card) throw new Error("机会卡无效");
-            if (card.amount >= 0) player.cash = cashAfterChange(player.cash, card.amount);
-            landing = { kind: "chance", amount: card.amount, cardId: card.id };
+            if (card.amount >= 0) {
+              player.cash = cashAfterChange(player.cash, card.amount);
+              deck = discardCard(deck, instanceId);
+            }
+            landing = { kind: "chance", amount: card.amount, cardId: card.id, instanceId };
             break;
           }
           case "property": {
@@ -301,7 +309,7 @@ export class Game {
           if (landing.kind === "chance" && landing.amount >= 0) record(action.playerId, "chanceIncome", landing.amount);
         }
       }
-      const candidate = { ...before, players, properties, decision, lastRoll, random: random.snapshot };
+      const candidate = { ...before, players, properties, deck, decision, lastRoll, random: random.snapshot };
       for (const entry of players) netAssets(candidate, entry.id);
       if (players.filter((entry) => !entry.bankrupt).length === 1) {
         tradeUsed = false;
@@ -323,7 +331,7 @@ export class Game {
       if (!Number.isSafeInteger(before.revision + 1) || !Number.isSafeInteger(random.snapshot.draws)) throw new RangeError("版本超出整数范围");
       const revision = before.revision + 1;
       const history = [...before.history, ...events.map((event) => ({ revision, event }))].slice(-HISTORY_LIMIT);
-      const snapshot = freeze({ ...before, revision, players, properties, turnPlayerId, completedRounds, tradeUsed, decision, lastRoll, random: random.snapshot, history });
+      const snapshot = freeze({ ...before, revision, players, properties, turnPlayerId, completedRounds, tradeUsed, deck, decision, lastRoll, random: random.snapshot, history });
       result = freeze({ ok: true, snapshot, events });
     } catch {
       return { ok: false, reason: "calculation_failed" };

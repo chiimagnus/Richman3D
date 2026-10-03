@@ -36,7 +36,7 @@ it("all real event transfers reconcile with each committed cash balance through 
       const actions = legalCommands(before, before.decision.kind === "game_over" ? before.turnPlayerId : before.decision.actorId);
       const command = game === tradeGame && count === 0 ? { kind: "trade_propose" as const, actor: "p1" as const, expectedRevision: before.revision,
         terms: { recipientId: "p2" as const, givePropertyIds: ["neon-avenue"], receivePropertyIds: [], cash: { payerId: "p2" as const, amount: 180 } } }
-        : chooseBotCommand(before) ?? actions.find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll")) ?? actions[0]!;
+        : chooseBotCommand(before) ?? actions.find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : before.decision.kind === "awaiting_auction" ? "auction_pass" : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll")) ?? actions[0]!;
       const result = game.apply(command);
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.reason);

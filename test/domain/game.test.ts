@@ -51,8 +51,8 @@ describe("Game", () => {
     const game = new Game(createMatchConfig(768));
     const result = roll(game);
     expect(result.to).toBe(2);
-    expect(result.landing).toEqual({ kind: "chance", amount: 120, cardId: "innovation-bonus" });
-    expect(game.snapshot.players.find((player) => player.id === result.playerId)?.cash).toBe(1620);
+    expect(result.landing).toEqual({ kind: "chance", amount: 60, cardId: "community-event", instanceId: "community-event:1" });
+    expect(game.snapshot.players.find((player) => player.id === result.playerId)?.cash).toBe(1560);
     expect(game.snapshot.turnPlayerId).toBe("p2");
   });
 

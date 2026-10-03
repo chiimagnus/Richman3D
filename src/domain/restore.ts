@@ -7,6 +7,8 @@ import { matchResult } from "./selectors";
 import { completeGroup, constructionCost, constructionRefund, mortgageValue, netAssets, obligation, redemptionCost, rentAmount, rentFor } from "./economy";
 import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type LandingResult, type MatchConfig, type PendingDebt, type PlayerId, type RollResult, type SavedGameState, type TradeProposal, type TradeTerms } from "./types";
 import { advanceAuction, AUCTION_STEP, canBid, minimumBid, nextBidder, startAuction, tradeOption } from "./market";
+import { cardInstances, cardType, initialDeck } from "./cards";
+import type { CardInstanceId, DeckState } from "./types";
 
 export function record(value: unknown, keys?: readonly string[]): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value) ||
@@ -53,7 +55,7 @@ function restoreTradeProposal(value: unknown, snapshot: GameSnapshot): TradeProp
 }
 
 export function restoreSnapshot(value: unknown): GameSnapshot {
-  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "turnPlayerId", "tradeUsed", "decision", "properties", "lastRoll", "random", "history"]);
+  const state = record(value, ["revision", "config", "completedRounds", "turnOrder", "players", "turnPlayerId", "tradeUsed", "deck", "decision", "properties", "lastRoll", "random", "history"]);
   if (typeof state.tradeUsed !== "boolean") throw new Error("交易机会状态无效");
   const configValue = record(state.config, ["players", "seed", "rulesVersion", "mapId", "mapVersion"]);
   if (!Array.isArray(configValue.players) || configValue.players.length < 2 || configValue.players.length > 4) throw new Error("席位数量无效");
@@ -63,6 +65,12 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   if (typeof config.rulesVersion !== "string" || typeof config.mapId !== "string") throw new Error("版本无效");
   integer(config.mapVersion, 1);
   const rules = rulesFor(config.rulesVersion);
+  const deck = record(state.deck, ["drawPile", "discardPile", "pending"]);
+  const instances = cardInstances(rules);
+  if (!Array.isArray(deck.drawPile) || !Array.isArray(deck.discardPile)) throw new Error("牌堆无效");
+  const zones = [...deck.drawPile, ...deck.discardPile, ...(deck.pending === null ? [] : [deck.pending])];
+  if (zones.length !== instances.length || new Set(zones).size !== instances.length || zones.some((id) => !instances.includes(id))) throw new Error("实体卡区域不守恒");
+  const restoredDeck: DeckState = { drawPile: deck.drawPile as CardInstanceId[], discardPile: deck.discardPile as CardInstanceId[], pending: deck.pending as CardInstanceId | null };
   const map = mapFor(config.mapId, config.mapVersion);
   integer(state.revision);
   integer(state.completedRounds, 0, rules.roundLimit);
@@ -106,12 +114,12 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   if (Array.isArray(state.lastRoll)) {
     state.lastRoll.forEach((face) => integer(face, 1, 6));
     if (integer(random.draws) < initialRandom.snapshot.draws + 2 || state.revision === 0) throw new Error("随机游标无效");
-  } else if (!sameData(random, initialRandom.snapshot) || (state.players as SavedGameState["players"]).some((player) => player.position !== 0)) throw new Error("缺少骰子");
+  } else if (!sameData(random, initialRandom.snapshot) || !sameData(deck, initialDeck(rules)) || (state.players as SavedGameState["players"]).some((player) => player.position !== 0)) throw new Error("缺少骰子");
   const decision = record(state.decision);
   if (!["awaiting_roll", "awaiting_purchase", "awaiting_debt", "awaiting_auction", "awaiting_trade", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
   record(decision, decision.kind === "awaiting_auction" ? ["kind", "actorId", "propertyId", "landingPlayerId", "highestBid", "highestBidderId", "withdrawnIds", "continuation"]
     : decision.kind === "awaiting_trade" ? ["kind", "actorId", "proposal"] : decision.kind === "awaiting_purchase" ? ["kind", "actorId", "propertyId"] : decision.kind === "awaiting_debt" ? ["kind", "actorId", "debt"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind", "actorId"]);
-  const snapshot = { ...state, config, rules, map } as GameSnapshot;
+  const snapshot = { ...state, config, rules, map, deck: restoredDeck } as GameSnapshot;
   for (const tile of propertyTiles) {
     if (snapshot.properties[tile.id]!.level === 0) continue;
     const group = propertyTiles.filter((candidate) => candidate.group === tile.group);
@@ -175,6 +183,19 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   if (snapshot.revision === 0 && (snapshot.tradeUsed || snapshot.completedRounds !== 0 || snapshot.turnPlayerId !== snapshot.turnOrder[0] || decision.kind !== "awaiting_roll" || Object.values(snapshot.properties).some((property) => property.ownerId !== null) ||
       !sameData(random, initialRandom.snapshot) || snapshot.players.some((player) => player.position !== 0 || player.cash !== rules.startingCash || Object.values(player.statistics).some((amount) => amount !== 0)))) throw new Error("初始状态无效");
   const history = restoreHistory(state.history, snapshot);
+  const pending = snapshot.decision.kind === "awaiting_debt" && snapshot.decision.debt.source.kind === "chance" ? snapshot.decision.debt.source.instanceId : null;
+  if (deck.pending !== pending) throw new Error("待结算卡与决策不一致");
+  const draws = history.flatMap(({ event }) => event.kind === "rolled" && event.result.landing.kind === "chance" ? [event.result.landing.instanceId] : []);
+  if (history.length < HISTORY_LIMIT && draws.length === 0 && !sameData(deck, initialDeck(rules))) throw new Error("未抽牌状态无效");
+  if (draws.length > 0) {
+    if (deck.drawPile.length === instances.length || (pending === null ? deck.discardPile.at(-1) : pending) !== draws.at(-1)) throw new Error("牌堆与最新抽牌不一致");
+    const consumed = instances.length - deck.drawPile.length;
+    if (deck.discardPile.length !== consumed - (pending === null ? 0 : 1) || history.length < HISTORY_LIMIT && consumed !== (draws.length - 1) % instances.length + 1) throw new Error("本轮牌堆数量无效");
+    const recentDraws = draws.slice(-consumed);
+    if (new Set(recentDraws).size !== recentDraws.length || recentDraws.some((id) => restoredDeck.drawPile.includes(id))) throw new Error("本轮抽牌重复");
+    const settled = pending === null ? recentDraws : recentDraws.slice(0, -1);
+    if (settled.length > 0 && !sameData(deck.discardPile.slice(-settled.length), settled)) throw new Error("弃牌顺序与历史不一致");
+  }
   if ((history.at(-1)?.event.kind === "trade_proposed") !== (snapshot.decision.kind === "awaiting_trade")) throw new Error("交易响应阶段与历史不一致");
   const recent = history.at(-1)?.event;
   if ((recent?.kind === "trade_accepted" || recent?.kind === "trade_rejected") && (snapshot.decision.kind !== "awaiting_roll" || snapshot.turnPlayerId !== recent.proposal.proposerId)) throw new Error("响应后没有返回原回合");
@@ -222,6 +243,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     turnOrder: [...snapshot.turnOrder],
     properties: Object.fromEntries(Object.entries(snapshot.properties).map(([id, property]) => [id, { ...property, constructionCosts: [...property.constructionCosts] }])),
     random: { ...snapshot.random }, lastRoll: snapshot.lastRoll ? [...snapshot.lastRoll] : null,
+    deck: { drawPile: [...snapshot.deck.drawPile], discardPile: [...snapshot.deck.discardPile], pending: snapshot.deck.pending },
     decision: snapshot.decision.kind === "game_over" ? { kind: "game_over", result: matchResult(snapshot, snapshot.decision.result.reason) } : snapshot.decision.kind === "awaiting_debt" ? { ...snapshot.decision, debt: restoreDebt(snapshot.decision.debt, snapshot, snapshot.decision.actorId) }
       : snapshot.decision.kind === "awaiting_auction" ? { ...snapshot.decision, withdrawnIds: [...snapshot.decision.withdrawnIds] } : snapshot.decision.kind === "awaiting_trade" ? { ...snapshot.decision, proposal: restoreTradeProposal(snapshot.decision.proposal, snapshot) } : { ...snapshot.decision },
     rules: { ...rules, rentMultipliers: [...rules.rentMultipliers], chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
@@ -297,13 +319,18 @@ function restoreDebt(value: unknown, snapshot: GameSnapshot, payer: PlayerId): P
     record(source, ["kind", "amount"]);
     if (!snapshot.map.tiles.some((tile) => tile.type === "tax" && tile.amount === integer(source.amount))) throw new Error("债务税费无效");
   } else if (source.kind === "chance") {
-    record(source, ["kind", "amount", "cardId"]);
+    restoreChance(source, snapshot);
     integer(source.amount, Number.MIN_SAFE_INTEGER, -1);
-    if (!snapshot.rules.chanceCards.some((card) => card.id === source.cardId && card.amount === source.amount)) throw new Error("债务事件无效");
   } else throw new Error("债务来源无效");
   const expected = obligation(source as PendingDebt["source"]);
   if (!sameData(debt, expected)) throw new Error("债务金额或后继无效");
   return expected!;
+}
+
+function restoreChance(value: unknown, snapshot: GameSnapshot): void {
+  const card = record(value, ["kind", "amount", "cardId", "instanceId"]);
+  if (!cardInstances(snapshot.rules).includes(card.instanceId as CardInstanceId) || cardType(card.instanceId as CardInstanceId) !== card.cardId ||
+      !snapshot.rules.chanceCards.some((rule) => rule.id === card.cardId && rule.amount === card.amount)) throw new Error("实体现金牌无效");
 }
 
 function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
@@ -424,8 +451,8 @@ function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
           if (tile.type !== "tax" || landing.amount !== tile.amount) throw new Error("历史税费无效");
           break;
         case "chance":
-          record(landing, ["kind", "amount", "cardId"]);
-          if (tile.type !== "chance" || !snapshot.rules.chanceCards.some((card) => card.id === landing.cardId && card.amount === landing.amount)) throw new Error("历史机会无效");
+          restoreChance(landing, snapshot);
+          if (tile.type !== "chance") throw new Error("历史机会无效");
           break;
         case "property_available":
         case "property_owned":

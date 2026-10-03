@@ -28,6 +28,26 @@ export function debtMatch(cash = 30, levels = 0): Game {
   return game;
 }
 
+export function chanceDebtCheckpoint(cash = 30): Game {
+  const game = new Game(createMatchConfig(36, 3));
+  for (const kind of ["roll", "buy"] as const) {
+    const result = game.apply({ kind, actor: "p1", expectedRevision: game.snapshot.revision });
+    if (!result.ok) throw new Error(result.reason);
+  }
+  const state = makeSave(game.snapshot, propertyMatchId).state;
+  return Game.restore({ ...state, turnPlayerId: "p1", decision: { kind: "awaiting_roll", actorId: "p1" },
+    players: state.players.map((player) => player.id === "p1" ? { ...player, cash,
+      statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash - cash } } : player),
+  });
+}
+
+export function chanceDebtMatch(cash = 30): Game {
+  const game = chanceDebtCheckpoint(cash);
+  const result = game.apply({ kind: "roll", actor: "p1", expectedRevision: game.snapshot.revision });
+  if (!result.ok || game.snapshot.decision.kind !== "awaiting_debt" || game.snapshot.decision.debt.source.kind !== "chance") throw new Error("Expected a real chance debt");
+  return game;
+}
+
 export function rentDebtMatch(cash = 30, mortgaged = false): Game {
   const game = propertyMatch();
   for (let count = 0; count < 80; count += 1) {
@@ -56,7 +76,7 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
 }
 
 export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false): Game {
-  const game = new Game(createMatchConfig({ 2: 5, 3: 6, 4: 12 }[seats], seats));
+  const game = new Game(createMatchConfig({ 2: 20, 3: 3, 4: 12 }[seats], seats));
   for (let count = 0; count < 400; count += 1) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") break;

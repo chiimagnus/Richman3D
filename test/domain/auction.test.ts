@@ -237,7 +237,9 @@ it("a bidder below the new minimum can still pass without borrowing or canceling
 });
 
 it("skips a real eliminated seat during bidding without moving the ordinary-turn boundary", () => {
-  const game = builtRentDebtMatch();
+  const checkpoint = builtRentDebtMatch();
+  const state = makeSave(checkpoint.snapshot, propertyMatchId).state;
+  const game = Game.restore({ ...state, completedRounds: checkpoint.snapshot.rules.roundLimit - 1 });
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   for (let count = 0; count < 30 && game.snapshot.decision.kind !== "awaiting_purchase"; count += 1) expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");

@@ -2,10 +2,9 @@ import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import { upgradeOption, rentFor, netAssets } from "../../src/domain/economy";
 import { legalCommands } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { eventText } from "../../src/ui/eventText";
-import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { opponentRentCheckpoint, propertyMatch, propertyMatchId } from "../fixtures/property-match";
 import type { GameSnapshot } from "../../src/domain/types";
 
 function upgrade(game: Game, propertyId: string) {
@@ -15,25 +14,20 @@ function upgrade(game: Game, propertyId: string) {
 it("charges the upgraded rent through real movement, credits exactly once and keeps both saved ledgers balanced", () => {
   const game = propertyMatch();
   expect(upgrade(game, "neon-avenue").ok).toBe(true);
-  let charged = false;
-  for (let index = 0; index < 80 && game.snapshot.decision.kind !== "game_over"; index += 1) {
-    const before = game.snapshot;
-    const command = chooseBotCommand(before) ?? legalCommands(before, before.decision.kind === "game_over" ? before.turnPlayerId : before.decision.actorId).find((candidate) => candidate.kind === (before.decision.kind === "awaiting_purchase" ? "skip" : before.decision.kind === "awaiting_auction" ? "auction_pass" : "roll"))!;
-    const result = game.apply(command);
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(result.reason);
-    expect(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot).toEqual(game.snapshot);
-    const rolled = result.events.find((event) => event.kind === "rolled");
-    if (rolled?.kind === "rolled" && rolled.result.landing.kind === "rent" && rolled.result.landing.propertyId === "neon-avenue") {
-      expect(rolled.result.landing.amount).toBe(96);
-      expect(game.snapshot.players[1]!.cash).toBe(before.players[1]!.cash + rolled.result.startBonus - 96);
-      expect(game.snapshot.players[0]!.cash).toBe(before.players[0]!.cash + 96);
-      expect(game.snapshot.players[0]!.statistics.rentReceived).toBe(before.players[0]!.statistics.rentReceived + 96);
-      charged = true;
-      break;
-    }
-  }
-  expect(charged).toBe(true);
+  const visiting = opponentRentCheckpoint(game);
+  const before = visiting.snapshot;
+  const command = { kind: "roll" as const, actor: "p2" as const, expectedRevision: before.revision };
+  const result = visiting.apply(command);
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.reason);
+  const rolled = result.events.find((event) => event.kind === "rolled")!;
+  if (rolled.kind !== "rolled") throw new Error("Missing roll");
+  expect(rolled.result.landing).toMatchObject({ kind: "rent", propertyId: "neon-avenue", amount: 96 });
+  expect(visiting.snapshot.players[1]!.cash).toBe(before.players[1]!.cash + rolled.result.startBonus - 96);
+  expect(visiting.snapshot.players[0]!.cash).toBe(before.players[0]!.cash + 96);
+  expect(visiting.snapshot.players[0]!.statistics.rentReceived).toBe(before.players[0]!.statistics.rentReceived + 96);
+  expect(readSave(makeSave(visiting.snapshot, propertyMatchId)).snapshot).toEqual(visiting.snapshot);
+  expect(visiting.apply(command).ok).toBe(false);
 });
 
 it("constructs three balanced levels with real cash/statistics, unchanged turn/RNG and replay-safe saved rents", () => {
@@ -63,7 +57,7 @@ it("constructs three balanced levels with real cash/statistics, unchanged turn/R
       expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
     }
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: 748, statistics: { constructionSpent: 480 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: 1300, statistics: { constructionSpent: 480 } });
   expect(upgradeOption(game.snapshot, "p1", "neon-avenue").reason).toBe("max_level");
   expect(upgrade(game, "neon-avenue")).toEqual({ ok: false, reason: "illegal_action" });
 });
@@ -78,13 +72,13 @@ it.each([
   const candidate = change(snapshot);
   expect(upgradeOption(candidate, "p1", "neon-avenue").reason).toBe(reason);
   expect(legalCommands(candidate, "p1").some((command) => command.kind === "upgrade" && command.propertyId === "neon-avenue")).toBe(false);
-  expect(snapshot.players[0]!.cash).toBe(1228);
+  expect(snapshot.players[0]!.cash).toBe(1780);
   expect(snapshot.properties["neon-avenue"]!.level).toBe(0);
   const saved = makeSave(snapshot, propertyMatchId).state;
   const players = reason === "incomplete_group" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, statistics: { ...player.statistics, purchases: player.statistics.purchases - 140, purchaseBookValue: player.statistics.purchaseBookValue - 140, taxesPaid: player.statistics.taxesPaid + 140 },
   } : player) : reason === "insufficient_cash" ? candidate.players.map((player) => player.id === "p1" ? {
-    ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + 1228 - 89 },
+    ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + 1780 - 89 },
   } : player) : reason === "mortgaged" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, cash: player.cash + 70, statistics: { ...player.statistics, mortgageIncome: player.statistics.mortgageIncome + 70 },
   } : player) : candidate.players;

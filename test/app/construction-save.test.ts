@@ -52,6 +52,6 @@ it("persists sale, loan principal and fees through the shared session without du
     await session.dispatch(command);
     expect(game.snapshot).toBe(after);
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: 1139, statistics: { constructionRefunds: 80, mortgageIncome: 90, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: 1691, statistics: { constructionRefunds: 80, mortgageIncome: 90, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
   session.dispose();
 });

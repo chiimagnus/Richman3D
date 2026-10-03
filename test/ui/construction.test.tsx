@@ -14,7 +14,7 @@ it.each(["en", "zh-CN"] as const)("%s projects domain rent/cost/cash and capture
   const view = session.getSnapshot();
   const management = assetManagementView(view)!;
   const option = management.properties["neon-avenue"]!.upgrade;
-  expect(option).toMatchObject({ cost: 90, currentRent: 48, nextRent: 96, remainingCash: 1138, reason: null, command: { kind: "upgrade", propertyId: "neon-avenue", expectedRevision: 11 } });
+  expect(option).toMatchObject({ cost: 90, currentRent: 48, nextRent: 96, remainingCash: 1690, reason: null, command: { kind: "upgrade", propertyId: "neon-avenue", expectedRevision: 40 } });
   expect(management.properties["skyline-road"]).toBeUndefined();
   expect(JSON.stringify(management)).not.toMatch(/random|draws|statistics|history/);
   const assets = game.snapshot.players.map((player) => playerAssets(game.snapshot, player.id));
@@ -25,7 +25,7 @@ it.each(["en", "zh-CN"] as const)("%s projects domain rent/cost/cash and capture
   expect(html.match(/<select\b/g)).toHaveLength(3);
   for (const label of Object.values(messages(language).liquidity.choices)) expect(html).toContain(label);
   expect(html).toContain(formatMessage(copy.rentChange, { current: formatCash(language, 48), next: formatCash(language, 96) }));
-  expect(html).toContain(formatCash(language, 1138));
+  expect(html).toContain(formatCash(language, 1690));
   expect(html).toContain('name="asset-property"');
   expect(onCommand).not.toHaveBeenCalled();
   expect(game.snapshot).toBe(view.displayed);

@@ -49,7 +49,7 @@ it.each(["trade_accept", "trade_reject"] as const)("persists a pending proposal,
   expect(final.revision).toBe(pending.revision + 1);
   expect(final.turnPlayerId).toBe("p1");
   expect(final.completedRounds).toBe(original.completedRounds);
-  expect(final.players.map((player) => player.cash)).toEqual(kind === "trade_accept" ? [1408, 1082] : original.players.map((player) => player.cash));
+  expect(final.players.map((player) => player.cash)).toEqual(kind === "trade_accept" ? [1960, 1640] : original.players.map((player) => player.cash));
   expect(final.properties["neon-avenue"]!.ownerId).toBe(kind === "trade_accept" ? "p2" : "p1");
   expect((await repository.read())!.snapshot).toEqual(final);
   expect((await repository.read("backup"))!.snapshot).toEqual(pending);

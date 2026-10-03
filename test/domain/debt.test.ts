@@ -7,7 +7,7 @@ import { chooseBotCommand } from "../../src/domain/bot";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { canDeclareBankruptcy, liquidationValue, propertyValue } from "../../src/domain/economy";
 import type { Command } from "../../src/domain/types";
-import { debtCheckpoint, debtMatch, rentDebtMatch } from "../fixtures/debt-match";
+import { chanceDebtMatch, debtCheckpoint, debtMatch, rentDebtMatch } from "../fixtures/debt-match";
 import { propertyMatchId } from "../fixtures/property-match";
 import { propertyMatch } from "../fixtures/property-match";
 
@@ -161,17 +161,12 @@ it("the last fixed seat's pending debt blocks round-limit ranking until one atom
 });
 
 it("negative chance expenses use the same fixed debt and rescue payment without drawing another card", () => {
-  const checkpoint = new Game(createMatchConfig(36, 3));
-  for (const kind of ["roll", "buy"] as const) expect(checkpoint.apply({ kind, actor: "p1", expectedRevision: checkpoint.snapshot.revision }).ok).toBe(true);
-  const state = makeSave(checkpoint.snapshot, propertyMatchId).state;
-  const game = Game.restore({ ...state, turnPlayerId: "p1", decision: { kind: "awaiting_roll", actorId: "p1" }, players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 30,
-    statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash - 30 } } : player) });
-  expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: state.revision }).ok).toBe(true);
-  expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_debt", debt: { amount: 50, source: { kind: "chance", cardId: "traffic-fine" } } });
+  const game = chanceDebtMatch();
+  expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_debt", debt: { amount: 90, source: { kind: "chance", cardId: "maintenance-cost" } } });
   const before = game.snapshot;
   expect(game.apply({ kind: "mortgage", propertyId: "river-market", actor: "p1", expectedRevision: before.revision }).ok).toBe(true);
-  expect(game.snapshot.players[0]!.cash).toBe(80);
-  expect(game.snapshot.players[0]!.statistics.chanceExpense).toBe(before.players[0]!.statistics.chanceExpense + 50);
+  expect(game.snapshot.players[0]!.cash).toBe(40);
+  expect(game.snapshot.players[0]!.statistics.chanceExpense).toBe(before.players[0]!.statistics.chanceExpense + 90);
   expect(game.snapshot.random).toEqual(before.random);
   expect(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot).toEqual(game.snapshot);
 });

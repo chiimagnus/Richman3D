@@ -43,6 +43,12 @@ export type FinancialStats = {
   readonly rentLost: number;
 };
 export type ChanceCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
+export type CardInstanceId = `${ChanceCardId}:${1 | 2}`;
+export type DeckState = {
+  readonly drawPile: readonly CardInstanceId[];
+  readonly discardPile: readonly CardInstanceId[];
+  readonly pending: CardInstanceId | null;
+};
 
 export type PlayerState = {
   readonly id: PlayerId;
@@ -103,6 +109,7 @@ export type GameSnapshot = {
   readonly players: readonly PlayerState[];
   readonly turnPlayerId: PlayerId;
   readonly tradeUsed: boolean;
+  readonly deck: DeckState;
   readonly decision: Decision;
   readonly properties: Readonly<Record<string, PropertyState>>;
   readonly lastRoll: readonly [number, number] | null;
@@ -118,7 +125,7 @@ export type LandingResult =
   | { readonly kind: "property_owned"; readonly propertyId: string }
   | { readonly kind: "rent"; readonly propertyId: string; readonly ownerId: PlayerId; readonly amount: number }
   | { readonly kind: "tax"; readonly amount: number }
-  | { readonly kind: "chance"; readonly amount: number; readonly cardId: ChanceCardId };
+  | { readonly kind: "chance"; readonly amount: number; readonly cardId: ChanceCardId; readonly instanceId: CardInstanceId };
 
 export type PaymentSource = Extract<LandingResult, { kind: "rent" | "tax" | "chance" }>;
 export type PendingDebt = {

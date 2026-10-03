@@ -98,7 +98,7 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
   } : player) });
   expect(restored.apply(legalCommands(restored.snapshot, "p1")[0]!).ok).toBe(true);
   expect(restored.apply(legalCommands(restored.snapshot, "p1").find((command) => command.kind === "bankrupt")!).ok).toBe(true);
-  expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: 0, statistics: { purchases: 200, debtWrittenOff: 50, mortgagePrincipalReleased: 100 } });
+  expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: 0, statistics: { purchases: 200, debtWrittenOff: 90, mortgagePrincipalReleased: 100 } });
   expect(Object.values(restored.snapshot.properties).map((property) => property.ownerId)).not.toContain("p1");
   const invalid = makeSave(restored.snapshot, record.matchId);
   const ghostEstate = { ...invalid.state, properties: { ...invalid.state.properties, "river-market": { ...invalid.state.properties["river-market"]!, ownerId: "p1" as const } } };
