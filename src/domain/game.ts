@@ -9,7 +9,7 @@ import { restoreSnapshot, restoreTradeTerms } from "./restore";
 import { constructionCost, constructionRefund, initialProperties, liquidityOption, mortgageValue, netAssets, obligation, propertyTile, rentFor } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
-import { canBid, canProposeTrade, nextBidder, startAuction, tradeOption, tradeResponseReason } from "./market";
+import { advanceAuction, canBid, canProposeTrade, startAuction, tradeOption, tradeResponseReason } from "./market";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -148,11 +148,9 @@ export class Game {
         if (before.decision.kind !== "awaiting_auction") throw new Error("没有拍卖");
         const auction = before.decision;
         if (command.kind === "auction_bid" && !canBid(before, auction, player.id, command.amount)) return { ok: false, reason: "illegal_action" };
-        const next = command.kind === "auction_bid" ? { ...auction, highestBid: command.amount, highestBidderId: player.id }
-          : { ...auction, withdrawnIds: [...auction.withdrawnIds, player.id] };
+        const { auction: next, actorId } = advanceAuction(before, auction, command.kind === "auction_bid" ? command.amount : null);
         events.push(command.kind === "auction_bid" ? { kind: "auction_bid", actor: player.id, propertyId: auction.propertyId, amount: command.amount }
           : { kind: "auction_passed", actor: player.id, propertyId: auction.propertyId });
-        const actorId = nextBidder(before, next, player.id);
         if (actorId === null) settleAuction(next, next.highestBidderId === null ? "all_passed" : "sold");
         else decision = { ...next, actorId };
       } else if (command.kind === "roll") {

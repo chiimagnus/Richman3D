@@ -34,6 +34,24 @@ function respond(game: Game, kind: "auction_bid" | "auction_pass", amount?: numb
   expect(game.snapshot).toBe(committed);
 }
 
+it("rejects fabricated withdrawals and out-of-order or non-increasing historical bids in a live three-seat auction", () => {
+  const game = auctionMatch(3);
+  respond(game, "auction_bid", 10);
+  const saved = makeSave(game.snapshot, propertyMatchId).state;
+  if (saved.decision.kind !== "awaiting_auction") throw new Error("Missing auction");
+  expect(saved.decision).toMatchObject({ actorId: "p1", highestBidderId: "p3", withdrawnIds: [] });
+  expect(() => Game.restore({ ...saved, decision: { ...saved.decision, withdrawnIds: ["p2"] } })).toThrow();
+  respond(game, "auction_bid", 20);
+  const next = makeSave(game.snapshot, propertyMatchId).state;
+  expect(() => Game.restore({ ...next, history: next.history.map((entry) => entry.event.kind === "auction_bid" && entry.event.actor === "p3" ? { ...entry, event: { ...entry.event, amount: 30 } } : entry) })).toThrow();
+  expect(() => Game.restore({ ...next, history: next.history.map((entry) => entry.event.kind === "auction_bid" && entry.event.actor === "p3" ? { ...entry, event: { ...entry.event, actor: "p2" } } : entry) })).toThrow();
+  respond(game, "auction_pass");
+  expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_auction", actorId: "p3", withdrawnIds: ["p2"] });
+  respond(game, "auction_pass");
+  expect(game.snapshot.properties["neon-avenue"]!.ownerId).toBe("p1");
+  expect(game.snapshot.players.map((player) => player.cash)).toEqual([1480, 1500, 1500]);
+});
+
 it("starts with the next seat, includes the original landing player and charges only the final winner", () => {
   const game = auctionMatch();
   const before = game.snapshot;

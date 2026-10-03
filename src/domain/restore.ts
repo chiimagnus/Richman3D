@@ -6,7 +6,7 @@ import { initialTurnOrder } from "./turns";
 import { matchResult } from "./selectors";
 import { completeGroup, constructionCost, constructionRefund, mortgageValue, netAssets, obligation, redemptionCost, rentAmount, rentFor } from "./economy";
 import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type LandingResult, type MatchConfig, type PendingDebt, type PlayerId, type RollResult, type SavedGameState, type TradeProposal, type TradeTerms } from "./types";
-import { AUCTION_STEP, minimumBid, nextBidder, startAuction, tradeOption } from "./market";
+import { advanceAuction, AUCTION_STEP, canBid, minimumBid, nextBidder, startAuction, tradeOption } from "./market";
 
 export function record(value: unknown, keys?: readonly string[]): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value) ||
@@ -193,6 +193,21 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     if (recent.kind === "auction_started" && !sameData(startAuction(snapshot, auction.propertyId), auction)) throw new Error("初始竞买顺序无效");
     const bid = [...history].reverse().find((entry) => entry.event.kind === "auction_bid" && entry.event.propertyId === auction.propertyId)?.event;
     if (auction.highestBidderId !== null && (bid?.kind !== "auction_bid" || bid.actor !== auction.highestBidderId || bid.amount !== auction.highestBid)) throw new Error("最高报价与历史不一致");
+    let opening = -1;
+    history.forEach(({ event }, index) => { if (event.kind === "auction_started") opening = index; });
+    if (opening >= 0) {
+      let expected = startAuction(snapshot, auction.propertyId);
+      const started = history[opening]!.event;
+      if (!expected || started.kind !== "auction_started" || started.propertyId !== auction.propertyId || started.actor !== expected.actorId) throw new Error("拍卖开场不一致");
+      for (const { event } of history.slice(opening + 1)) {
+        if ((event.kind !== "auction_bid" && event.kind !== "auction_passed") || event.propertyId !== expected.propertyId || event.actor !== expected.actorId ||
+            event.kind === "auction_bid" && !canBid(snapshot, expected, event.actor, event.amount)) throw new Error("拍卖历史响应无效");
+        const next = advanceAuction(snapshot, expected, event.kind === "auction_bid" ? event.amount : null);
+        if (next.actorId === null) throw new Error("拍卖已经结束");
+        expected = { ...next.auction, actorId: next.actorId };
+      }
+      if (!sameData(expected, auction)) throw new Error("拍卖参与者与历史不一致");
+    }
   }
   if (snapshot.decision.kind === "awaiting_debt") {
     const entry = [...history].reverse().find((candidate) => candidate.event.kind === "rolled");

@@ -100,6 +100,12 @@ export function nextBidder(snapshot: GameSnapshot, auction: AuctionDecision, aft
   return null;
 }
 
+export function advanceAuction(snapshot: GameSnapshot, auction: AuctionDecision, amount: number | null) {
+  const next = amount === null ? { ...auction, withdrawnIds: [...auction.withdrawnIds, auction.actorId] }
+    : { ...auction, highestBid: amount, highestBidderId: auction.actorId };
+  return { auction: next, actorId: nextBidder(snapshot, next, auction.actorId) };
+}
+
 export function startAuction(snapshot: GameSnapshot, propertyId: string): AuctionDecision | null {
   const auction: AuctionDecision = { kind: "awaiting_auction", actorId: snapshot.turnPlayerId, propertyId, landingPlayerId: snapshot.turnPlayerId,
     highestBid: 0, highestBidderId: null, withdrawnIds: snapshot.players.filter((player) => !player.bankrupt && player.cash < AUCTION_STEP).map((player) => player.id), continuation: "finish_turn" };
