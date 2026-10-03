@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
+import { setImmediate } from "node:timers/promises";
 import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
@@ -110,6 +111,7 @@ function simulate(seed: number, seats: number, rules: RuleSet, sample: number) {
     return { seed, seats, rulesVersion: rules.version, commands: used, rounds: game.snapshot.completedRounds, actions: commands, items, reasons, decisions, bankruptcies, conflictCount,
       roundLimit: game.snapshot.decision.result.reason === "round_limit", winners: [...game.snapshot.decision.result.winnerIds],
       players: game.snapshot.config.players.map((player) => ({ id: player.id, difficulty: player.difficulty, order: game.snapshot.turnOrder.indexOf(player.id),
+        cash: game.snapshot.players.find((state) => state.id === player.id)!.cash, netAssets: netAssets(game.snapshot, player.id),
         bankrupt: game.snapshot.players.find((state) => state.id === player.id)!.bankrupt })),
       flows: game.snapshot.players.map((player) => player.statistics),
       assetConcentration: totalAssets === 0 ? 0 : Math.max(...assets) / totalAssets };
@@ -141,11 +143,11 @@ function summarize(samples: readonly Sample[]) {
     const sorted = [...values].sort((first, second) => first - second);
     return { min: sorted[0], median: sorted[Math.floor(sorted.length / 2)], p95: sorted[Math.ceil(sorted.length * 0.95) - 1], max: sorted.at(-1), mean: sorted.reduce((sum, value) => sum + value, 0) / sorted.length };
   };
-  const wins = (predicate: (player: Sample["players"][number]) => boolean) => {
+  const wins = (predicate: (player: Sample["players"][number]) => boolean, selected: readonly Sample[] = samples) => {
     let matches = 0;
     let count = 0;
     let eliminated = 0;
-    for (const sample of samples) for (const player of sample.players.filter(predicate)) {
+    for (const sample of selected) for (const player of sample.players.filter(predicate)) {
       matches += 1;
       if (sample.winners.length === 1 && sample.winners[0] === player.id) count += 1;
       if (player.bankrupt) eliminated += 1;
@@ -157,22 +159,32 @@ function summarize(samples: readonly Sample[]) {
   const conflicts = [...samples].sort((first, second) => first.conflictCount - second.conflictCount || first.seed - second.seed);
   const representative = (sample: Sample) => ({ seed: sample.seed, conflictCount: sample.conflictCount, simulatedCommands: sample.commands, rounds: sample.rounds });
   const seats = samples[0]!.seats;
+  const sameDifficulty = samples.filter((sample) => sample.players.every((player) => player.difficulty === sample.players[0]!.difficulty));
+  const mixedDifficulty = samples.filter((sample) => !sameDifficulty.includes(sample));
   return { seats, rulesVersion: samples[0]!.rulesVersion, matches: samples.length,
     roundLimit: interval(samples.filter((sample) => sample.roundLimit).length, samples.length), ties: samples.filter((sample) => sample.winners.length > 1).length,
     commands: distribution(samples.map((sample) => sample.commands)), rounds: distribution(samples.map((sample) => sample.rounds)),
+    finalCash: distribution(samples.flatMap((sample) => sample.players.map((player) => player.cash))),
+    finalNetAssets: distribution(samples.flatMap((sample) => sample.players.map((player) => player.netAssets))),
     assetConcentration: distribution(samples.map((sample) => sample.assetConcentration)), flows,
     actions: counts("actions"), items: counts("items"), reasons: counts("reasons"), decisions: counts("decisions"), bankruptcySources: counts("bankruptcies"),
     seatWins: Object.fromEntries(samples[0]!.players.map((player) => [player.id, wins((candidate) => candidate.id === player.id)])),
     orderWins: Object.fromEntries(Array.from({ length: seats }, (_, order) => [order + 1, wins((player) => player.order === order)])),
     difficultyWins: Object.fromEntries(BOT_DIFFICULTIES.map((difficulty) => [difficulty, wins((player) => player.difficulty === difficulty)])),
+    sameDifficultyOrderWins: Object.fromEntries(Array.from({ length: seats }, (_, order) => [order + 1, wins((player) => player.order === order, sameDifficulty)])),
+    mixedDifficultyWins: Object.fromEntries(BOT_DIFFICULTIES.map((difficulty) => [difficulty, wins((player) => player.difficulty === difficulty, mixedDifficulty)])),
     playtestSamples: { low: representative(conflicts[0]!), middle: representative(conflicts[Math.floor(conflicts.length / 2)]!), high: representative(conflicts.at(-1)!) } };
 }
 
-function batch(selectedSeeds: readonly number[], reportName: string) {
+async function batch(selectedSeeds: readonly number[], reportName: string) {
   const started = performance.now();
   const groups = [];
   for (const rules of [QUICK_RULES, STANDARD_RULES]) for (const seats of [2, 3, 4]) {
-    const samples = selectedSeeds.map((seed, index) => simulate(seed, seats, rules, index));
+    const samples: Sample[] = [];
+    for (const [index, seed] of selectedSeeds.entries()) {
+      samples.push(simulate(seed, seats, rules, index));
+      await setImmediate();
+    }
     groups.push(summarize(samples));
     console.info(`${rules.version}, ${seats} seats: ${samples.length} matches, max ${Math.max(...samples.map((sample) => sample.commands))} commands`);
   }
@@ -208,16 +220,42 @@ it("smoke: reports bounded symmetric Wilson intervals instead of calling a raw w
   expect(interval(5, 10).confidence95[0]).toBeCloseTo(1 - interval(5, 10).confidence95[1]!);
 });
 
-it("smoke: finishes all six scale/mode groups with actual restored rounds and deterministic strategy actions", () => {
-  const report = batch(seeds.slice(0, 6), "smoke");
-  expect(report.groups).toHaveLength(6);
-  expect(report.groups.every((group) => group.matches === 6)).toBe(true);
+it("smoke: rotating same-strategy identities between seats changes neither legal actions nor any committed monetary result", () => {
+  for (const difficulty of BOT_DIFFICULTIES) for (const seats of [2, 3, 4]) {
+    const base = createMatchConfig(31, seats);
+    const config = { ...base, players: base.players.map((player, index) => ({ ...player, controller: "bot" as const, difficulty, name: `agent-${index}` })) };
+    const first = new Game(config);
+    const second = new Game({ ...config, players: config.players.map((player, index) => ({ ...player,
+      name: config.players[(index + 1) % seats]!.name, color: config.players[(index + 1) % seats]!.color })) });
+    for (let count = 0; first.snapshot.decision.kind !== "game_over" && count < commandLimit; count += 1) {
+      const action = chooseBotAction(observeBot(first.snapshot))!;
+      assert.deepEqual(chooseBotAction(observeBot(second.snapshot)), action);
+      const result = first.apply(action.command);
+      const repeated = second.apply(action.command);
+      assert(result.ok && repeated.ok);
+      assert.deepEqual(result.events, repeated.events);
+      assert.deepEqual({ ...second.snapshot, config: first.snapshot.config }, first.snapshot);
+    }
+    assert.equal(first.snapshot.decision.kind, "game_over");
+    assert.equal(second.snapshot.decision.kind, "game_over");
+  }
 });
 
-it("batch: finishes and reconciles 6000 fixed-seed games without dropping failures", () => {
+it("smoke: finishes all six scale/mode groups with actual restored rounds and deterministic strategy actions", async () => {
+  const report = await batch(seeds.slice(0, 6), "smoke");
+  expect(report.groups).toHaveLength(6);
+  expect(report.groups.every((group) => group.matches === 6)).toBe(true);
+  for (const group of report.groups) {
+    expect(group.finalCash.min).toBeGreaterThanOrEqual(0);
+    expect(group.finalNetAssets.mean).toBeGreaterThanOrEqual(group.finalCash.mean);
+    expect(group.finalNetAssets.max).toBeGreaterThanOrEqual(group.finalCash.max!);
+  }
+});
+
+it("batch: finishes and reconciles 6000 fixed-seed games without dropping failures", async () => {
   expect(seeds).toHaveLength(1000);
   expect(new Set(seeds).size).toBe(1000);
   expect(seeds.every((seed) => Number.isSafeInteger(seed) && seed >= 0 && seed <= 0xffff_ffff)).toBe(true);
-  const report = batch(seeds, "report");
+  const report = await batch(seeds, "report");
   expect(report.groups.every((group) => group.matches === 1000)).toBe(true);
 });
