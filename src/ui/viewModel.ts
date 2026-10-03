@@ -1,9 +1,9 @@
 import type { GameView } from "../app/GameSession";
-import { legalCommands, pendingProperty, currentTile } from "../domain/selectors";
+import { legalCommands, pendingProperty, currentTile, playerAssets } from "../domain/selectors";
 import { formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import { playerConfig } from "../domain/config";
 import type { Language } from "../i18n/language";
-import { liquidityOption, rentFor, upgradeOption } from "../domain/economy";
+import { canDeclareBankruptcy, liquidityOption, rentFor, upgradeOption } from "../domain/economy";
 
 function availableCommands(view: GameView) {
   const snapshot = view.displayed;
@@ -21,11 +21,22 @@ export function assetManagementView(view: GameView) {
     const commandFor = (kind: "upgrade" | "sell_building" | "mortgage" | "redeem") => commands.find((candidate) => candidate.kind === kind && "propertyId" in candidate && candidate.propertyId === tile.id) ?? null;
     const liquidity = (kind: "sell_building" | "mortgage" | "redeem") => {
       const { nextProperty: _next, originalCost: _original, ...option } = liquidityOption(snapshot, actor, tile.id, kind);
-      return { ...option, command: commandFor(kind) };
+      const payment = snapshot.decision.kind === "awaiting_debt" && snapshot.decision.actorId === actor && option.reason === null && option.remainingCash >= snapshot.decision.debt.amount ? snapshot.decision.debt.amount : 0;
+      return { ...option, remainingCash: option.remainingCash - payment, payment, command: commandFor(kind) };
     };
-    return [tile.id, { upgrade: { ...upgradeOption(snapshot, actor, tile.id), proceeds: 0, loss: 0, command: commandFor("upgrade") },
+    return [tile.id, { upgrade: { ...upgradeOption(snapshot, actor, tile.id), proceeds: 0, loss: 0, payment: 0, command: commandFor("upgrade") },
       sell_building: liquidity("sell_building"), mortgage: liquidity("mortgage"), redeem: liquidity("redeem") }];
   })) };
+}
+
+export function debtView(view: GameView) {
+  const snapshot = view.displayed;
+  if (snapshot.decision.kind !== "awaiting_debt") return null;
+  const { actorId: actor, debt } = snapshot.decision;
+  const assets = playerAssets(snapshot, actor);
+  return { actor, debt, assets, shortfall: debt.amount - assets.cash, management: assetManagementView(view),
+    insolvent: canDeclareBankruptcy(snapshot, actor),
+    bankruptcy: availableCommands(view).find((command) => command.kind === "bankrupt") ?? null };
 }
 
 export function actionView(view: GameView, language: Language) {
@@ -42,6 +53,7 @@ export function actionView(view: GameView, language: Language) {
     ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
+    : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending
     : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
   return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };
 }

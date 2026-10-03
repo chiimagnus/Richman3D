@@ -1,10 +1,12 @@
-import type { GameEvent, GameSnapshot, PlayerId, RollResult } from "../domain/types";
+import type { GameEvent, GameSnapshot, PendingDebt, PlayerId, RollResult } from "../domain/types";
 import { chanceCardText, formatCash, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
+    case "paid": return formatMessage(messages(language).debt.paid, { actor: playerName(language, event.actor, snapshot.config), creditor: event.debt.creditorId === null ? messages(language).assets.bank : playerName(language, event.debt.creditorId, snapshot.config), amount: formatCash(language, event.amount) }) + " " + debtSourceText(language, event.debt, snapshot) + (event.writtenOff > 0 ? " " + formatMessage(messages(language).debt.writtenOff, { writtenOff: formatCash(language, event.writtenOff) }) : "");
+    case "liquidated": return formatMessage(messages(language).debt.liquidated, { actor: playerName(language, event.actor, snapshot.config), amount: formatCash(language, event.constructionRefund + event.mortgageIncome) });
     case "building_sold":
     case "mortgaged":
     case "redeemed": {
@@ -24,6 +26,13 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
     case "turn": return formatMessage(copy.yourTurn, { actor: playerName(language, event.actor, snapshot.config) });
     case "ended": return resultTitle(language, event.result, snapshot.config);
   }
+}
+
+export function debtSourceText(language: Language, debt: PendingDebt, snapshot: GameSnapshot): string {
+  const source = debt.source;
+  const copy = messages(language).debt;
+  return source.kind === "rent" ? formatMessage(copy.rentSource, { propertyName: tileName(language, snapshot.map.tiles.find((tile) => tile.id === source.propertyId)!) })
+    : source.kind === "tax" ? copy.taxSource : chanceCardText(language, source.cardId, source.amount);
 }
 
 function rollStatus(

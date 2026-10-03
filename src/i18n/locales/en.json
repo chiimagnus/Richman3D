@@ -45,8 +45,8 @@
     "yourTurn": "{actor}'s turn.",
     "winner": "{playerName} won.",
     "rollPropertyAvailable": "{actor} moved {steps} spaces to “{propertyName}”, available to buy.",
-    "rollRent": "{actor} moved {steps} spaces and paid {amount} rent to {owner} for “{propertyName}”.",
-    "rollTax": "{actor} moved {steps} spaces and paid ¥{amount}.",
+    "rollRent": "{actor} moved {steps} spaces; fixed rent due to {owner} for “{propertyName}”: {amount}.",
+    "rollTax": "{actor} moved {steps} spaces; fixed fee due: ¥{amount}.",
     "rollChance": "{actor} moved {steps} spaces: {message}",
     "rollOwned": "{actor} moved {steps} spaces onto their own “{propertyName}”.",
     "rollStart": "{actor} moved {steps} spaces back to Start."
@@ -106,7 +106,7 @@
   "results": {
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
-    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "mortgageIncome": "Mortgage cash received", "mortgagePrincipalRepaid": "Mortgage principal repaid", "mortgageFeesPaid": "Mortgage redemption fees" },
+    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "mortgageIncome": "Mortgage cash received", "mortgagePrincipalRepaid": "Mortgage principal repaid", "mortgageFeesPaid": "Mortgage redemption fees", "mortgagePrincipalReleased": "Mortgage principal released on liquidation", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
   "storage": {
@@ -154,6 +154,9 @@
     "choices": { "upgrade": "Build one level", "sell_building": "Sell one building level", "mortgage": "Mortgage property", "redeem": "Redeem mortgage" },
     "actions": { "sell_building": "Sell · {amount}", "mortgage": "Mortgage · {amount}", "redeem": "Redeem · {amount}" },
     "reasons": { "not_owner": "Only the owner may manage this property.", "not_turn": "Manage property before rolling on your own turn.", "insufficient_cash": "Not enough cash for this payment.", "no_building": "No building level to sell.", "unbalanced_sale": "Sell a higher-level building in this group first.", "group_has_buildings": "Sell every building in this group before mortgaging.", "already_mortgaged": "This property is already mortgaged.", "no_mortgage_value": "This property's mortgage value is zero.", "not_mortgaged": "This property is not mortgaged." }
+  },
+  "debt": {
+    "title": "Settle fixed debt", "pending": "The fixed debt must be resolved before play continues.", "obligation": "{actor} owes {creditor} {amount}.", "shortfall": "Cash shortfall", "automatic": "Sell buildings or mortgage property. The first action that raises enough cash pays this fixed debt automatically; no extra payment confirmation is required.", "autoPayment": "Automatic debt payment", "insolvent": "Even cash plus all liquidation proceeds cannot cover the debt. Liquidation pays the available amount, writes off the rest, returns every property to the bank and eliminates this seat.", "solvent": "Bankruptcy is not available while your assets can cover the debt.", "bankrupt": "Confirm liquidation and elimination", "rentSource": "Fixed rent on {propertyName}.", "taxSource": "Fixed board fee.", "paid": "{actor} paid {creditor} {amount}.", "writtenOff": "Unpaid {writtenOff} was written off.", "liquidated": "{actor} liquidated assets for {amount} and was eliminated."
   },
   "runtime": {
     "title": "Richman 3D",

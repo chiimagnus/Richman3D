@@ -1,6 +1,6 @@
 import type { MapDefinition, PropertyTile } from "./board";
 import type { RuleSet } from "./rules";
-import type { GameSnapshot, PlayerId, PropertyState } from "./types";
+import type { GameSnapshot, LandingResult, PendingDebt, PlayerId, PropertyState } from "./types";
 
 function money(value: bigint): number {
   if (value < BigInt(Number.MIN_SAFE_INTEGER) || value > BigInt(Number.MAX_SAFE_INTEGER)) throw new RangeError("金额超出整数范围");
@@ -80,7 +80,7 @@ export function liquidityOption(snapshot: GameSnapshot, actor: PlayerId, propert
   const cost = kind === "redeem" ? redemptionCost(property.mortgagePrincipal, snapshot.rules) : 0;
   let reason: "not_owner" | "not_turn" | "no_building" | "unbalanced_sale" | "group_has_buildings" | "already_mortgaged" | "no_mortgage_value" | "not_mortgaged" | "insufficient_cash" | null = null;
   if (property.ownerId !== actor) reason = "not_owner";
-  else if (snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor || player.bankrupt) reason = "not_turn";
+  else if ((snapshot.decision.kind !== "awaiting_roll" && (snapshot.decision.kind !== "awaiting_debt" || kind === "redeem")) || snapshot.decision.actorId !== actor || player.bankrupt) reason = "not_turn";
   else if (kind === "sell_building" && property.level === 0) reason = "no_building";
   else if (kind === "sell_building" && group.some((candidate) => snapshot.properties[candidate.id]!.level - (property.level - 1) > 1)) reason = "unbalanced_sale";
   else if (kind === "mortgage" && group.some((candidate) => snapshot.properties[candidate.id]!.level > 0)) reason = "group_has_buildings";
@@ -115,4 +115,16 @@ export function netAssets(snapshot: GameSnapshot, id: PlayerId): number {
   const player = snapshot.players.find((candidate) => candidate.id === id);
   if (!player) throw new Error("玩家不存在");
   return money(BigInt(player.cash) + BigInt(propertyValue(snapshot, id)));
+}
+
+export function obligation(landing: LandingResult): PendingDebt | null {
+  if (landing.kind !== "rent" && landing.kind !== "tax" && (landing.kind !== "chance" || landing.amount >= 0)) return null;
+  return { creditorId: landing.kind === "rent" ? landing.ownerId : null, amount: Math.abs(landing.amount), source: { ...landing }, continuation: "finish_turn" };
+}
+
+export function canDeclareBankruptcy(snapshot: GameSnapshot, actor: PlayerId): boolean {
+  const decision = snapshot.decision;
+  const player = snapshot.players.find((candidate) => candidate.id === actor);
+  return decision.kind === "awaiting_debt" && decision.actorId === actor && !!player && !player.bankrupt &&
+    BigInt(player.cash) + BigInt(liquidationValue(snapshot, actor)) < BigInt(decision.debt.amount);
 }

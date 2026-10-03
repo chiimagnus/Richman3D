@@ -37,8 +37,8 @@ export function AssetPanel({ assets, initialPlayer, language, management, onComm
   </section>;
 }
 
-function PropertyOperations({ options, propertyId, language, onCommand }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void }) {
-  const [kind, setKind] = useState<keyof typeof options>("upgrade");
+export function PropertyOperations({ options, propertyId, language, onCommand, kinds = ["upgrade", "sell_building", "mortgage", "redeem"] }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void; kinds?: readonly (keyof NonNullable<ReturnType<typeof assetManagementView>>["properties"][string])[] }) {
+  const [kind, setKind] = useState<keyof typeof options>(kinds[0]!);
   const option = options[kind];
   const build = messages(language).construction;
   const copy = messages(language).liquidity;
@@ -47,12 +47,13 @@ function PropertyOperations({ options, propertyId, language, onCommand }: { opti
   const preview = option.reason === null && option.nextRent !== null;
   return <section className={styles.operation} aria-label={copy.title}>
     <label className={styles.row}>{copy.operation}<select value={kind} onChange={(event) => setKind(event.currentTarget.value as keyof typeof options)}>
-      {Object.entries(copy.choices).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+      {kinds.map((value) => <option key={value} value={value}>{copy.choices[value]}</option>)}
     </select></label>
     {preview && <p>{formatMessage(build.rentChange, { current: formatCash(language, option.currentRent), next: formatCash(language, option.nextRent!) })}</p>}
     {preview && <dl className={styles.values}>
       <dt>{kind === "upgrade" ? build.cost : kind === "redeem" ? copy.cost : copy.proceeds}</dt><dd>{formatCash(language, kind === "upgrade" || kind === "redeem" ? option.cost : option.proceeds)}</dd>
       <dt>{copy.remaining}</dt><dd>{formatCash(language, option.remainingCash)}</dd>
+      {option.payment > 0 && <><dt>{messages(language).debt.autoPayment}</dt><dd>{formatCash(language, option.payment)}</dd></>}
       {option.loss > 0 && <><dt>{copy.loss}</dt><dd>{formatCash(language, option.loss)}</dd></>}
     </dl>}
     {kind === "mortgage" && preview && <p>{copy.mortgageEffect}</p>}

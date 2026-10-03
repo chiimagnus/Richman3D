@@ -45,8 +45,8 @@
     "yourTurn": "轮到{actor}了。",
     "winner": "{playerName}获胜。",
     "rollPropertyAvailable": "{actor}移动 {steps} 格，抵达可购买的「{propertyName}」。",
-    "rollRent": "{actor}移动 {steps} 格，为「{propertyName}」向{owner}支付租金 {amount}。",
-    "rollTax": "{actor}移动 {steps} 格，支付费用 {amount}。",
+    "rollRent": "{actor}移动 {steps} 格，「{propertyName}」应付{owner}固定租金 {amount}。",
+    "rollTax": "{actor}移动 {steps} 格，应付固定费用 {amount}。",
     "rollChance": "{actor}移动 {steps} 格：{message}",
     "rollOwned": "{actor}移动 {steps} 格，回到自己的「{propertyName}」。",
     "rollStart": "{actor}移动 {steps} 格，回到起点。"
@@ -106,7 +106,7 @@
   "results": {
     "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
     "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
-    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "mortgageIncome": "抵押借款收入", "mortgagePrincipalRepaid": "已偿抵押本金", "mortgageFeesPaid": "赎回费用" },
+    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "mortgageIncome": "抵押借款收入", "mortgagePrincipalRepaid": "已偿抵押本金", "mortgageFeesPaid": "赎回费用", "mortgagePrincipalReleased": "清算冲销抵押本金", "debtWrittenOff": "无法偿还的债务", "rentLost": "无法收回的租金" },
     "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
   },
   "storage": {
@@ -154,6 +154,9 @@
     "choices": { "upgrade": "建设一级", "sell_building": "出售一级建筑", "mortgage": "抵押地产", "redeem": "赎回抵押" },
     "actions": { "sell_building": "出售 · {amount}", "mortgage": "抵押 · {amount}", "redeem": "赎回 · {amount}" },
     "reasons": { "not_owner": "只有所有者可以经营该地产。", "not_turn": "仅可在自己的回合掷骰前经营地产。", "insufficient_cash": "现金不足以支付这笔款项。", "no_building": "没有可出售的建筑。", "unbalanced_sale": "请先出售组内等级较高的建筑。", "group_has_buildings": "抵押前须出售同组全部建筑。", "already_mortgaged": "该地产已抵押。", "no_mortgage_value": "该地产的抵押价值为零。", "not_mortgaged": "该地产没有抵押。" }
+  },
+  "debt": {
+    "title": "处理固定债务", "pending": "需先处理固定债务，才能继续对局。", "obligation": "{actor}需向{creditor}支付{amount}。", "shortfall": "现金缺口", "automatic": "可以出售建筑或抵押地产。首次筹足现金的操作会自动偿还这笔固定债务，无需再次确认付款。", "autoPayment": "自动偿还债务", "insolvent": "现金加全部可清算收入仍不足偿债。清算会支付实际可得金额、冲销差额，将全部地产归还银行，并淘汰本席。", "solvent": "资产足以偿债时，不允许确认破产。", "bankrupt": "确认清算并淘汰", "rentSource": "{propertyName}的固定租金。", "taxSource": "棋盘固定费用。", "paid": "{actor}已向{creditor}支付{amount}。", "writtenOff": "未付{writtenOff}已冲销。", "liquidated": "{actor}清算资产取得{amount}，本席已淘汰。"
   },
   "runtime": {
     "title": "Richman 3D",

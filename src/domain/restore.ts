@@ -4,8 +4,8 @@ import { RuleRandom } from "./random";
 import { rulesFor } from "./rules";
 import { initialTurnOrder } from "./turns";
 import { matchResult } from "./selectors";
-import { completeGroup, constructionCost, constructionRefund, mortgageValue, netAssets, redemptionCost, rentAmount } from "./economy";
-import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type LandingResult, type MatchConfig, type PlayerId, type RollResult, type SavedGameState } from "./types";
+import { completeGroup, constructionCost, constructionRefund, mortgageValue, netAssets, obligation, redemptionCost, rentAmount, rentFor } from "./economy";
+import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type LandingResult, type MatchConfig, type PendingDebt, type PlayerId, type RollResult, type SavedGameState } from "./types";
 
 export function record(value: unknown, keys?: readonly string[]): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value) ||
@@ -45,22 +45,22 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   const initialRandom = new RuleRandom(config.seed);
   if (!sameData(state.turnOrder, initialTurnOrder(config, initialRandom))) throw new Error("固定轮序无效");
   if (!Array.isArray(state.players) || state.players.length !== config.players.length) throw new Error("玩家数量无效");
-  const statsKeys = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases", "constructionSpent", "constructionRefunds", "constructionSoldCost", "mortgageIncome", "mortgagePrincipalRepaid", "mortgageFeesPaid"] as const;
+  const statsKeys = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases", "constructionSpent", "constructionRefunds", "constructionSoldCost", "mortgageIncome", "mortgagePrincipalRepaid", "mortgageFeesPaid", "mortgagePrincipalReleased", "debtWrittenOff", "rentLost"] as const;
   for (const [index, raw] of state.players.entries()) {
     const player = record(raw, ["id", "cash", "position", "bankrupt", "statistics"]);
     if (player.id !== config.players[index]!.id || typeof player.bankrupt !== "boolean") throw new Error("玩家身份无效");
-    const cash = integer(player.cash, Number.MIN_SAFE_INTEGER);
+    const cash = integer(player.cash);
     integer(player.position, 0, map.tiles.length - 1);
-    if (player.bankrupt !== (cash < 0)) throw new Error("破产状态无效");
     const stats = record(player.statistics, statsKeys);
     for (const field of statsKeys) integer(stats[field]);
+    if (player.bankrupt ? cash !== 0 || stats.debtWrittenOff === 0 : stats.debtWrittenOff !== 0 || stats.mortgagePrincipalReleased !== 0) throw new Error("破产状态无效");
     const balance = BigInt(rules.startingCash) + BigInt(stats.startBonus as number) + BigInt(stats.rentReceived as number) + BigInt(stats.chanceIncome as number)
       + BigInt(stats.constructionRefunds as number) + BigInt(stats.mortgageIncome as number)
       - BigInt(stats.rentPaid as number) - BigInt(stats.taxesPaid as number) - BigInt(stats.chanceExpense as number) - BigInt(stats.purchases as number) - BigInt(stats.constructionSpent as number)
       - BigInt(stats.mortgagePrincipalRepaid as number) - BigInt(stats.mortgageFeesPaid as number);
     if (balance !== BigInt(cash)) throw new Error("财务统计不平");
     if ((stats.constructionSoldCost as number) > (stats.constructionSpent as number) || BigInt(stats.constructionRefunds as number) * 100n > BigInt(stats.constructionSoldCost as number) * BigInt(rules.constructionSalePercent) ||
-        (stats.mortgagePrincipalRepaid as number) > (stats.mortgageIncome as number) ||
+        BigInt(stats.mortgagePrincipalRepaid as number) + BigInt(stats.mortgagePrincipalReleased as number) > BigInt(stats.mortgageIncome as number) ||
         BigInt(stats.mortgageFeesPaid as number) * 100n < BigInt(stats.mortgagePrincipalRepaid as number) * BigInt(rules.mortgageRedemptionPercent) ||
         (rules.mortgageRedemptionPercent === 0 ? stats.mortgageFeesPaid !== 0 : (stats.mortgageFeesPaid as number) > (stats.mortgagePrincipalRepaid as number))) throw new Error("变现统计无效");
   }
@@ -84,8 +84,8 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     if (integer(random.draws) < initialRandom.snapshot.draws + 2 || state.revision === 0) throw new Error("随机游标无效");
   } else if (!sameData(random, initialRandom.snapshot) || state.revision !== 0) throw new Error("缺少骰子");
   const decision = record(state.decision);
-  if (!["awaiting_roll", "awaiting_purchase", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
-  record(decision, decision.kind === "awaiting_purchase" ? ["kind", "actorId", "propertyId"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind", "actorId"]);
+  if (!["awaiting_roll", "awaiting_purchase", "awaiting_debt", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
+  record(decision, decision.kind === "awaiting_purchase" ? ["kind", "actorId", "propertyId"] : decision.kind === "awaiting_debt" ? ["kind", "actorId", "debt"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind", "actorId"]);
   const snapshot = { ...state, config, rules, map } as GameSnapshot;
   for (const tile of propertyTiles) {
     if (snapshot.properties[tile.id]!.level === 0) continue;
@@ -107,27 +107,41 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
       const tile = map.tiles[active.position]!;
       if (!snapshot.lastRoll || tile.type !== "property" || tile.id !== snapshot.decision.propertyId || snapshot.properties[tile.id]!.ownerId !== null) throw new Error("待购地产无效");
     }
+    if (snapshot.decision.kind === "awaiting_debt") {
+      const debt = restoreDebt(snapshot.decision.debt, snapshot, active.id);
+      const tile = map.tiles[active.position]!;
+      if (!snapshot.lastRoll || active.cash >= debt.amount || (debt.source.kind === "rent" ? tile.type !== "property" || tile.id !== debt.source.propertyId || snapshot.properties[tile.id]!.ownerId !== debt.creditorId || rentFor(snapshot, tile.id) !== debt.amount
+        : debt.source.kind === "tax" ? tile.type !== "tax" || tile.amount !== debt.amount : tile.type !== "chance")) throw new Error("待偿债务无效");
+    }
   }
   for (const player of snapshot.players) {
     netAssets(snapshot, player.id);
     const purchased = map.tiles.reduce((total, tile) => total + (tile.type === "property" && snapshot.properties[tile.id]!.ownerId === player.id ? BigInt(tile.price) : 0n), 0n);
     if (!player.bankrupt && purchased !== BigInt(player.statistics.purchases)) throw new Error("购地统计不平");
     const construction = Object.values(snapshot.properties).reduce((total, property) => property.ownerId === player.id ? total + property.constructionCosts.reduce((sum, cost) => sum + BigInt(cost), 0n) : total, 0n);
-    if (!player.bankrupt && construction !== BigInt(player.statistics.constructionSpent) - BigInt(player.statistics.constructionSoldCost)) throw new Error("建设统计不平");
+    if (construction !== BigInt(player.statistics.constructionSpent) - BigInt(player.statistics.constructionSoldCost)) throw new Error("建设统计不平");
     const principal = Object.values(snapshot.properties).reduce((total, property) => property.ownerId === player.id ? total + BigInt(property.mortgagePrincipal) : total, 0n);
-    if (!player.bankrupt && principal !== BigInt(player.statistics.mortgageIncome) - BigInt(player.statistics.mortgagePrincipalRepaid)) throw new Error("抵押统计不平");
+    if (principal !== BigInt(player.statistics.mortgageIncome) - BigInt(player.statistics.mortgagePrincipalRepaid) - BigInt(player.statistics.mortgagePrincipalReleased)) throw new Error("抵押统计不平");
   }
   if (snapshot.players.reduce((total, player) => total + BigInt(player.statistics.rentReceived) - BigInt(player.statistics.rentPaid), 0n) !== 0n) throw new Error("租金统计不平");
+  if (snapshot.players.reduce((total, player) => total + BigInt(player.statistics.rentLost) - BigInt(player.statistics.debtWrittenOff), 0n) > 0n) throw new Error("冲销统计不平");
   if (snapshot.revision === 0 && (snapshot.completedRounds !== 0 || snapshot.turnPlayerId !== snapshot.turnOrder[0] || decision.kind !== "awaiting_roll" || Object.values(snapshot.properties).some((property) => property.ownerId !== null) ||
       !sameData(random, initialRandom.snapshot) || snapshot.players.some((player) => player.position !== 0 || player.cash !== rules.startingCash || Object.values(player.statistics).some((amount) => amount !== 0)))) throw new Error("初始状态无效");
+  const history = restoreHistory(state.history, snapshot);
+  if (snapshot.decision.kind === "awaiting_debt") {
+    const entry = [...history].reverse().find((candidate) => candidate.event.kind === "rolled");
+    const roll = entry?.event;
+    if (roll?.kind !== "rolled" || roll.result.playerId !== snapshot.decision.actorId || roll.result.to !== active.position || !sameData(roll.result.dice, snapshot.lastRoll) || !sameData(obligation(roll.result.landing), snapshot.decision.debt)) throw new Error("债务来源与落点不一致");
+    if (history.slice(history.indexOf(entry!) + 1).some(({ event }) => (event.kind !== "building_sold" && event.kind !== "mortgaged") || event.actor !== active.id)) throw new Error("债务已经结清或回合已结束");
+  }
   return {
     ...snapshot, config: { ...config, players: config.players.map((player) => ({ ...player })) },
-    history: restoreHistory(state.history, snapshot),
+    history,
     players: snapshot.players.map((player) => ({ ...player, statistics: { ...player.statistics } })),
     turnOrder: [...snapshot.turnOrder],
     properties: Object.fromEntries(Object.entries(snapshot.properties).map(([id, property]) => [id, { ...property, constructionCosts: [...property.constructionCosts] }])),
     random: { ...snapshot.random }, lastRoll: snapshot.lastRoll ? [...snapshot.lastRoll] : null,
-    decision: snapshot.decision.kind === "game_over" ? { kind: "game_over", result: matchResult(snapshot, snapshot.decision.result.reason) } : { ...snapshot.decision },
+    decision: snapshot.decision.kind === "game_over" ? { kind: "game_over", result: matchResult(snapshot, snapshot.decision.result.reason) } : snapshot.decision.kind === "awaiting_debt" ? { ...snapshot.decision, debt: restoreDebt(snapshot.decision.debt, snapshot, snapshot.decision.actorId) } : { ...snapshot.decision },
     rules: { ...rules, rentMultipliers: [...rules.rentMultipliers], chanceCards: rules.chanceCards.map((card) => ({ ...card })) },
     map: { ...map, tiles: map.tiles.map((tile) => ({ ...tile })), path: map.path.map((point) => ({ ...point })) },
   };
@@ -136,18 +150,50 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
 function restoreHistory(value: unknown, snapshot: GameSnapshot): GameSnapshot["history"] {
   if (!Array.isArray(value) || value.length > HISTORY_LIMIT || (snapshot.revision === 0 ? value.length !== 0 : value.length === 0)) throw new Error("历史数量无效");
   let previous = 0;
-  let count = 0;
   const history = value.map((raw) => {
     const entry = record(raw, ["revision", "event"]);
     const revision = integer(entry.revision, 1, snapshot.revision);
     if (previous && (revision < previous || revision > previous + 1)) throw new Error("历史顺序无效");
-    count = revision === previous ? count + 1 : 1;
-    if (count > 2) throw new Error("历史重复事件");
     previous = revision;
     return { revision, event: restoreEvent(entry.event, snapshot) };
   });
   if (previous !== snapshot.revision) throw new Error("历史缺少最新提交");
+  const signatures = ["rolled", "rolled,turn", "rolled,ended", "rolled,paid,turn", "rolled,paid,ended", "purchased,turn", "purchased,ended", "skipped,turn", "skipped,ended", "upgraded", "building_sold", "building_sold,paid,turn", "building_sold,paid,ended", "mortgaged", "mortgaged,paid,turn", "mortgaged,paid,ended", "redeemed", "liquidated,paid,turn", "liquidated,paid,ended"];
+  for (let start = 0; start < history.length;) {
+    let end = start + 1;
+    while (end < history.length && history[end]!.revision === history[start]!.revision) end += 1;
+    const events = history.slice(start, end).map((entry) => entry.event);
+    const signature = events.map((event) => event.kind).join(",");
+    const truncated = start === 0 && history.length === HISTORY_LIMIT;
+    if (!signatures.some((candidate) => candidate === signature || truncated && candidate.endsWith("," + signature))) throw new Error("历史提交事件无效");
+    const first = events[0]!;
+    const paid = events.find((event) => event.kind === "paid");
+    if (paid && (!truncated || first.kind !== "paid") && (paid.actor !== (first.kind === "rolled" ? first.result.playerId : "actor" in first ? first.actor : null) ||
+      (first.kind === "liquidated" ? paid.writtenOff === 0 : paid.writtenOff !== 0) || first.kind === "rolled" && !sameData(obligation(first.result.landing), paid.debt))) throw new Error("历史支付不一致");
+    start = end;
+  }
   return history;
+}
+
+function restoreDebt(value: unknown, snapshot: GameSnapshot, payer: PlayerId): PendingDebt {
+  const debt = record(value, ["creditorId", "amount", "source", "continuation"]);
+  const source = record(debt.source);
+  if (source.kind === "rent") {
+    record(source, ["kind", "propertyId", "ownerId", "amount"]);
+    const tile = snapshot.map.tiles.find((candidate) => candidate.id === source.propertyId);
+    if (!tile || tile.type !== "property" || !snapshot.config.players.some((player) => player.id === source.ownerId) || source.ownerId === payer ||
+      ![0, ...([0, 1, 2, 3] as const).flatMap((level) => [false, true].map((group) => rentAmount(tile, { level, mortgagePrincipal: 0 }, snapshot.rules, group)))].includes(integer(source.amount))) throw new Error("债务租金无效");
+  } else if (source.kind === "tax") {
+    record(source, ["kind", "amount"]);
+    if (!snapshot.map.tiles.some((tile) => tile.type === "tax" && tile.amount === integer(source.amount))) throw new Error("债务税费无效");
+  } else if (source.kind === "chance") {
+    record(source, ["kind", "amount", "cardId"]);
+    integer(source.amount, Number.MIN_SAFE_INTEGER, -1);
+    if (!snapshot.rules.chanceCards.some((card) => card.id === source.cardId && card.amount === source.amount)) throw new Error("债务事件无效");
+  } else throw new Error("债务来源无效");
+  const expected = obligation(source as PendingDebt["source"]);
+  if (!sameData(debt, expected)) throw new Error("债务金额或后继无效");
+  return expected!;
 }
 
 function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
@@ -157,6 +203,24 @@ function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
     return value as PlayerId;
   };
   switch (event.kind) {
+    case "paid": {
+      record(event, ["kind", "actor", "debt", "amount", "writtenOff"]);
+      const payer = actor(event.actor);
+      const debt = restoreDebt(event.debt, snapshot, payer);
+      const amount = integer(event.amount, 0, debt.amount);
+      if (event.writtenOff !== debt.amount - amount) throw new Error("历史冲销无效");
+      return { kind: "paid", actor: payer, debt, amount, writtenOff: event.writtenOff as number };
+    }
+    case "liquidated": {
+      record(event, ["kind", "actor", "constructionCost", "constructionRefund", "mortgageIncome", "principalReleased"]);
+      const payer = actor(event.actor);
+      const cost = integer(event.constructionCost);
+      const refund = integer(event.constructionRefund);
+      const mortgage = integer(event.mortgageIncome);
+      const released = integer(event.principalReleased);
+      if (!snapshot.players.find((player) => player.id === payer)!.bankrupt || BigInt(refund) * 100n > BigInt(cost) * BigInt(snapshot.rules.constructionSalePercent) || released < mortgage) throw new Error("历史清算无效");
+      return { kind: "liquidated", actor: payer, constructionCost: cost, constructionRefund: refund, mortgageIncome: mortgage, principalReleased: released };
+    }
     case "building_sold": {
       record(event, ["kind", "actor", "propertyId", "level", "cost", "refund"]);
       const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId);

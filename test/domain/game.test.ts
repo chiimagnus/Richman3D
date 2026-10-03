@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import type { RollResult } from "../../src/domain/types";
 
-function act(game: Game, kind: "roll" | "buy" | "skip") {
+function act(game: Game, kind: "roll" | "buy" | "skip" | "bankrupt") {
   const snapshot = game.snapshot;
   const result = game.apply({ kind, actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision });
   if (!result.ok) throw new Error(result.reason);
@@ -59,12 +59,15 @@ describe("Game", () => {
     expect(game.apply({ kind: "buy", actor: "p1", expectedRevision: 0 })).toEqual({ ok: false, reason: "illegal_action" });
   });
 
-  it("资金跌破零时结束游戏并确定胜者", () => {
+  it("现金不足时保留债务，确认真实清算后结束游戏", () => {
     const game = new Game(createMatchConfig(6), { ...QUICK_RULES, startingCash: 50 });
     const result = roll(game);
     expect(result.to).toBe(4);
     expect(result.landing).toEqual({ kind: "tax", amount: 80 });
+    expect(game.snapshot.decision.kind).toBe("awaiting_debt");
+    expect(game.snapshot.players[0]?.cash).toBe(50);
+    act(game, "bankrupt");
     expect(game.snapshot.decision).toMatchObject({ kind: "game_over", result: { reason: "last_survivor", winnerIds: ["p2"] } });
-    expect(game.snapshot.players[0]?.cash).toBe(-30);
+    expect(game.snapshot.players[0]).toMatchObject({ cash: 0, statistics: { taxesPaid: 50, debtWrittenOff: 30 } });
   });
 });

@@ -6,13 +6,13 @@ import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot } from "./restore";
-import { constructionCost, initialProperties, liquidityOption, netAssets, propertyTile, rentFor } from "./economy";
-import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
+import { constructionCost, constructionRefund, initialProperties, liquidityOption, mortgageValue, netAssets, obligation, propertyTile, rentFor } from "./economy";
+import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
-  if (!Number.isSafeInteger(next)) throw new RangeError("资金超出整数范围");
+  if (!Number.isSafeInteger(next) || next < 0) throw new RangeError("资金超出整数范围");
   return next;
 }
 
@@ -44,7 +44,8 @@ export class Game {
       turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
         statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, constructionSpent: 0,
-          constructionRefunds: 0, constructionSoldCost: 0, mortgageIncome: 0, mortgagePrincipalRepaid: 0, mortgageFeesPaid: 0 },
+          constructionRefunds: 0, constructionSoldCost: 0, mortgageIncome: 0, mortgagePrincipalRepaid: 0, mortgageFeesPaid: 0,
+          mortgagePrincipalReleased: 0, debtWrittenOff: 0, rentLost: 0 },
       })),
       turnPlayerId: turnOrder[0]!,
       decision: { kind: "awaiting_roll", actorId: turnOrder[0]! },
@@ -70,12 +71,12 @@ export class Game {
 
   apply(command: Command): ApplyResult {
     if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
-        !["roll", "buy", "skip", "upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ||
-        !["roll", "buy", "skip"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
+        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ||
+        !["roll", "buy", "skip", "bankrupt"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
     }
-    const keys = ["actor", "kind", "expectedRevision", ...(["roll", "buy", "skip"].includes(command.kind) ? [] : ["propertyId"])];
+    const keys = ["actor", "kind", "expectedRevision", ...(["roll", "buy", "skip", "bankrupt"].includes(command.kind) ? [] : ["propertyId"])];
     if (Object.keys(command).length !== keys.length || keys.some((key) => !Object.hasOwn(command, key))) return { ok: false, reason: "invalid_command" };
     const before = this.state;
     if (command.expectedRevision !== before.revision) return { ok: false, reason: "stale_revision" };
@@ -92,6 +93,16 @@ export class Game {
       let completedRounds = before.completedRounds;
       let lastRoll = before.lastRoll;
       const events: GameEvent[] = [];
+      let finishTurn = command.kind === "roll" || command.kind === "buy" || command.kind === "skip";
+      const pay = (debt: PendingDebt, amount: number) => {
+        player.cash = cashAfterChange(player.cash, -amount);
+        if (debt.creditorId !== null) {
+          const creditor = players.find((candidate) => candidate.id === debt.creditorId);
+          if (!creditor || creditor.bankrupt || creditor.id === player.id) throw new Error("债权人无效");
+          creditor.cash = cashAfterChange(creditor.cash, amount);
+        }
+        events.push({ kind: "paid", actor: player.id, debt, amount, writtenOff: debt.amount - amount });
+      };
 
       if (command.kind === "roll") {
         const dice = [random.integer(6) + 1, random.integer(6) + 1] as const;
@@ -110,13 +121,12 @@ export class Game {
         switch (tile.type) {
           case "start": landing = { kind: "start" }; break;
           case "tax":
-            player.cash = cashAfterChange(player.cash, -tile.amount);
             landing = { kind: "tax", amount: tile.amount };
             break;
           case "chance": {
             const card = before.rules.chanceCards[random.integer(before.rules.chanceCards.length)];
             if (!card) throw new Error("机会卡无效");
-            player.cash = cashAfterChange(player.cash, card.amount);
+            if (card.amount >= 0) player.cash = cashAfterChange(player.cash, card.amount);
             landing = { kind: "chance", amount: card.amount, cardId: card.id };
             break;
           }
@@ -131,14 +141,40 @@ export class Game {
               const owner = players.find((candidate) => candidate.id === ownerId);
               if (!owner) throw new Error("产权玩家不存在");
               const amount = rentFor(before, tile.id);
-              player.cash = cashAfterChange(player.cash, -amount);
-              owner.cash = cashAfterChange(owner.cash, amount);
               landing = { kind: "rent", propertyId: tile.id, ownerId, amount };
             }
             break;
           }
         }
         events.push({ kind: "rolled", result: { playerId: player.id, dice, steps, from, to, path, passedStart, startBonus, landing } });
+        const debt = obligation(landing);
+        if (debt) {
+          if (player.cash >= debt.amount) pay(debt, debt.amount);
+          else decision = { kind: "awaiting_debt", actorId: player.id, debt };
+        }
+      } else if (command.kind === "bankrupt") {
+        if (before.decision.kind !== "awaiting_debt") throw new Error("没有待处理债务");
+        let construction = 0;
+        let refund = 0;
+        let mortgage = 0;
+        let released = 0;
+        for (const tile of before.map.tiles) {
+          if (tile.type !== "property" || properties[tile.id]!.ownerId !== player.id) continue;
+          const property = properties[tile.id]!;
+          for (const cost of property.constructionCosts) {
+            construction = cashAfterChange(construction, cost);
+            refund = cashAfterChange(refund, constructionRefund(cost, before.rules));
+          }
+          const income = property.mortgagePrincipal === 0 ? mortgageValue(tile, before.rules) : 0;
+          mortgage = cashAfterChange(mortgage, income);
+          released = cashAfterChange(released, property.mortgagePrincipal || income);
+          properties[tile.id] = { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] };
+        }
+        player.cash = cashAfterChange(cashAfterChange(player.cash, refund), mortgage);
+        events.push({ kind: "liquidated", actor: player.id, constructionCost: construction, constructionRefund: refund, mortgageIncome: mortgage, principalReleased: released });
+        pay(before.decision.debt, player.cash);
+        player.bankrupt = true;
+        finishTurn = true;
       } else if (command.kind === "upgrade") {
         const tile = propertyTile(before.map, command.propertyId);
         const property = properties[tile.id]!;
@@ -155,6 +191,10 @@ export class Game {
         if (command.kind === "sell_building") events.push({ kind: "building_sold", actor: player.id, propertyId: command.propertyId, level: option.nextProperty.level as 0 | 1 | 2, cost: option.originalCost, refund: option.proceeds });
         else if (command.kind === "mortgage") events.push({ kind: "mortgaged", actor: player.id, propertyId: command.propertyId, principal: option.proceeds });
         else events.push({ kind: "redeemed", actor: player.id, propertyId: command.propertyId, principal: property.mortgagePrincipal, fee: option.loss });
+        if (before.decision.kind === "awaiting_debt") {
+          if (player.cash >= before.decision.debt.amount) { pay(before.decision.debt, before.decision.debt.amount); finishTurn = true; }
+          else decision = before.decision;
+        }
       } else {
         const property = pendingProperty(before);
         if (!property) throw new Error("待购地产不存在");
@@ -184,22 +224,27 @@ export class Game {
           record(event.actor, "mortgagePrincipalRepaid", event.principal);
           record(event.actor, "mortgageFeesPaid", event.fee);
         }
+        if (event.kind === "liquidated") {
+          record(event.actor, "constructionSoldCost", event.constructionCost);
+          record(event.actor, "constructionRefunds", event.constructionRefund);
+          record(event.actor, "mortgageIncome", event.mortgageIncome);
+          record(event.actor, "mortgagePrincipalReleased", event.principalReleased);
+        }
+        if (event.kind === "paid") {
+          const source = event.debt.source;
+          record(event.actor, "debtWrittenOff", event.writtenOff);
+          if (source.kind === "rent") {
+            record(event.actor, "rentPaid", event.amount);
+            record(source.ownerId, "rentReceived", event.amount);
+            record(source.ownerId, "rentLost", event.writtenOff);
+          } else record(event.actor, source.kind === "tax" ? "taxesPaid" : "chanceExpense", event.amount);
+        }
         if (event.kind === "rolled") {
           const action = event.result;
           record(action.playerId, "startBonus", action.startBonus);
           const landing = action.landing;
-          if (landing.kind === "tax") record(action.playerId, "taxesPaid", landing.amount);
-          if (landing.kind === "chance") record(action.playerId, landing.amount >= 0 ? "chanceIncome" : "chanceExpense", Math.abs(landing.amount));
-          if (landing.kind === "rent") {
-            record(action.playerId, "rentPaid", landing.amount);
-            record(landing.ownerId, "rentReceived", landing.amount);
-          }
+          if (landing.kind === "chance" && landing.amount >= 0) record(action.playerId, "chanceIncome", landing.amount);
         }
-      }
-      if (player.cash < 0) {
-        player.bankrupt = true;
-        for (const [propertyId, property] of Object.entries(properties)) if (property.ownerId === player.id) properties[propertyId] = { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] };
-        decision = { kind: "awaiting_roll", actorId: player.id };
       }
       const candidate = { ...before, players, properties, decision, lastRoll, random: random.snapshot };
       for (const entry of players) netAssets(candidate, entry.id);
@@ -207,7 +252,7 @@ export class Game {
         const result = matchResult(candidate, "last_survivor");
         decision = { kind: "game_over", result };
         events.push({ kind: "ended", result });
-      } else if (decision.kind === "awaiting_roll" && ["roll", "buy", "skip"].includes(command.kind)) {
+      } else if (decision.kind === "awaiting_roll" && finishTurn) {
         ({ turnPlayerId, completedRounds } = nextTurn(candidate));
         if (completedRounds >= before.rules.roundLimit) {
           const result = matchResult(candidate, "round_limit");

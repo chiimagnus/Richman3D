@@ -82,7 +82,7 @@ it("charges a real opponent the projected group rent, preserves the transfer and
   };
   const restored = Game.restore(lost);
   expect(rentFor(restored.snapshot, "neon-avenue")).toBe(32);
-  expect(restored.snapshot.history.at(-2)?.event).toMatchObject({ result: { landing: { amount: 48 } } });
+  expect([...restored.snapshot.history].reverse().find((entry) => entry.event.kind === "rolled")?.event).toMatchObject({ result: { landing: { amount: 48 } } });
 });
 
 it("rolls back state, money and candidate RNG when real group rent overflows", () => {

@@ -43,6 +43,7 @@ it.each([20, 40])("retains a true tie after %s actual rounds, without seat-order
 it("last survivor wins and fixed slots skip eliminated seats", () => {
   const game = new Game(createMatchConfig(6), { ...QUICK_RULES, startingCash: 50 });
   game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 });
+  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: 1 }).ok).toBe(true);
   expect(game.snapshot.decision).toMatchObject({ result: { reason: "last_survivor", winnerIds: ["p2"] } });
   const snapshot = game.snapshot;
   expect(matchResult(snapshot, "last_survivor").winnerIds).toEqual(["p2"]);

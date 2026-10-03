@@ -68,6 +68,8 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "mortgaged":
               case "redeemed": audio.playPurchase(); break;
               case "skipped": break;
+              case "paid":
+              case "liquidated": break;
               case "turn": audio.playTurn(playerConfig(snapshot.config, event.actor).controller === "human"); break;
               case "ended": activeWorld.unlockFirstPerson(); audio.playGameOver(event.result.winnerIds.some((id) => playerConfig(snapshot.config, id).controller === "human")); break;
             }
