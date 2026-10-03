@@ -4,6 +4,7 @@ import { makeSave } from "../../src/storage/snapshot";
 import { chooseBotCommand } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { propertyMatch, propertyMatchId } from "./property-match";
+import { createMatchConfig } from "../../src/domain/config";
 
 export function debtCheckpoint(cash = 30, levels = 0): Game {
   const game = propertyMatch();
@@ -52,4 +53,44 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a rent checkpoint");
   }
   throw new Error("No suitable real owned rent property");
+}
+
+export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false): Game {
+  const game = new Game(createMatchConfig({ 2: 5, 3: 6, 4: 12 }[seats], seats));
+  for (let count = 0; count < 400; count += 1) {
+    const snapshot = game.snapshot;
+    if (snapshot.decision.kind === "game_over") break;
+    const owned = (ids: string[], owner: string, level: number) => ids.every((id) => snapshot.properties[id]!.ownerId === owner && snapshot.properties[id]!.level >= level);
+    if (snapshot.decision.kind === "awaiting_roll" && snapshot.turnPlayerId === "p1" &&
+        owned(["neon-avenue", "harbor-walk"], "p1", 1) && owned(["art-district", "grand-boulevard", "financial-center"], "p2", 2)) {
+      const state = makeSave(snapshot, propertyMatchId).state;
+      const random = new RuleRandom(state.random);
+      const steps = random.integer(6) + random.integer(6) + 2;
+      const target = snapshot.map.tiles.findIndex((tile) => tile.id === "financial-center");
+      const discount = discounted ? 54 : 0;
+      const restored = Game.restore({ ...state,
+        properties: discounted ? { ...state.properties,
+          "neon-avenue": { ...state.properties["neon-avenue"]!, constructionCosts: [71] },
+          "harbor-walk": { ...state.properties["harbor-walk"]!, constructionCosts: [35] },
+        } : state.properties,
+        players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 30, position: target - steps,
+          statistics: { ...player.statistics, constructionSpent: player.statistics.constructionSpent - discount,
+            taxesPaid: player.statistics.taxesPaid + player.cash + discount - 30 } } : player),
+      });
+      const result = restored.apply({ kind: "roll", actor: "p1", expectedRevision: restored.snapshot.revision });
+      if (!result.ok || restored.snapshot.decision.kind !== "awaiting_debt") throw new Error("Expected a built-group rent obligation");
+      return restored;
+    }
+    const actor = snapshot.turnPlayerId;
+    const commands = legalCommands(snapshot, actor);
+    const upgrade = commands.find((command) => command.kind === "upgrade" && snapshot.properties[command.propertyId]!.level < (actor === "p1" ? 1 : actor === "p2" ? 2 : 0));
+    const decision = snapshot.decision;
+    const target = decision.kind === "awaiting_purchase" ? snapshot.map.tiles.find((tile) => tile.id === decision.propertyId) : null;
+    const group = actor === "p1" ? "cyan" : actor === "p2" ? "emerald" : null;
+    const kind = snapshot.decision.kind === "awaiting_purchase" ? target?.type === "property" && target.group === group && commands.some((command) => command.kind === "buy") ? "buy" : "skip"
+      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
+    const command = upgrade ?? commands.find((candidate) => candidate.kind === kind) ?? commands[0];
+    if (!command || !game.apply(command).ok) throw new Error("Could not reach a built-group checkpoint");
+  }
+  throw new Error("No built-group checkpoint");
 }

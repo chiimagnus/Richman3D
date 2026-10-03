@@ -4,6 +4,7 @@ import { BoardView } from "../../src/rendering/BoardView";
 import { propertyMatch } from "../fixtures/property-match";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
+import { builtRentDebtMatch } from "../fixtures/debt-match";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -87,5 +88,36 @@ it("removes sold buildings and updates the mortgage and neighboring rent labels 
   for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
   board.dispose();
   for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  expect(scene.children).toHaveLength(0);
+});
+
+it("removes bankrupt ownership and buildings once, preserves survivors and restores without ghost assets", () => {
+  const fillText = vi.fn();
+  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  const game = builtRentDebtMatch();
+  const scene = new THREE.Scene();
+  const before = game.snapshot;
+  const board = new BoardView(scene, "en", before.map, before.config, before.rules);
+  board.syncOwnership(before);
+  const buildings = ["neon-avenue", "harbor-walk"].map((id) => scene.getObjectByName(`property-building-${id}`)!);
+  const markers = scene.getObjectByName("board")!.children.filter((object) => object instanceof THREE.Mesh && object.geometry instanceof THREE.CylinderGeometry);
+  expect(markers).toHaveLength(5);
+  const removedMarkers = markers.filter((object) => (object as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>).material.color.getHexString() === before.config.players[0]!.color.slice(1));
+  expect(removedMarkers).toHaveLength(2);
+  const spies = [...buildings, ...removedMarkers].flatMap(trackResources);
+  const survivor = scene.getObjectByName("property-building-financial-center");
+  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: before.revision }).ok).toBe(true);
+  board.syncOwnership(game.snapshot);
+  for (const object of [...buildings, ...removedMarkers]) expect(object.parent).toBeNull();
+  for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  expect(scene.getObjectByName("property-building-financial-center")).toBe(survivor);
+  fillText.mockClear();
+  board.syncOwnership(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot);
+  expect(fillText).not.toHaveBeenCalled();
+  expect(scene.getObjectByName("property-building-neon-avenue")).toBeUndefined();
+  const remainingSpies = trackResources(scene);
+  board.dispose();
+  board.dispose();
+  for (const spy of [...spies, ...remainingSpies]) expect(spy).toHaveBeenCalledTimes(1);
   expect(scene.children).toHaveLength(0);
 });
