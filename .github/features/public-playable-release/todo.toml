@@ -1,5 +1,5 @@
 version = 1
-current_task_id = "P5-T5"
+current_task_id = "P6-T2"
 
 [[tasks]]
 id = "P1-T1"
@@ -164,23 +164,23 @@ note = "309单测/typecheck/build/diff-check；后台Helium债务30/120抵押90�
 [[tasks]]
 id = "P5-T5"
 title = "破产清算与多人终局一致"
-status = "in_progress"
+status = "completed"
 plan = "plan-p5.md#p5-t5"
-commit = ""
-note = ""
+commit = "44fc597"
+note = "317单测/typecheck/build；2/3/4席实际建筑清算、逐命令恢复、折扣实际成本退款、唯一终局和GPU一次释放；后台Helium三席清算实付270/冲销246、89→90、刷新完整state一致，无幽灵资产。"
 
 [[tasks]]
 id = "P6-T1"
 title = "不购买后的顺序拍卖"
-status = "pending"
+status = "completed"
 plan = "plan-p6.md#p6-t1"
-commit = ""
-note = ""
+commit = "0de42b2d020ed4d99b14eb6432cea007b2d27721"
+note = "353单测/typecheck/build/diff-check；顺序拍卖、基线电脑、热座/事务保存、100条历史截断、最高报价安全净资产校验；后台Helium三真人40成交仅扣一次、进行中/成交后完整刷新，双语390px无横溢。"
 
 [[tasks]]
 id = "P6-T2"
 title = "原子交易提案与接受拒绝"
-status = "pending"
+status = "in_progress"
 plan = "plan-p6.md#p6-t2"
 commit = ""
 note = ""
