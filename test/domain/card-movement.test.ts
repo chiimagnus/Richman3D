@@ -29,12 +29,12 @@ it.each(Array.from({ length: 20 }, (_, index) => index))("teleports from %s dire
 });
 
 it.each([
-  [8, "return-start", [0], "start"],
-  [14, "retreat-three", [10, 9, 8], "property_available"],
-  [37, "advance-three", [3, 4, 5], "property_available"],
-  [48, "advance-three", [12, 13, 14], "tax"],
-  [106, "retreat-three", [6, 5, 4], "tax"],
-  [101, "retreat-three", [1, 0, 19], "chance_ignored"],
+  [110, "return-start", [0], "start"],
+  [55, "retreat-three", [10, 9, 8], "property_available"],
+  [772, "advance-three", [3, 4, 5], "property_available"],
+  [8, "advance-three", [12, 13, 14], "tax"],
+  [177, "retreat-three", [6, 5, 4], "tax"],
+  [452, "retreat-three", [1, 0, 19], "chance_ignored"],
 ] as const)("seed %s presents the dice, card and final landing in order and commits one ordinary turn", (seed, cardId, path, landing) => {
   const game = new Game(createMatchConfig(seed));
   const before = game.snapshot;
@@ -46,7 +46,7 @@ it.each([
   expect(result.snapshot.deck.pending).toBeNull();
   expect(result.snapshot.random.draws - before.random.draws).toBe(2 + QUICK_RULES.chanceCards.length * 2 - 1);
   if (cardId === "return-start") expect(result.snapshot.players[0]).toMatchObject({ cash: 1700, statistics: { startBonus: 200 } });
-  if (seed === 101) expect(result.snapshot.players[0]).toMatchObject({ cash: 1500, statistics: { startBonus: 0 } });
+  if (seed === 452) expect(result.snapshot.players[0]).toMatchObject({ cash: 1500, statistics: { startBonus: 0 } });
   for (const language of ["en", "zh-CN"] as const) {
     expect(eventText(language, result.moved, result.snapshot)).not.toMatch(/undefined|\{\w+\}/);
     expect(eventText(language, result.moved, result.snapshot)).toContain(language === "en" ? "No further Chance" : "不连抽机会");
@@ -57,7 +57,7 @@ it.each([
 });
 
 it("a forward card crossing Start awards once and lands on Chance without redrawing or changing the dice", () => {
-  const game = movementCheckpoint(113, "p1", undefined, 19);
+  const game = movementCheckpoint(53, "p1", undefined, 19);
   const before = game.snapshot;
   const result = roll(game);
   expect(result.moved.result).toMatchObject({ path: [0, 1, 2], startBonus: QUICK_RULES.passStartBonus, landing: { kind: "chance_ignored" } });
@@ -70,7 +70,7 @@ it("a forward card crossing Start awards once and lands on Chance without redraw
 });
 
 it.each(["p1", "p2"] as const)("retreat into owned land resolves the actual owner/rent for %s without drawing again", (actor) => {
-  const game = movementCheckpoint(35, actor);
+  const game = movementCheckpoint(65, actor);
   const before = game.snapshot;
   const result = roll(game);
   expect(result.moved.result.landing.kind).toBe(actor === "p2" ? "property_owned" : "rent");
@@ -83,7 +83,7 @@ it.each(["p1", "p2"] as const)("retreat into owned land resolves the actual owne
 });
 
 it("a movement-card debt restores the final rent source and pays once after liquidation, without moving or switching twice", () => {
-  const game = movementCheckpoint(35, "p1", 30);
+  const game = movementCheckpoint(65, "p1", 30);
   roll(game);
   const before = game.snapshot;
   expect(before.decision).toMatchObject({ kind: "awaiting_debt", debt: { source: { kind: "rent", propertyId: "river-market" }, amount: 36 } });
@@ -104,7 +104,7 @@ it("a movement-card debt restores the final rent source and pays once after liqu
 });
 
 it("a moved-to tax debt uses the shared rescue payment and ends once without rediscarding the card", () => {
-  const game = movementCheckpoint(113, "p1", 30);
+  const game = movementCheckpoint(53, "p1", 30);
   roll(game);
   const before = game.snapshot;
   expect(before.decision).toMatchObject({ kind: "awaiting_debt", debt: { source: { kind: "tax", amount: 120 } } });
@@ -125,7 +125,7 @@ it("a moved-to tax debt uses the shared rescue payment and ends once without red
 
 it("a moved-to property waits for one purchase or auction before ending the original turn", () => {
   for (const kind of ["buy", "skip"] as const) {
-    const game = new Game(createMatchConfig(14));
+    const game = new Game(createMatchConfig(55));
     const result = roll(game);
     expect(result.snapshot.turnPlayerId).toBe("p1");
     expect(game.apply({ kind, actor: "p1", expectedRevision: result.snapshot.revision }).ok).toBe(true);
@@ -138,7 +138,7 @@ it("a moved-to property waits for one purchase or auction before ending the orig
 });
 
 it("movement-card bonus overflow rolls back the dice, shuffle, position and all statistics", () => {
-  const game = new Game(createMatchConfig(8), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
+  const game = new Game(createMatchConfig(110), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
   const before = game.snapshot;
   const listener = vi.fn();
   game.subscribe(listener);
@@ -153,11 +153,11 @@ it.each([
   (raw: any) => { raw.history[1].event.result.path = [12, 13, 14]; },
   (raw: any) => { raw.history[1].event.result.startBonus = 200; },
   (raw: any) => { raw.history[1].event.result.drawChance = true; },
-  (raw: any) => { raw.history[1].event.result.instanceId = "retreat-three:1"; },
+  (raw: any) => { raw.history[1].event.result.instanceId = "retreat-three:2"; },
   (raw: any) => { raw.history.splice(1, 1); },
   (raw: any) => { raw.deck.pending = raw.deck.discardPile.pop(); },
 ])("rejects forged movement chains and deck references %# without repairing the input", (mutate) => {
-  const game = new Game(createMatchConfig(14));
+  const game = new Game(createMatchConfig(55));
   roll(game);
   const raw = JSON.parse(JSON.stringify(makeSave(game.snapshot, propertyMatchId).state));
   mutate(raw);

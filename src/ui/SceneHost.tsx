@@ -54,13 +54,14 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
             if (signal.aborted) return;
             switch (event.kind) {
               case "rolled": {
-                audio.playRoll();
+                if (event.result.controlledBy) show(event);
+                else audio.playRoll();
                 if (!await activeWorld.wait(520, signal)) return;
                 await activeWorld.movePlayer(event.result.playerId, event.result.path, () => audio.playStep(), signal);
                 if (signal.aborted) return;
                 activeWorld.landOnTile(event.result.to, event.result.landing);
                 audio.playLanding(event.result.landing);
-                if (event.result.landing.kind === "movement_card") {
+                if (event.result.landing.kind === "movement_card" || event.result.landing.kind === "item_received") {
                   show(event);
                   if (!await activeWorld.wait(900, signal)) return;
                 }
@@ -81,6 +82,12 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "mortgaged":
               case "redeemed": audio.playPurchase(); break;
               case "trade_accepted": audio.playPurchase(); break;
+              case "item_used":
+                show(event);
+                activeWorld.sync(session.getSnapshot().committed);
+                audio.playPurchase();
+                break;
+              case "item_discarded": break;
               case "trade_proposed":
               case "trade_rejected": break;
               case "skipped": break;

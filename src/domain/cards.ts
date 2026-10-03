@@ -1,6 +1,9 @@
 import type { RuleRandom } from "./random";
 import type { RuleSet } from "./rules";
-import type { CardInstanceId, ChanceCardId, DeckState } from "./types";
+import type { CardInstanceId, ChanceCardId, Command, DeckState, GameSnapshot, PlayerId } from "./types";
+
+export const HAND_LIMIT = 3;
+export const CONTROLLED_TOTALS = { min: 2, max: 12 } as const;
 
 export function cardInstances(rules: RuleSet): CardInstanceId[] {
   return rules.chanceCards.flatMap((card) => [`${card.id}:1`, `${card.id}:2`] as CardInstanceId[]);
@@ -32,4 +35,21 @@ export function drawCard(deck: DeckState, rules: RuleSet, random: RuleRandom): D
 export function discardCard(deck: DeckState, instanceId: CardInstanceId): DeckState {
   if (deck.pending !== instanceId) throw new Error("待结算实体卡不匹配");
   return { ...deck, pending: null, discardPile: [...deck.discardPile, instanceId] };
+}
+
+export function discardItem(deck: DeckState, instanceId: CardInstanceId): DeckState {
+  return { ...deck, discardPile: [...deck.discardPile, instanceId] };
+}
+
+export function itemCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Extract<Command, { kind: "use_item" }>[] {
+  if (snapshot.itemUsed || snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor) return [];
+  const player = snapshot.players.find((player) => player.id === actor)!;
+  return player.hand.flatMap<Extract<Command, { kind: "use_item" }>>((instanceId) => {
+    const base = { kind: "use_item" as const, actor, expectedRevision: snapshot.revision, instanceId, total: null, targetId: null };
+    switch (cardType(instanceId)) {
+      case "controlled-dice": return Array.from({ length: CONTROLLED_TOTALS.max - CONTROLLED_TOTALS.min + 1 }, (_, index) => ({ ...base, total: index + CONTROLLED_TOTALS.min }));
+      case "swap-positions": return snapshot.players.filter((target) => target.id !== actor && !target.bankrupt).map((target) => ({ ...base, targetId: target.id }));
+      default: return [base];
+    }
+  });
 }

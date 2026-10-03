@@ -1,6 +1,7 @@
 import type { MapDefinition, PropertyTile } from "./board";
 import type { RuleSet } from "./rules";
 import type { GameSnapshot, LandingResult, PendingDebt, PlayerId, PropertyState } from "./types";
+import { cardType } from "./cards";
 
 function money(value: bigint): number {
   if (value < BigInt(Number.MIN_SAFE_INTEGER) || value > BigInt(Number.MAX_SAFE_INTEGER)) throw new RangeError("金额超出整数范围");
@@ -39,11 +40,17 @@ export function constructionCost(tile: PropertyTile, rules: RuleSet): number {
   return money((BigInt(tile.price) * BigInt(rules.constructionCostPercent) + 99n) / 100n);
 }
 
+export function discountedCost(amount: number, percent: number): number {
+  return money((BigInt(amount) * BigInt(percent) + 99n) / 100n);
+}
+
 export function upgradeOption(snapshot: GameSnapshot, actor: PlayerId, propertyId: string) {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   const player = snapshot.players.find((candidate) => candidate.id === actor)!;
-  const cost = constructionCost(tile, snapshot.rules);
+  const baseCost = constructionCost(tile, snapshot.rules);
+  const cost = snapshot.activeItem?.actorId === actor && cardType(snapshot.activeItem.instanceId) === "construction-discount"
+    ? discountedCost(baseCost, snapshot.rules.constructionDiscountPercent) : baseCost;
   const group = snapshot.map.tiles.filter((candidate) => candidate.type === "property" && candidate.group === tile.group);
   let reason: "not_owner" | "not_turn" | "incomplete_group" | "mortgaged" | "max_level" | "unbalanced" | "insufficient_cash" | null = null;
   if (property.ownerId !== actor) reason = "not_owner";

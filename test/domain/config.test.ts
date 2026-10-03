@@ -43,7 +43,7 @@ it("constructs stable 2–4 seat contracts without exposing unimplemented produc
 
 it("RuleSet amounts reach actual cash, structured results and both locale projections", () => {
   const rules = { ...QUICK_RULES, startingCash: 2100, passStartBonus: 333, chanceCards: QUICK_RULES.chanceCards.map((card) => ({ ...card, amount: 17 })) };
-  const chance = new Game(createMatchConfig(768), rules);
+  const chance = new Game(createMatchConfig(21), rules);
   const command = legalCommands(chance.snapshot, chance.snapshot.turnPlayerId)[0]!;
   expect(chance.apply(command).ok).toBe(true);
   expect(chance.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(2117);

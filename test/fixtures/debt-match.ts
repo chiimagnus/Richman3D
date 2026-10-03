@@ -76,7 +76,7 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
 }
 
 export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false): Game {
-  const game = new Game(createMatchConfig(3, seats));
+  const game = new Game(createMatchConfig(seats === 2 ? 61 : seats === 3 ? 1 : 10, seats));
   for (let count = 0; count < 400; count += 1) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") break;
@@ -108,7 +108,7 @@ export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false): Ga
     const target = decision.kind === "awaiting_purchase" ? snapshot.map.tiles.find((tile) => tile.id === decision.propertyId) : null;
     const group = actor === "p1" ? "cyan" : actor === "p2" ? "emerald" : null;
     const kind = snapshot.decision.kind === "awaiting_purchase" ? target?.type === "property" && target.group === group && commands.some((command) => command.kind === "buy") ? "buy" : "skip"
-      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : "roll";
+      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : "roll";
     const command = upgrade ?? commands.find((candidate) => candidate.kind === kind) ?? commands[0];
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a built-group checkpoint");
   }

@@ -1,6 +1,8 @@
 import type { GameSession } from "../app/GameSession";
 import { useEffect, useRef, type ReactNode } from "react";
 import type { PlayerId } from "../domain/types";
+import type { ItemCardId } from "../domain/types";
+import { cardType } from "../domain/cards";
 import { publicProperty } from "../domain/selectors";
 import { PropertyDetails } from "./PropertyDetails";
 import { useGameView } from "./useGameView";
@@ -9,7 +11,7 @@ import { formatCash, formatMessage, messages, playerName, tileName } from "../i1
 import type { Language } from "../i18n/language";
 import styles from "./Hud.module.css";
 
-export function Hud({ session, language, onAssets, assetPanel }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; assetPanel: ReactNode }) {
+export function Hud({ session, language, onAssets, onHand, assetPanel }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; onHand?: (() => void) | undefined; assetPanel: ReactNode }) {
   const view = useGameView(session);
   const model = actionView(view, language);
   const copy = messages(language);
@@ -44,11 +46,13 @@ export function Hud({ session, language, onAssets, assetPanel }: { session: Game
           {model.insufficientFunds && <span className={styles.reason}>{copy.status.insufficientFunds}</span>}
         </> : <button className={styles.primary} aria-keyshortcuts="Space" disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}<kbd aria-hidden="true">{copy.hud.rollKey}</kbd></button>}
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
+        {onHand && <button id="hand-open" disabled={view.presenting} onClick={onHand}>{formatMessage(copy.items.open, { count: view.displayed.players.find((player) => player.id === view.viewPlayerId)!.hand.length })}</button>}
       </div>
       {buying && model.property && <details className={styles.property} key={model.property.id}>
         <summary>{copy.assets.details}</summary><PropertyDetails property={publicProperty(view.displayed, model.property.id)} players={view.displayed.config.players} language={language} />
       </details>}
       {view.displayed.players.find((player) => player.id === view.viewPlayerId)?.bankrupt && <p className={styles.notice}>{copy.setup.spectating}</p>}
+      {view.displayed.activeItem?.actorId === view.viewPlayerId && !view.presenting && <p className={styles.notice} role="status">{formatMessage(copy.items.active, { card: copy.items.names[cardType(view.displayed.activeItem.instanceId) as ItemCardId] })}{view.displayed.activeItem.total !== null && " " + formatMessage(copy.items.controlled, { total: view.displayed.activeItem.total })}</p>}
       {view.save.kind === "unsaved" && view.save.acknowledged && <span className={styles.notice} role="status">{copy.storage.unsaved}</span>}
       {assetPanel && <div className={styles.assets}>{assetPanel}</div>}
     </footer>

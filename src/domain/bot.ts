@@ -9,6 +9,11 @@ export function chooseBotCommand(snapshot: GameSnapshot): Command | null {
   const actor = snapshot.decision.actorId;
   if (playerConfig(snapshot.config, actor).controller !== "bot") return null;
   const commands = legalCommands(snapshot, actor);
+  if (snapshot.decision.kind === "awaiting_discard") return commands.at(-1)!;
+  if (snapshot.decision.kind === "awaiting_roll") {
+    const item = commands.find((command) => command.kind === "use_item");
+    if (item) return item;
+  }
   if (snapshot.decision.kind === "awaiting_trade") return commands.find((command) => command.kind === (tradeResponseReason(snapshot) === "fair_value" ? "trade_accept" : "trade_reject"))!;
   if (snapshot.decision.kind === "awaiting_auction") {
     const bid = commands.find((command) => command.kind === "auction_bid");

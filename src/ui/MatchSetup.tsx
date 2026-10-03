@@ -3,6 +3,7 @@ import type { GameApp } from "../app/GameApp";
 import { createMatchConfig, normalizeName, SEAT_COLORS, SEAT_IDS } from "../domain/config";
 import { QUICK_RULES, STANDARD_RULES, rulesFor } from "../domain/rules";
 import { mapFor } from "../domain/maps";
+import { CONTROLLED_TOTALS } from "../domain/cards";
 import { chanceCardText, formatMessage, messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import styles from "./MatchSetup.module.css";
@@ -50,7 +51,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
             {SEAT_COLORS.map((color, colorIndex) => <option key={color} value={color}>{Object.values(copy.colors)[colorIndex]}</option>)}
           </select>
         </label>)}
-        <ul>{rules.chanceCards.map((card) => <li key={card.id}>{chanceCardText(language, card.id, card.kind === "cash" ? card.amount : rules.passStartBonus, card.kind === "move" ? card.steps : 0)}</li>)}</ul>
+        <ul>{rules.chanceCards.map((card) => <li key={card.id}>{chanceCardText(language, card.id, card.kind === "cash" ? card.amount : rules.passStartBonus, card.kind === "move" ? card.steps : 0, card.id === "tax-discount" ? rules.taxDiscountPercent : rules.constructionDiscountPercent, CONTROLLED_TOTALS)}</li>)}</ul>
       </details>
       {error && <p role="alert">{copy.nameError}</p>}
       {app.getSnapshot().stored.kind === "valid" && <p>{messages(language).storage.replaceWarning}</p>}

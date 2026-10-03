@@ -3,6 +3,7 @@ import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
 import { canDeclareBankruptcy, liquidationValue, liquidityOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
 import { canBid, minimumBid, tradeOption } from "./market";
+import { itemCommands } from "./cards";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
@@ -20,6 +21,7 @@ export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.t
 export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Command[] {
   if (snapshot.decision.kind === "game_over" || actor !== snapshot.decision.actorId || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
   const base = { actor, expectedRevision: snapshot.revision };
+  if (snapshot.decision.kind === "awaiting_discard") return snapshot.players.find((player) => player.id === actor)!.hand.map((instanceId) => ({ ...base, kind: "discard_item", instanceId }));
   if (snapshot.decision.kind === "awaiting_trade") {
     const proposal = snapshot.decision.proposal;
     const response = { ...base, proposalRevision: proposal.revision };
@@ -34,7 +36,7 @@ export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly
       (["sell_building", "mortgage"] as const).filter((kind) => liquidityOption(snapshot, actor, tile.id, kind).reason === null).map((kind) => ({ ...base, kind, propertyId: tile.id }))),
     ...(canDeclareBankruptcy(snapshot, actor) ? [{ ...base, kind: "bankrupt" as const }] : []),
   ];
-  if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" },
+  if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }, ...itemCommands(snapshot, actor),
     ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).flatMap((tile) => [
       ...(upgradeOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "upgrade" as const, propertyId: tile.id }] : []),
       ...(["sell_building", "mortgage", "redeem"] as const).filter((kind) => liquidityOption(snapshot, actor, tile.id, kind).reason === null)

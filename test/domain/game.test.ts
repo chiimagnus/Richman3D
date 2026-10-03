@@ -48,9 +48,9 @@ describe("Game", () => {
   });
 
   it("结算机会格的确定性奖励", () => {
-    const game = new Game(createMatchConfig(768));
+    const game = new Game(createMatchConfig(21));
     const result = roll(game);
-    expect(result.to).toBe(2);
+    expect(result.to).toBe(7);
     expect(result.landing).toEqual({ kind: "chance", amount: 120, cardId: "innovation-bonus", instanceId: "innovation-bonus:1" });
     expect(game.snapshot.players.find((player) => player.id === result.playerId)?.cash).toBe(1620);
     expect(game.snapshot.turnPlayerId).toBe("p2");

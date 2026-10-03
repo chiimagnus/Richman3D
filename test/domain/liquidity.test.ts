@@ -28,25 +28,26 @@ function operate(game: Game, kind: PropertyKind, propertyId = "neon-avenue") {
 it("builds, sells actual costs, mortgages, redeems and re-borrows with distinct cash, book value and fee loss", () => {
   const game = propertyMatch();
   const initialAssets = netAssets(game.snapshot, "p1");
+  const initialCash = game.snapshot.players[0]!.cash;
   operate(game, "upgrade");
   operate(game, "upgrade", "harbor-walk");
-  expect(liquidityOption(game.snapshot, "p1", "neon-avenue", "sell_building")).toMatchObject({ originalCost: 90, proceeds: 45, loss: 45, remainingCash: 1665, nextRent: 48 });
+  expect(liquidityOption(game.snapshot, "p1", "neon-avenue", "sell_building")).toMatchObject({ originalCost: 90, proceeds: 45, loss: 45, remainingCash: initialCash - 115, nextRent: 48 });
   operate(game, "sell_building");
   operate(game, "sell_building", "harbor-walk");
-  expect(game.snapshot.players[0]!.cash).toBe(1700);
+  expect(game.snapshot.players[0]!.cash).toBe(initialCash - 80);
   expect(netAssets(game.snapshot, "p1")).toBe(initialAssets - 80);
   operate(game, "mortgage");
-  expect(game.snapshot.players[0]!.cash).toBe(1790);
+  expect(game.snapshot.players[0]!.cash).toBe(initialCash + 10);
   expect(game.snapshot.properties["neon-avenue"]!.mortgagePrincipal).toBe(90);
   expect(rentFor(game.snapshot, "neon-avenue")).toBe(0);
   expect(rentFor(game.snapshot, "harbor-walk")).toBe(24);
   expect(netAssets(game.snapshot, "p1")).toBe(initialAssets - 80);
-  expect(liquidityOption(game.snapshot, "p1", "neon-avenue", "redeem")).toMatchObject({ cost: 99, loss: 9, remainingCash: 1691, nextRent: 48 });
+  expect(liquidityOption(game.snapshot, "p1", "neon-avenue", "redeem")).toMatchObject({ cost: 99, loss: 9, remainingCash: initialCash - 89, nextRent: 48 });
   operate(game, "redeem");
   expect(rentFor(game.snapshot, "harbor-walk")).toBe(36);
   expect(netAssets(game.snapshot, "p1")).toBe(initialAssets - 89);
   operate(game, "mortgage");
-  expect(game.snapshot.players[0]).toMatchObject({ cash: 1781, statistics: { constructionSpent: 160, constructionSoldCost: 160, constructionRefunds: 80, mortgageIncome: 180, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: initialCash + 1, statistics: { constructionSpent: 160, constructionSoldCost: 160, constructionRefunds: 80, mortgageIncome: 180, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
   expect(netAssets(game.snapshot, "p1")).toBe(initialAssets - 89);
 });
 
@@ -71,6 +72,7 @@ it("charges zero on real mortgaged land without crediting or replaying rent, the
 
 it("sells three levels one at a time and rejects a captured sale after its single refund", () => {
   const game = propertyMatch();
+  const before = game.snapshot;
   for (let level = 0; level < 3; level += 1) {
     operate(game, "upgrade");
     operate(game, "upgrade", "harbor-walk");
@@ -82,10 +84,10 @@ it("sells three levels one at a time and rejects a captured sale after its singl
     expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
     operate(game, "sell_building", "harbor-walk");
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: 1540, statistics: { constructionSpent: 480, constructionSoldCost: 480, constructionRefunds: 240 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: before.players[0]!.cash - 240, statistics: { constructionSpent: 480, constructionSoldCost: 480, constructionRefunds: 240 } });
   expect(game.snapshot.properties["neon-avenue"]!.constructionCosts).toEqual([]);
   expect(game.snapshot.properties["harbor-walk"]!.constructionCosts).toEqual([]);
-  expect(netAssets(game.snapshot, "p1")).toBe(1860);
+  expect(netAssets(game.snapshot, "p1")).toBe(netAssets(before, "p1") - 240);
 });
 
 it("does not create a zero-principal mortgage state for a zero-value property", () => {

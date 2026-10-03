@@ -5,7 +5,7 @@ import type { PlayerId } from "../../src/domain/types";
 import { makeSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "./property-match";
 
-export function movementCheckpoint(seed = 35, actor: PlayerId = "p1", cash?: number, chancePosition = 11): Game {
+export function movementCheckpoint(seed = 65, actor: PlayerId = "p1", cash?: number, chancePosition = 11): Game {
   const game = new Game(createMatchConfig(seed));
   for (const kind of ["roll", "buy"] as const) {
     const result = game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision });

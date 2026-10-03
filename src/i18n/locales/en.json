@@ -86,6 +86,10 @@
       "chance-5": "Chance"
     }
   },
+  "items": {
+    "pending": "Choose an item to discard.", "newItem": "new", "title": "Your items", "open": "Items ({count})", "empty": "You have no items.", "select": "Select an item", "use": "Use this item", "confirm": "Confirm use", "cancel": "Back to items", "close": "Close", "discard": "Discard this item", "discardTitle": "Keep {limit} items", "discardReason": "You received item {next}. Choose one to discard, including the new item. Your turn ends after this choice.", "total": "Chosen dice total", "target": "Swap with", "beforeRoll": "Use an item before rolling on your own turn.", "used": "You have already used an item this turn.", "busy": "Finish the current animation or save before using an item.", "active": "Active this turn: {card}", "received": "{actor} received an item.", "discarded": "{actor} discarded an item.", "activated": "{actor} used {card}.", "controlled": "Chosen dice total: {total}. No random dice are drawn.", "swapped": "Positions swapped with {target}; no landing payment or Start reward.", "waived": "{actor} owes no rent to {owner} at {property}; the landlord receives nothing.",
+    "names": { "rent-waiver": "Rent waiver", "controlled-dice": "Controlled dice", "tax-discount": "Tax discount", "construction-discount": "Construction discount", "swap-positions": "Swap positions" }
+  },
   "chanceCards": {
     "innovation-bonus": "City innovation bonus +{amount}",
     "maintenance-cost": "Emergency maintenance {amount}",
@@ -93,7 +97,12 @@
     "traffic-fine": "Traffic fine {amount}",
     "advance-three": "Advance {steps} spaces; passing Start earns ¥{amount}.",
     "retreat-three": "Move back {steps} spaces; crossing Start earns nothing.",
-    "return-start": "Teleport to Start and receive ¥{amount} once."
+    "return-start": "Teleport to Start and receive ¥{amount} once.",
+    "rent-waiver": "Waive the first rent payment in this turn’s movement chain. Does not cover taxes or fines. Expires at turn end.",
+    "controlled-dice": "Choose the next roll’s total ({min}–{max}). The dice are determined from your choice, not randomly rolled.",
+    "tax-discount": "Pay {percent}% of the first tax-space fee this turn, rounded up. Does not cover rent or Chance fines. Expires at turn end.",
+    "construction-discount": "Pay {percent}% for your next legal upgrade this turn, rounded up. Sale refunds and asset value use the actual cost. Expires at turn end.",
+    "swap-positions": "Swap positions with another surviving player. No landing effect or Start reward. Then roll normally."
   },
   "setup": {
     "title": "New match",

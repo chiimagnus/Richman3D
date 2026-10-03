@@ -43,7 +43,7 @@ it.each(["zh-CN", "en"] as const)("%s presents the committed dice and preserves 
 });
 
 it.each(["en", "zh-CN"] as const)("%s replaces only the dice overlay with the real card/extra movement, and ignores late canceled projection", async (language) => {
-  const session = new GameSession(new Game(createMatchConfig(14)));
+  const session = new GameSession(new Game(createMatchConfig(55)));
   let show: (event: GameEvent) => void = () => {};
   session.bind({ sync() {}, stop() {}, present: (_events, _signal, _settle, project) => { show = project; return new Promise(() => {}); } });
   try {

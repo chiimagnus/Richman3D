@@ -10,7 +10,7 @@ import { propertyMatchId } from "../fixtures/property-match";
 const instant = { sync() {}, stop() {}, async present() {} };
 
 it("persists the entire dice/card/tax chain before animation, restores debt and retries only storage after rescue", async () => {
-  const game = movementCheckpoint(113, "p1", 30);
+  const game = movementCheckpoint(53, "p1", 30);
   const factory = new IDBFactory();
   const store = new GameStore(() => factory);
   const session = new GameSession(game, propertyMatchId, { store, expected: null, source: "local" });

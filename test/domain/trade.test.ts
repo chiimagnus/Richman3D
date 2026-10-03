@@ -51,7 +51,7 @@ it("atomically transfers land and cash, recomputes both group rents and records 
   const game = propertyMatch();
   const before = game.snapshot;
   const quote = tradeOption(before, "p1", terms);
-  expect(quote.sides?.[0]).toMatchObject({ groupsBefore: ["cyan"], groupsAfter: [], cashBefore: 1780, cashAfter: 1960 });
+  expect(quote.sides?.[0]).toMatchObject({ groupsBefore: ["cyan"], groupsAfter: [], cashBefore: before.players[0]!.cash, cashAfter: before.players[0]!.cash + 180 });
   submit(game);
   const pending = game.snapshot;
   expect(pending.decision).toMatchObject({ actorId: "p2", proposal: { proposerId: "p1", recipientId: "p2", revision: before.revision + 1 } });
@@ -247,6 +247,7 @@ it("does not migrate or mutate the previous unpublished rule format", () => {
 
 it("retains the used opportunity and restores when bounded history clips the opening proposal or its response", () => {
   const game = propertyMatch();
+  const initialCash = game.snapshot.players[0]!.cash;
   submit(game);
   respond(game, "trade_accept");
   for (let count = 0; count < 100; count += 1) {
@@ -258,7 +259,7 @@ it("retains the used opportunity and restores when bounded history clips the ope
   }
   expect(game.snapshot.history).toHaveLength(100);
   expect(game.snapshot.history.some(({ event }) => event.kind.startsWith("trade"))).toBe(false);
-  expect(game.snapshot.players[0]!.cash).toBe(1610);
+  expect(game.snapshot.players[0]!.cash).toBe(initialCash + 180 - 350);
   expect(game.snapshot.tradeUsed).toBe(true);
 });
 

@@ -27,7 +27,7 @@ it.each(["en", "zh-CN"] as const)("%s renders a single draft form and a recipien
   expect(html).not.toContain(messages(language).trade.cancel);
   expect(html).toContain(messages(language).trade.groupsBefore);
   expect(html).toContain(messages(language).trade.groupsAfter);
-  expect(html).toContain(formatCash(language, 1960));
+  expect(html).toContain(formatCash(language, before.players[0]!.cash + 180));
   expect(html).toContain(formatCash(language, before.players[1]!.cash - 180));
   for (const blocked of [{ mode: "paused" as const }, { save: { kind: "saving" as const } }, { presenting: true }, { viewPlayerId: "p1" as const }]) {
     const view = { ...session.getSnapshot(), committed: snapshot, displayed: snapshot, viewPlayerId: "p2" as const, ...blocked };

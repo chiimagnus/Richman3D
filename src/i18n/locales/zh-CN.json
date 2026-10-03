@@ -86,6 +86,10 @@
       "chance-5": "机会"
     }
   },
+  "items": {
+    "pending": "请选择一张道具弃置。", "newItem": "新获得", "title": "我的道具", "open": "道具（{count}）", "empty": "当前没有道具。", "select": "选择一张道具", "use": "使用这张道具", "confirm": "确认使用", "cancel": "返回手牌", "close": "关闭", "discard": "弃置这张道具", "discardTitle": "保留{limit}张道具", "discardReason": "你获得了第{next}张道具。请选择一张弃置，也可以弃掉刚获得的卡。选择后结束本回合。", "total": "选择骰子总点数", "target": "交换位置的玩家", "beforeRoll": "只能在本人回合掷骰前使用道具。", "used": "本回合已经使用过一张道具。", "busy": "请先完成动画或保存，再使用道具。", "active": "本回合已启用：{card}", "received": "{actor}获得一张道具。", "discarded": "{actor}弃置一张道具。", "activated": "{actor}使用了{card}。", "controlled": "已选择总点数：{total}，不再随机掷骰。", "swapped": "与{target}交换位置；不结算落点，也不领取起点奖励。", "waived": "{actor}在{property}免付给{owner}的租金，地主不收钱。",
+    "names": { "rent-waiver": "免租券", "controlled-dice": "遥控骰子", "tax-discount": "费用减免", "construction-discount": "建设优惠", "swap-positions": "位置交换" }
+  },
   "chanceCards": {
     "innovation-bonus": "城市创新奖金 +{amount}",
     "maintenance-cost": "临时维修支出 {amount}",
@@ -93,7 +97,12 @@
     "traffic-fine": "交通违章罚款 {amount}",
     "advance-three": "前进{steps}格，经过起点领取{amount}。",
     "retreat-three": "后退{steps}格，经过起点不领奖。",
-    "return-start": "传送回起点，仅领取{amount}一次。"
+    "return-start": "传送回起点，仅领取{amount}一次。",
+    "rent-waiver": "免除本回合移动链的第一次应付租金，不免税收和罚款；回合结束失效。",
+    "controlled-dice": "选择下一次掷骰总点数（{min}–{max}），骰子由所选点数确定，不再随机掷出另一组结果。",
+    "tax-discount": "本回合第一次税收格费用仅付{percent}%，向上取整；不免租金和机会罚款，回合结束失效。",
+    "construction-discount": "本回合下一次合法升级仅付{percent}%，向上取整；出售退款与资产按实际造价计算，回合结束失效。",
+    "swap-positions": "与另一名存活玩家交换位置，不结算落点、不领取起点奖励，随后正常掷骰。"
   },
   "setup": {
     "title": "新对局",

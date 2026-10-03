@@ -34,6 +34,7 @@ it("persists one real construction, rejects repeated captured revisions and publ
 
 it("persists sale, loan principal and fees through the shared session without duplicate notices or stale operation rewrites", async () => {
   const game = propertyMatch();
+  const initialCash = game.snapshot.players[0]!.cash;
   for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "upgrade", propertyId: id, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const factory = new IDBFactory();
   const store = new GameStore(() => factory);
@@ -52,6 +53,6 @@ it("persists sale, loan principal and fees through the shared session without du
     await session.dispatch(command);
     expect(game.snapshot).toBe(after);
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: 1691, statistics: { constructionRefunds: 80, mortgageIncome: 90, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: initialCash - 89, statistics: { constructionRefunds: 80, mortgageIncome: 90, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
   session.dispose();
 });

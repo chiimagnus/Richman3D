@@ -71,6 +71,9 @@ export function actionView(view: GameView, language: Language) {
     : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending
     : snapshot.decision.kind === "awaiting_auction" ? messages(language).auction.pending
     : snapshot.decision.kind === "awaiting_trade" ? messages(language).trade.pending
+    : snapshot.decision.kind === "awaiting_discard" ? messages(language).items.pending
     : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
   return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };
 }
+
+export function handCommands(view: GameView) { return availableCommands(view).filter((command) => command.kind === "use_item" || command.kind === "discard_item"); }

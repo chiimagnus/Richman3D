@@ -29,7 +29,7 @@ describe("atomic commands", () => {
   });
 
   it("does not consume candidate RNG or position when chance calculation fails", () => {
-    const game = new Game(createMatchConfig(768));
+    const game = new Game(createMatchConfig(21));
     const before = game.snapshot;
     const original = RuleRandom.prototype.integer;
     vi.spyOn(RuleRandom.prototype, "integer").mockImplementation(function (this: RuleRandom, bound) {
@@ -42,7 +42,7 @@ describe("atomic commands", () => {
     vi.restoreAllMocks();
     expect(game.apply(command).ok).toBe(true);
     expect(game.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(1620);
-    expect(game.snapshot.players.find((player) => player.id === command.actor)?.position).toBe(2);
+    expect(game.snapshot.players.find((player) => player.id === command.actor)?.position).toBe(7);
     expect(game.snapshot.random.draws).toBe(before.random.draws + 2 + QUICK_RULES.chanceCards.length * 2 - 1);
   });
 

@@ -1,10 +1,18 @@
 import type { GameEvent, GameSnapshot, PendingDebt, PlayerId, RollResult, TradeProposal } from "../domain/types";
 import { chanceCardText, formatCash, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
+import { cardType } from "../domain/cards";
+import type { ItemCardId } from "../domain/types";
 
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
+    case "item_discarded": return formatMessage(messages(language).items.discarded, { actor: playerName(language, event.actor, snapshot.config) });
+    case "item_used": {
+      const copy = messages(language).items;
+      return formatMessage(copy.activated, { actor: playerName(language, event.actor, snapshot.config), card: copy.names[cardType(event.instanceId) as ItemCardId] }) +
+        (event.total !== null ? " " + formatMessage(copy.controlled, { total: event.total }) : event.targetId !== null ? " " + formatMessage(copy.swapped, { target: playerName(language, event.targetId, snapshot.config) }) : "");
+    }
     case "card_moved": {
       const result = event.result;
       const card = snapshot.rules.chanceCards.find((card) => card.id === result.cardId)!;
@@ -39,7 +47,7 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
         amount: formatCash(language, event.kind === "building_sold" ? event.refund : event.principal),
         fee: formatCash(language, event.kind === "redeemed" ? event.fee : 0) });
     }
-    case "rolled": return rollStatus(language, event.result.playerId, event.result, snapshot) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: event.result.startBonus }) : "");
+    case "rolled": return (event.result.controlledBy ? formatMessage(messages(language).items.controlled, { total: event.result.steps }) + " " : "") + rollStatus(language, event.result.playerId, event.result, snapshot) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: event.result.startBonus }) : "");
     case "purchased":
     case "upgraded":
     case "skipped": {
@@ -79,6 +87,8 @@ function rollStatus(
   const propertyName = "propertyId" in landing ? tileName(language, snapshot.map.tiles.find((tile) => tile.id === landing.propertyId)!) : "";
 
   switch (landing.kind) {
+    case "item_received": return formatMessage(messages(language).items.received, { actor });
+    case "rent_waived": return formatMessage(messages(language).items.waived, { actor, owner: playerName(language, landing.ownerId, snapshot.config), property: propertyName });
     case "movement_card": {
       const card = snapshot.rules.chanceCards.find((card) => card.id === landing.cardId)!;
       return formatMessage(copy.rollChance, { actor, steps: result.steps,

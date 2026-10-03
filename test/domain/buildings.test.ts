@@ -57,7 +57,7 @@ it("constructs three balanced levels with real cash/statistics, unchanged turn/R
       expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
     }
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: 1300, statistics: { constructionSpent: 480 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: initial.players[0]!.cash - 480, statistics: { constructionSpent: 480 } });
   expect(upgradeOption(game.snapshot, "p1", "neon-avenue").reason).toBe("max_level");
   expect(upgrade(game, "neon-avenue")).toEqual({ ok: false, reason: "illegal_action" });
 });
@@ -72,13 +72,13 @@ it.each([
   const candidate = change(snapshot);
   expect(upgradeOption(candidate, "p1", "neon-avenue").reason).toBe(reason);
   expect(legalCommands(candidate, "p1").some((command) => command.kind === "upgrade" && command.propertyId === "neon-avenue")).toBe(false);
-  expect(snapshot.players[0]!.cash).toBe(1780);
+  expect(snapshot.players[0]!.cash).toBe(1746);
   expect(snapshot.properties["neon-avenue"]!.level).toBe(0);
   const saved = makeSave(snapshot, propertyMatchId).state;
   const players = reason === "incomplete_group" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, statistics: { ...player.statistics, purchases: player.statistics.purchases - 140, purchaseBookValue: player.statistics.purchaseBookValue - 140, taxesPaid: player.statistics.taxesPaid + 140 },
   } : player) : reason === "insufficient_cash" ? candidate.players.map((player) => player.id === "p1" ? {
-    ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + 1780 - 89 },
+    ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + snapshot.players[0]!.cash - 89 },
   } : player) : reason === "mortgaged" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, cash: player.cash + 70, statistics: { ...player.statistics, mortgageIncome: player.statistics.mortgageIncome + 70 },
   } : player) : candidate.players;

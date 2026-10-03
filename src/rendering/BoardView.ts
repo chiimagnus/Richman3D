@@ -303,6 +303,8 @@ function pulseColor(landing: LandingResult): number {
     case "chance":
       return landing.amount >= 0 ? 0x62e2aa : 0xb58cff;
     case "movement_card":
+    case "item_received":
+    case "rent_waived":
     case "chance_ignored": return 0xb58cff;
     case "property_available":
       return 0xffc66e;

@@ -45,7 +45,8 @@ export type FinancialStats = {
 };
 export type CashCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
 export type MovementCardId = "advance-three" | "retreat-three" | "return-start";
-export type ChanceCardId = CashCardId | MovementCardId;
+export type ItemCardId = "rent-waiver" | "controlled-dice" | "tax-discount" | "construction-discount" | "swap-positions";
+export type ChanceCardId = CashCardId | MovementCardId | ItemCardId;
 export type CardInstanceId = `${ChanceCardId}:${1 | 2}`;
 export type DeckState = {
   readonly drawPile: readonly CardInstanceId[];
@@ -58,6 +59,7 @@ export type PlayerState = {
   readonly cash: number;
   readonly position: number;
   readonly bankrupt: boolean;
+  readonly hand: readonly CardInstanceId[];
   readonly statistics: FinancialStats;
 };
 
@@ -70,6 +72,7 @@ export type PropertyState = {
 
 export type Decision =
   | { readonly kind: "awaiting_roll"; readonly actorId: PlayerId }
+  | { readonly kind: "awaiting_discard"; readonly actorId: PlayerId; readonly continuation: "finish_turn" }
   | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
   | { readonly kind: "awaiting_debt"; readonly actorId: PlayerId; readonly debt: PendingDebt }
   | AuctionDecision
@@ -112,6 +115,8 @@ export type GameSnapshot = {
   readonly players: readonly PlayerState[];
   readonly turnPlayerId: PlayerId;
   readonly tradeUsed: boolean;
+  readonly itemUsed: boolean;
+  readonly activeItem: { readonly actorId: PlayerId; readonly instanceId: CardInstanceId; readonly total: number | null } | null;
   readonly deck: DeckState;
   readonly decision: Decision;
   readonly properties: Readonly<Record<string, PropertyState>>;
@@ -127,7 +132,9 @@ export type LandingResult =
   | { readonly kind: "property_available"; readonly propertyId: string; readonly price: number }
   | { readonly kind: "property_owned"; readonly propertyId: string }
   | { readonly kind: "rent"; readonly propertyId: string; readonly ownerId: PlayerId; readonly amount: number }
-  | { readonly kind: "tax"; readonly amount: number }
+  | { readonly kind: "tax"; readonly amount: number; readonly discountedBy?: CardInstanceId }
+  | { readonly kind: "rent_waived"; readonly propertyId: string; readonly ownerId: PlayerId; readonly instanceId: CardInstanceId }
+  | { readonly kind: "item_received" }
   | { readonly kind: "chance"; readonly amount: number; readonly cardId: CashCardId; readonly instanceId: CardInstanceId }
   | { readonly kind: "movement_card"; readonly cardId: MovementCardId; readonly instanceId: CardInstanceId }
   | { readonly kind: "chance_ignored" };
@@ -144,6 +151,7 @@ export type RollResult = Movement & {
   readonly playerId: PlayerId;
   readonly dice: readonly [number, number];
   readonly steps: number;
+  readonly controlledBy?: CardInstanceId;
   readonly landing: LandingResult;
 };
 
@@ -160,9 +168,13 @@ export type Command = {
 } & ({ readonly kind: "roll" | "buy" | "skip" | "bankrupt" | "auction_pass" } | { readonly kind: "auction_bid"; readonly amount: number }
   | { readonly kind: "trade_propose"; readonly terms: TradeTerms }
   | { readonly kind: "trade_accept" | "trade_reject"; readonly proposalRevision: number }
+  | { readonly kind: "discard_item"; readonly instanceId: CardInstanceId }
+  | { readonly kind: "use_item"; readonly instanceId: CardInstanceId; readonly total: number | null; readonly targetId: PlayerId | null }
   | { readonly kind: "upgrade" | "sell_building" | "mortgage" | "redeem"; readonly propertyId: string });
 
 export type GameEvent =
+  | { readonly kind: "item_used"; readonly actor: PlayerId; readonly instanceId: CardInstanceId; readonly total: number | null; readonly targetId: PlayerId | null }
+  | { readonly kind: "item_discarded"; readonly actor: PlayerId }
   | { readonly kind: "trade_proposed"; readonly proposal: TradeProposal }
   | { readonly kind: "trade_accepted" | "trade_rejected"; readonly proposal: TradeProposal; readonly reason: "fair_value" | "lower_value" | "invalid_trade" | null }
   | { readonly kind: "rolled"; readonly result: RollResult }
