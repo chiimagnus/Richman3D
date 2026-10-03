@@ -35,6 +35,7 @@ export class World {
     this.canvas.className = "game-canvas";
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("aria-label", messages(language).worldAria);
+    this.canvas.setAttribute("aria-keyshortcuts", "L");
     container.append(this.canvas);
 
     let disconnectControls = () => {};
@@ -125,10 +126,6 @@ export class World {
 
   unlockFirstPerson(): void {
     this.cameraRig.firstPerson.unlock();
-  }
-
-  onPointerLockChange(listener: (locked: boolean) => void): () => void {
-    return this.cameraRig.firstPerson.onLockChange(listener);
   }
 
   wait(duration: number, signal?: AbortSignal): Promise<boolean> {

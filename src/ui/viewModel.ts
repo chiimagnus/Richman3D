@@ -12,11 +12,13 @@ export function actionView(view: GameView, language: Language) {
   const decisionActor = snapshot.decision.kind === "game_over" ? null : snapshot.decision.actorId;
   const actor = action?.kind === "rolled" ? action.result.playerId : action && "actor" in action ? action.actor : decisionActor ?? snapshot.turnPlayerId;
   const ready = !view.presenting && view.save.kind !== "saving" && view.mode === "running" && view.attached && view.error !== "presentation_failed";
-  const commands = ready && decisionActor === view.viewPlayerId && decisionActor !== null && playerConfig(snapshot.config, decisionActor).controller === "human" ? legalCommands(snapshot, decisionActor) : [];
+  const choices = decisionActor === null ? [] : legalCommands(snapshot, decisionActor);
+  const commands = ready && decisionActor === view.viewPlayerId && decisionActor !== null && playerConfig(snapshot.config, decisionActor).controller === "human" ? choices : [];
+  const insufficientFunds = property !== null && choices.some((command) => command.kind === "skip") && !choices.some((command) => command.kind === "buy");
   const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
     ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: property.rent })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
     : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
-  return { commands, property, tile: currentTile(snapshot, actor), status };
+  return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };
 }

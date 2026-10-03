@@ -26,11 +26,13 @@ export function FeedbackLayer({ session, language }: { session: GameSession; lan
       setAnnouncement(eventText(language, notice.event, view.committed));
     }
   }, [notice, language, session]);
-  const rolled = view.presenting && view.displayed !== view.committed ? view.events.find((event) => event.kind === "rolled") : null;
+  const rolled = view.mode === "running" && view.presenting && view.save.kind !== "saving" && view.displayed !== view.committed ? view.events.find((event) => event.kind === "rolled") : null;
   return <div className={styles.layer}>
-    {rolled?.kind === "rolled" ? <div className={styles.dice}>
+    {rolled?.kind === "rolled" ? <div key={view.committed.revision} className={styles.dice}>
       <span>{formatMessage(messages(language).feedback.diceActor, { actor: playerName(language, rolled.result.playerId, view.displayed.config) })}</span>
-      <strong>{rolled.result.dice.join(" + ")}</strong>
+      <span className={styles.pair} role="img" aria-label={`${messages(language).hud.recentDiceAria}: ${rolled.result.dice.join(" + ")}`}>
+        {rolled.result.dice.map((value, index) => <span key={index} className={styles.die} aria-hidden="true">{["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][value - 1]}</span>)}
+      </span>
     </div> : notice && expired !== notice.id && notice.expiresAt > Date.now() && <p className={styles.event}>{eventText(language, notice.event, view.displayed)}</p>}
     <span className={styles.srOnly} aria-live="polite" aria-atomic="true">{announcement}</span>
   </div>;

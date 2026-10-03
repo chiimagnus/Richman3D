@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import styles from "./PanelHost.module.css";
 
-export function PanelHost({ title, onClose, children }: { title: string; onClose?: (() => void) | undefined; children: ReactNode }) {
+export function PanelHost({ title, onClose, action, children }: { title: string; onClose?: (() => void) | undefined; action?: ReactNode; children: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -13,6 +13,6 @@ export function PanelHost({ title, onClose, children }: { title: string; onClose
     };
   }, []);
   return <dialog ref={dialog} className={styles.dialog} aria-labelledby="panel-title" onCancel={(event) => { event.preventDefault(); onClose?.(); }}>
-    <h2 id="panel-title">{title}</h2>{children}
+    <header className={styles.header}><h2 id="panel-title">{title}</h2>{action}</header>{children}
   </dialog>;
 }

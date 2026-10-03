@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { GameApp } from "../app/GameApp";
 import { formatMessage, messages } from "../i18n";
 import { SaveError, type SaveRecord, type StoredGame } from "../storage/snapshot";
-import { downloadRawSave, importSave } from "../storage/transfer";
+import { downloadRawSave, downloadSave, importSave } from "../storage/transfer";
 import { PanelHost } from "./PanelHost";
 
 type Preview = { readonly game: StoredGame; readonly expected: unknown; readonly source: SaveRecord["source"] };
@@ -69,6 +69,7 @@ export function TransferPanel({ app, onClose }: { app: GameApp; onClose: () => v
     }} /></label>
     <button disabled={phase !== "ready"} onClick={() => void prepare()}>{copy.transfer.backup}</button>
     <p>{copy.exportWarning}</p>
+    {app.getSnapshot().session && <button onClick={() => downloadSave(app.getSnapshot().session!.exportRecord())}>{copy.export}</button>}
     <button disabled={phase !== "ready"} onClick={() => void exportRaw()}>{copy.transfer.raw}</button>
     {phase !== "ready" && <p role="status">{copy.transfer.working}</p>}
     {error && <p role="alert">{copy.transfer.errors[error]}</p>}

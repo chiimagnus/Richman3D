@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import type { GameApp } from "../app/GameApp";
 import type { GameSession } from "../app/GameSession";
 import { World } from "../rendering/World";
@@ -9,18 +9,25 @@ import styles from "./App.module.css";
 import { playerConfig } from "../domain/config";
 import type { CameraView } from "../rendering/CameraRig";
 
-export function SceneHost({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
+export type SceneControls = { lookAround(): void };
+
+export function SceneHost({ app, session, preferences, cameraView, interactive, ref }: { app: GameApp; session: GameSession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; ref: Ref<SceneControls> }) {
   const host = useRef<HTMLDivElement>(null);
   const resources = useRef<{ world: World } | null>(null);
   const [failed, setFailed] = useState(false);
   const [pointerError, setPointerError] = useState(false);
-  const [locked, setLocked] = useState(false);
-  const [cameraView, setCameraView] = useState<CameraView>(() => window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
   const view = useGameView(session);
+  useImperativeHandle(ref, () => ({ lookAround() {
+    const world = resources.current?.world;
+    if (!world) return;
+    if (document.pointerLockElement === world.canvas) { world.unlockFirstPerson(); return; }
+    world.setView("first_person");
+    setPointerError(false);
+    world.lockFirstPerson(() => setPointerError(true));
+  } }), []);
   useEffect(() => {
     let world: World | null = null;
     let unbind = () => {};
-    let unsubscribe = () => {};
     const settings = app.getSnapshot().preferences;
     const audio = app.audio;
     const fail = () => { session.failPresentation(); setFailed(true); };
@@ -31,7 +38,6 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
       const activeWorld = world;
       resources.current = { world };
       world.setLookSensitivity(lookSensitivityScale(settings.lookSensitivity));
-      unsubscribe = world.onPointerLockChange(setLocked);
       unbind = session.bind({
         sync: (snapshot) => activeWorld.sync(snapshot),
         stop: () => { activeWorld.cancelPresentation(); audio.stop(); },
@@ -71,7 +77,6 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
     return () => {
       document.removeEventListener("pointerlockerror", pointerFailure);
       unbind();
-      unsubscribe();
       resources.current = null;
       audio.stop();
       world?.dispose();
@@ -90,17 +95,21 @@ export function SceneHost({ app, session, preferences }: { app: GameApp; session
     world.setView(view.viewPlayerId === null ? "overview" : cameraView);
     if (view.mode !== "running") world.unlockFirstPerson();
   }, [view.viewPlayerId, view.mode, cameraView]);
+  useEffect(() => {
+    const world = resources.current?.world;
+    if (!world) return;
+    const look = (event: MouseEvent) => {
+      if (!interactive || view.mode !== "running" || view.viewPlayerId === null || cameraView !== "first_person") return;
+      event.preventDefault();
+      if (document.pointerLockElement === world.canvas) world.unlockFirstPerson();
+      else { setPointerError(false); world.lockFirstPerson(() => setPointerError(true)); }
+    };
+    world.canvas.addEventListener("dblclick", look);
+    return () => world.canvas.removeEventListener("dblclick", look);
+  }, [interactive, view.mode, view.viewPlayerId, cameraView]);
   const copy = messages(preferences.language).runtime;
   return <>
     <div ref={host} className={styles.scene} />
-    {!failed && <div className={styles.camera}>
-      <button disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "overview" ? messages(preferences.language).setup.firstPerson : messages(preferences.language).setup.overview}</button>
-      {cameraView === "first_person" && <button disabled={!view.attached || view.mode !== "running" || view.viewPlayerId === null} onClick={() => {
-        const world = resources.current?.world;
-        if (locked) world?.unlockFirstPerson();
-        else { setPointerError(false); world?.lockFirstPerson(() => setPointerError(true)); }
-      }}>{locked ? copy.exitFirstPerson : copy.firstPerson}</button>}
-      {pointerError && <span role="status">{copy.pointerLockFailed}</span>}
-    </div>}
+    {!failed && pointerError && <span className={styles.cameraError} role="status">{copy.pointerLockFailed}</span>}
   </>;
 }

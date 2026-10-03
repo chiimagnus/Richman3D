@@ -16,6 +16,6 @@ export function HandoverScreen({ session, actor, language, onPause }: { session:
     <p>{copy.handover.instruction}</p>
     <p><span aria-hidden="true" style={{ color: playerConfig(config, actor).color }}>● </span>{copy.handover.pawn} <strong>{playerName(language, actor, config)}</strong> · {formatMessage(copy.handover.seat, { number: config.players.findIndex((player) => player.id === actor) + 1 })}</p>
     <button ref={confirm} autoFocus disabled={!ready} onClick={() => session.confirmHandover(actor)}>{copy.handover.confirm}</button>
-    <button onClick={onPause}>{copy.navigation.pause}</button>
+    <button onClick={onPause}>{copy.settings.title}</button>
   </PanelHost>;
 }

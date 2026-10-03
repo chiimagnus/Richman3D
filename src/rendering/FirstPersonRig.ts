@@ -102,16 +102,4 @@ export class FirstPersonRig {
     this.camera.lookAt(lookTarget);
   }
 
-  onLockChange(listener: (locked: boolean) => void): () => void {
-    const handleLock = (): void => listener(true);
-    const handleUnlock = (): void => listener(false);
-
-    this.controls.addEventListener("lock", handleLock);
-    this.controls.addEventListener("unlock", handleUnlock);
-
-    return () => {
-      this.controls.removeEventListener("lock", handleLock);
-      this.controls.removeEventListener("unlock", handleUnlock);
-    };
-  }
 }
