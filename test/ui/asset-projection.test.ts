@@ -17,7 +17,7 @@ it("projects actual purchases and rent through public fields without changing st
   const owner = playerAssets(before, "p1");
   expect(owner).toMatchObject({ cash: 1352, propertyValue: 180, netAssets: 1532, bankrupt: false, properties: [{ ownerId: "p1", tile: { id: "neon-avenue", price: 180, rent: 32 } }] });
   expect(Object.keys(owner).sort()).toEqual(["bankrupt", "cash", "liquidationValue", "netAssets", "player", "properties", "propertyValue"]);
-  expect(Object.keys(owner.player).sort()).toEqual(["color", "controller", "defaultNameKey", "id", "name"]);
+  expect(Object.keys(owner.player).sort()).toEqual(["color", "controller", "defaultNameKey", "difficulty", "id", "name"]);
   expect(Object.keys(owner.properties[0]!).sort()).toEqual(["bookValue", "constructionCosts", "level", "liquidationValue", "mortgagePrincipal", "ownerId", "rent", "tile"]);
   for (const id of ["p1", "p2"] as const) {
     const assets = playerAssets(before, id);

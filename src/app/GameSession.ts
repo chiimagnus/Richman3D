@@ -1,7 +1,7 @@
 import { Game } from "../domain/game";
-import { chooseBotAction, observeBot } from "../domain/bot";
+import { chooseBotAction, observeBot, type BotAction, type BotReason } from "../domain/bot";
 import { observerId, playerConfig } from "../domain/config";
-import type { Command, GameEvent, GameSnapshot, PlayerId } from "../domain/types";
+import type { BotDifficulty, Command, GameEvent, GameSnapshot, PlayerId } from "../domain/types";
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
@@ -17,6 +17,7 @@ export type GameView = {
   readonly attached: boolean;
   readonly events: readonly GameEvent[];
   readonly presentationEvent: GameEvent | null;
+  readonly botDecision: { readonly actorId: PlayerId; readonly revision: number; readonly difficulty: BotDifficulty; readonly reason: BotReason } | null;
   readonly error: "presentation_failed" | "command_rejected" | null;
   readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
   readonly save: SaveView;
@@ -37,7 +38,7 @@ export class GameSession {
   constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
     this.expected = persistence?.expected ?? null;
-    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
+    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, botDecision: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
   }
 
   getSnapshot = (): GameView => this.view;
@@ -106,8 +107,8 @@ export class GameSession {
         if (this.view.attached || this.view.mode === "disposed" || this.view.error) { unsubscribe(); resolve(); }
       });
     });
-    const command = (chooseBotAction(observeBot(this.game.snapshot), "normal")?.command ?? null);
-    if (command) await this.enqueue(command);
+    const action = chooseBotAction(observeBot(this.game.snapshot));
+    if (action) await this.enqueue(action.command, action);
   }
   claimAnnouncement(id: number): boolean {
     if (id <= this.announcedNoticeId || this.view.notice?.id !== id || this.view.notice.expiresAt <= Date.now()) return false;
@@ -145,9 +146,9 @@ export class GameSession {
     return true;
   }
 
-  private enqueue(command: Command): Promise<void> {
+  private enqueue(command: Command, botAction: BotAction | null = null): Promise<void> {
     if (this.work || this.view.presenting || this.view.save.kind === "saving" || !this.port || this.view.mode !== "running") return Promise.resolve();
-    this.work = Promise.resolve().then(() => this.run(command)).finally(() => { this.work = null; });
+    this.work = Promise.resolve().then(() => this.run(command, botAction)).finally(() => { this.work = null; });
     return this.work;
   }
 
@@ -166,8 +167,8 @@ export class GameSession {
     await this.work;
     if (this.view.mode !== "paused" || !this.port || this.view.error === "presentation_failed") return;
     this.publish({ mode: "running", error: null });
-    const command = (chooseBotAction(observeBot(this.game.snapshot), "normal")?.command ?? null);
-    if (command) await this.enqueue(command);
+    const action = chooseBotAction(observeBot(this.game.snapshot));
+    if (action) await this.enqueue(action.command, action);
   }
 
   skipPresentation(): void {
@@ -191,8 +192,9 @@ export class GameSession {
     this.listeners.clear();
   }
 
-  private async run(first: Command): Promise<void> {
+  private async run(first: Command, firstBotAction: BotAction | null): Promise<void> {
     let command: Command | null = first;
+    let botAction = firstBotAction;
     try {
       while (command && this.port && this.view.mode === "running") {
         const before = this.game.snapshot;
@@ -202,7 +204,8 @@ export class GameSession {
           return;
         }
         const port = this.port;
-        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, presenting: true, error: null });
+        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, presenting: true, error: null,
+          botDecision: botAction ? { actorId: command.actor, revision: result.snapshot.revision, difficulty: playerConfig(before.config, command.actor).difficulty, reason: botAction.reason } : null });
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
         const event = result.events.find((entry) => entry.kind === "paid" || entry.kind === "auction_ended") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
@@ -221,7 +224,8 @@ export class GameSession {
         this.publish({ displayed: this.game.snapshot, presenting: false, viewPlayerId: this.nextViewPlayer() });
         if (!finished || this.port !== port || this.view.mode !== "running") return;
         port.sync(this.game.snapshot);
-        command = (chooseBotAction(observeBot(this.game.snapshot), "normal")?.command ?? null);
+        botAction = chooseBotAction(observeBot(this.game.snapshot));
+        command = botAction?.command ?? null;
       }
     } catch {
       if (this.view.mode !== "disposed") this.failPresentation();

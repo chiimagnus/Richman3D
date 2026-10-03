@@ -64,8 +64,10 @@ export function actionView(view: GameView, language: Language) {
   const choices = decisionActor === null ? [] : legalCommands(snapshot, decisionActor);
   const commands = availableCommands(view);
   const insufficientFunds = property !== null && choices.some((command) => command.kind === "skip") && !choices.some((command) => command.kind === "buy");
+  const botDecision = view.presenting && view.botDecision?.revision === view.committed.revision ? view.botDecision : null;
   const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
-    ? formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
+    ? botDecision ? formatMessage(messages(language).ai.action, { actor: playerName(language, botDecision.actorId, snapshot.config), difficulty: messages(language).ai.difficulties[botDecision.difficulty], reason: messages(language).ai.reasons[botDecision.reason] })
+      : formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
     : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending

@@ -98,7 +98,7 @@ it("requires a real bot actor and exposes neither terminal commands nor a silent
 
 it("resolves equal liquidation loss by stable property ID, independent of candidate iteration order", () => {
   const visible = observation(debtMatch(30, 3).snapshot);
-  const tied = { ...visible, liquidity: visible.liquidity.map((option) => ({ ...option, rentLoss: 0 })) };
+  const tied = { ...visible, liquidity: visible.liquidity.map((option) => ({ ...option, rentLoss: 0, rentChanges: [] })) };
   const expected = chooseBotAction(tied)!;
   expect(chooseBotAction({ ...tied, liquidity: [...tied.liquidity].reverse() })).toEqual(expected);
   expect(expected.reason).toBe("debt_rescue");

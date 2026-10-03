@@ -104,7 +104,9 @@ it("a debt bot chooses legal higher levels and finishes rescue instead of sellin
     expect(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot).toEqual(game.snapshot);
   }
   expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_roll", actorId: "p2" });
-  expect(game.snapshot.players[0]!.cash).toBe(40);
+  expect(game.snapshot.players[0]!.cash).toBe(5);
+  expect(game.snapshot.properties["neon-avenue"]!.level).toBe(1);
+  expect(game.snapshot.properties["harbor-walk"]!.level).toBe(2);
 });
 
 it("a computer with no recoverable assets confirms a complete, saved liquidation", () => {

@@ -32,7 +32,7 @@ it("uses grapheme length, whitespace defaults and text names", () => {
 it("constructs stable 2–4 seat contracts without exposing unimplemented product choices", () => {
   for (const size of [2, 3, 4]) {
     const base = createMatchConfig();
-    const players = SEAT_IDS.slice(0, size).map((id, index) => ({ id, defaultNameKey: id, controller: index === 0 ? "human" as const : "bot" as const, name: null, color: SEAT_COLORS[index]! }));
+    const players = SEAT_IDS.slice(0, size).map((id, index) => ({ id, defaultNameKey: id, controller: index === 0 ? "human" as const : "bot" as const, difficulty: "normal" as const, name: null, color: SEAT_COLORS[index]! }));
     expect(new Game({ ...base, players }).snapshot.players.map((player) => player.id)).toEqual(SEAT_IDS.slice(0, size));
   }
   const config = createMatchConfig();

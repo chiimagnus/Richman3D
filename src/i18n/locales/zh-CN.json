@@ -1,4 +1,5 @@
 {
+  "ai": {"choose":"电脑{number}难度","difficulties":{"easy":"简单","normal":"普通","hard":"困难"},"action":"{actor} · {difficulty}：{reason}","reasons":{"roll":"继续当前回合","use_item":"使用当前有收益的道具","keep_valuable":"保留更有用的道具","reserve_cash":"保留现金应付后续费用","buy_property":"按现金预算购地","complete_group":"补齐同色地产","auction_value":"在地产价值和现金预算内出价","upgrade_income":"提高预期租金","redeem_income":"恢复租金收益","debt_rescue":"用较小损失筹足资金","insolvent":"结清无法全额偿付的债务","fair_trade":"接受有利的价值与组合","unfair_trade":"拒绝亏损或风险过高的交易"}},
   "navigation": { "loading": "正在载入对局…", "retry": "重新加载菜单", "loadFailed": "对局加载失败，重新加载菜单可重试下载，已有存档没有被删除。" },
   "players": {
     "p1": "玩家一",
@@ -214,11 +215,6 @@
       "mortgaged": "抵押地产不能交易。",
       "insufficient_cash": "付款方现金不足。",
       "amount_overflow": "成交后的金额或统计超出安全范围。"
-    },
-    "botReasons": {
-      "fair_value": "接收价值不低于付出，且现金足够。",
-      "lower_value": "接收价值低于付出。",
-      "invalid_trade": "交易条件已失效。"
     }
   },
   "auction": {

@@ -25,8 +25,7 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
     case "trade_rejected": {
       const proposal = event.proposal;
       const copy = messages(language).trade;
-      const reason = event.kind === "trade_proposed" ? null : event.reason;
-      return formatMessage(copy[event.kind], { proposer: playerName(language, proposal.proposerId, snapshot.config), recipient: playerName(language, proposal.recipientId, snapshot.config), terms: tradeTermsText(language, proposal, snapshot) }) + (reason ? " " + copy.botReasons[reason] : "");
+      return formatMessage(copy[event.kind], { proposer: playerName(language, proposal.proposerId, snapshot.config), recipient: playerName(language, proposal.recipientId, snapshot.config), terms: tradeTermsText(language, proposal, snapshot) });
     }
     case "auction_started":
     case "auction_bid":

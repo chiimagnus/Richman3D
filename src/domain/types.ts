@@ -3,10 +3,13 @@ import type { RuleSet } from "./rules";
 import type { Movement } from "./movement";
 
 export type PlayerId = "p1" | "p2" | "p3" | "p4";
+export const BOT_DIFFICULTIES = ["easy", "normal", "hard"] as const;
+export type BotDifficulty = typeof BOT_DIFFICULTIES[number];
 export const HISTORY_LIMIT = 100;
 export type PlayerConfig = {
   readonly id: PlayerId;
   readonly controller: "human" | "bot";
+  readonly difficulty: BotDifficulty;
   readonly name: string | null;
   readonly defaultNameKey: PlayerId;
   readonly color: string;
@@ -176,7 +179,7 @@ export type GameEvent =
   | { readonly kind: "item_used"; readonly actor: PlayerId; readonly instanceId: CardInstanceId; readonly total: number | null; readonly targetId: PlayerId | null }
   | { readonly kind: "item_discarded"; readonly actor: PlayerId }
   | { readonly kind: "trade_proposed"; readonly proposal: TradeProposal }
-  | { readonly kind: "trade_accepted" | "trade_rejected"; readonly proposal: TradeProposal; readonly reason: "fair_value" | "lower_value" | "invalid_trade" | null }
+  | { readonly kind: "trade_accepted" | "trade_rejected"; readonly proposal: TradeProposal }
   | { readonly kind: "rolled"; readonly result: RollResult }
   | { readonly kind: "card_moved"; readonly result: CardMovementResult }
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }

@@ -1,4 +1,5 @@
 {
+  "ai": {"choose":"Computer {number} difficulty","difficulties":{"easy":"Easy","normal":"Normal","hard":"Hard"},"action":"{actor} · {difficulty}: {reason}","reasons":{"roll":"Continue the turn","use_item":"Use an item with a current benefit","keep_valuable":"Keep the more useful items","reserve_cash":"Keep cash for upcoming costs","buy_property":"Buy within the cash budget","complete_group":"Complete a color group","auction_value":"Bid within the property and cash budget","upgrade_income":"Improve expected rent","redeem_income":"Restore rental income","debt_rescue":"Raise enough cash with less loss","insolvent":"Settle the unaffordable debt","fair_trade":"Accept useful value and groups","unfair_trade":"Reject an unfavorable or risky trade"}},
   "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. Saved data has not been erased." },
   "players": {
     "p1": "Player One",
@@ -214,11 +215,6 @@
       "mortgaged": "Mortgaged land cannot be traded.",
       "insufficient_cash": "The payer does not have enough cash.",
       "amount_overflow": "The resulting amount or statistics exceed the safe range."
-    },
-    "botReasons": {
-      "fair_value": "Incoming value covers outgoing value, with sufficient cash.",
-      "lower_value": "Incoming value is lower than outgoing value.",
-      "invalid_trade": "The trade conditions are no longer valid."
     }
   },
   "auction": {

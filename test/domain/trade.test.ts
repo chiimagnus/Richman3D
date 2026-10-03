@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
-import { canProposeTrade, tradeOption, tradeResponseReason } from "../../src/domain/market";
+import { canProposeTrade, tradeOption } from "../../src/domain/market";
 import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { rentFor } from "../../src/domain/economy";
@@ -188,7 +188,6 @@ it("allows an equal-value land-and-cash exchange with no bank money or duplicate
   const game = propertyMatch();
   const before = game.snapshot;
   submit(game, { recipientId: "p2", givePropertyIds: ["neon-avenue", "harbor-walk"], receivePropertyIds: ["skyline-road"], cash: { payerId: "p2", amount: 80 } });
-  expect(tradeResponseReason(game.snapshot)).toBe("fair_value");
   respond(game, "trade_accept");
   expect(game.snapshot.players.map((player) => netAssets(game.snapshot, player.id))).toEqual(before.players.map((player) => netAssets(before, player.id)));
   expect(game.snapshot.players.reduce((total, player) => total + player.cash, 0)).toBe(before.players.reduce((total, player) => total + player.cash, 0));
@@ -263,18 +262,19 @@ it("retains the used opportunity and restores when bounded history clips the ope
   expect(game.snapshot.tradeUsed).toBe(true);
 });
 
-it("the bot responds conservatively using only current public value and records a stable readable reason", () => {
+it("the bot explains its public-value decision separately from the rule's committed trade outcome", () => {
   for (const amount of [180, 181]) {
     const game = propertyMatch();
     submit(game, { ...terms, cash: { payerId: "p2", amount } });
-    expect(tradeResponseReason(game.snapshot)).toBe(amount === 180 ? "fair_value" : "lower_value");
-    const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!;
+    const action = chooseBotAction(observeBot(game.snapshot), "normal")!;
+    expect(action.reason).toBe(amount === 180 ? "fair_trade" : "unfair_trade");
+    const command = action.command;
     expect(command.kind).toBe(amount === 180 ? "trade_accept" : "trade_reject");
     expect(game.apply(command).ok).toBe(true);
     const event = game.snapshot.history.at(-1)!.event;
-    expect(event).toMatchObject({ reason: amount === 180 ? "fair_value" : "lower_value" });
+    expect(event).not.toHaveProperty("reason");
     const english = eventText("en", event, game.snapshot);
-    expect(english).toContain(amount === 180 ? "Incoming value covers" : "Incoming value is lower");
+    expect(english).toContain(amount === 180 ? "accepted" : "rejected");
     expect(eventText("en", event, readSave(makeSave(game.snapshot, propertyMatchId)).snapshot)).toBe(english);
   }
 });

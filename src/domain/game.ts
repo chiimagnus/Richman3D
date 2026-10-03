@@ -1,7 +1,7 @@
 import { tileAt, validateMap, type MapDefinition } from "./board";
 import { mapFor } from "./maps";
 import { rulesFor, validateRules, type RuleSet } from "./rules";
-import { createMatchConfig, playerConfig, validateConfig } from "./config";
+import { createMatchConfig, validateConfig } from "./config";
 import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
@@ -9,7 +9,7 @@ import { restoreSnapshot, restoreTradeTerms } from "./restore";
 import { constructionRefund, discountedCost, initialProperties, liquidityOption, mortgageValue, netAssets, obligation, propertyTile, rentFor, upgradeOption } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
-import { advanceAuction, canBid, canProposeTrade, startAuction, tradeOption, tradeResponseReason } from "./market";
+import { advanceAuction, canBid, canProposeTrade, startAuction, tradeOption } from "./market";
 import { cardInstances, cardType, CONTROLLED_TOTALS, discardCard, discardItem, drawCard, HAND_LIMIT, initialDeck } from "./cards";
 import { movement } from "./movement";
 
@@ -169,8 +169,7 @@ export class Game {
           Object.assign(properties, option.candidate.properties);
         }
         decision = { kind: "awaiting_roll", actorId: proposal.proposerId };
-        events.push({ kind: command.kind === "trade_accept" ? "trade_accepted" : "trade_rejected", proposal,
-          reason: playerConfig(before.config, player.id).controller === "bot" ? tradeResponseReason(before) : null });
+        events.push({ kind: command.kind === "trade_accept" ? "trade_accepted" : "trade_rejected", proposal });
       } else if (command.kind === "auction_bid" || command.kind === "auction_pass") {
         if (before.decision.kind !== "awaiting_auction") throw new Error("没有拍卖");
         const auction = before.decision;

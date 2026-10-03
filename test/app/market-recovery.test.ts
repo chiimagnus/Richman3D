@@ -163,7 +163,9 @@ it("two local humans and a bot complete auction and trade decisions without addi
   expect(game.snapshot.completedRounds).toBe(before.completedRounds);
   expect(game.snapshot.random).toEqual(before.random);
   expect(game.snapshot.players.map((player) => player.cash)).toEqual(before.players.map((player) => player.id === "p1" ? player.cash - 10 : player.id === "p3" ? player.cash + 10 : player.cash));
-  expect(game.snapshot.history.at(-1)!.event).toMatchObject({ kind: "trade_accepted", reason: "fair_value" });
+  expect(game.snapshot.history.at(-1)!.event).toMatchObject({ kind: "trade_accepted" });
+  expect(game.snapshot.history.at(-1)!.event).not.toHaveProperty("reason");
+  expect(session.getSnapshot().botDecision).toMatchObject({ actorId: "p3", reason: "fair_trade", revision: game.snapshot.revision });
   expect(readSave(session.exportRecord()).snapshot).toEqual(game.snapshot);
   session.dispose();
 });

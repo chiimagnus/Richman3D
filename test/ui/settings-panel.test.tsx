@@ -6,6 +6,8 @@ import { GameStore } from "../../src/storage/GameStore";
 import { MainMenu } from "../../src/ui/MainMenu";
 import { SettingsPanel } from "../../src/ui/SettingsPanel";
 import { messages } from "../../src/i18n";
+import { MatchSetup } from "../../src/ui/MatchSetup";
+import { BOT_DIFFICULTIES } from "../../src/domain/types";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,6 +24,10 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
     expect(menu).toContain(copy.settings.title);
     expect(menu).not.toContain("<select");
     expect(menu).not.toContain(copy.storage.transfer.title);
+    const setup = renderToStaticMarkup(<MatchSetup app={app} onClose={() => {}} />);
+    expect(setup).toContain(copy.ai.choose.replace("{number}", "1"));
+    for (const difficulty of BOT_DIFFICULTIES) expect(setup).toContain(copy.ai.difficulties[difficulty]);
+    expect(setup).toContain('value="normal" selected=""');
     const changeView = vi.fn();
     const settings = renderToStaticMarkup(<SettingsPanel app={app} preferences={state.preferences} onClose={() => {}} cameraView="overview" onCameraChange={changeView} />);
     expect(settings.match(/<select\b/g)).toHaveLength(3);

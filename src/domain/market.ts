@@ -65,15 +65,6 @@ export function tradeOption(snapshot: GameSnapshot, proposerId: PlayerId, terms:
   }
 }
 
-export function tradeResponseReason(snapshot: GameSnapshot): "fair_value" | "lower_value" | "invalid_trade" | null {
-  if (snapshot.decision.kind !== "awaiting_trade") return null;
-  const proposal = snapshot.decision.proposal;
-  if (tradeOption(snapshot, proposal.proposerId, proposal).reason !== null) return "invalid_trade";
-  const incoming = proposal.givePropertyIds.reduce((total, id) => total + BigInt(propertyTile(snapshot.map, id).price), 0n) + BigInt(proposal.cash?.payerId === proposal.proposerId ? proposal.cash.amount : 0);
-  const outgoing = proposal.receivePropertyIds.reduce((total, id) => total + BigInt(propertyTile(snapshot.map, id).price), 0n) + BigInt(proposal.cash?.payerId === proposal.recipientId ? proposal.cash.amount : 0);
-  return incoming >= outgoing ? "fair_value" : "lower_value";
-}
-
 export function minimumBid(snapshot: GameSnapshot, auction: AuctionDecision): number | null {
   const step = BigInt(AUCTION_STEP);
   const next = BigInt(auction.highestBid) + step;

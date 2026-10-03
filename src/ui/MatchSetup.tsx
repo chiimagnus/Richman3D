@@ -4,6 +4,7 @@ import { createMatchConfig, normalizeName, SEAT_COLORS, SEAT_IDS } from "../doma
 import { QUICK_RULES, STANDARD_RULES, rulesFor } from "../domain/rules";
 import { mapFor } from "../domain/maps";
 import { CONTROLLED_TOTALS } from "../domain/cards";
+import { BOT_DIFFICULTIES, type BotDifficulty } from "../domain/types";
 import { chanceCardText, formatMessage, messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import styles from "./MatchSetup.module.css";
@@ -13,6 +14,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
   const copy = messages(language).setup;
   const [names, setNames] = useState(SEAT_IDS.map(() => ""));
   const [colors, setColors] = useState<string[]>([...SEAT_COLORS]);
+  const [difficulties, setDifficulties] = useState<BotDifficulty[]>(SEAT_IDS.map(() => "normal"));
   const [seats, setSeats] = useState(2);
   const [humans, setHumans] = useState(1);
   const [version, setVersion] = useState(QUICK_RULES.version);
@@ -25,7 +27,7 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
       event.preventDefault();
       try {
         const config = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, seats);
-        const players = config.players.map((player, index) => ({ ...player, controller: index < humans ? "human" as const : "bot" as const, name: normalizeName(names[index]!), color: colors[index]! }));
+        const players = config.players.map((player, index) => ({ ...player, controller: index < humans ? "human" as const : "bot" as const, difficulty: difficulties[index]!, name: normalizeName(names[index]!), color: colors[index]! }));
         void app.start({ ...config, players, rulesVersion: version });
         onClose();
       } catch { setError(true); }
@@ -38,6 +40,11 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
       </select></label>
       {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(index < humans ? copy.humanSeat : copy.computerSeat, { number: index < humans ? index + 1 : index - humans + 1 })}
         <input value={names[index]} placeholder={messages(language).players[id]} onChange={(event) => { const next = [...names]; next[index] = event.currentTarget.value; setNames(next); setError(false); }} />
+      </label>)}
+      {SEAT_IDS.slice(humans, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(messages(language).ai.choose, { number: index + 1 })}
+        <select value={difficulties[humans + index]} onChange={(event) => { const next = [...difficulties]; next[humans + index] = event.currentTarget.value as BotDifficulty; setDifficulties(next); }}>
+          {BOT_DIFFICULTIES.map((difficulty) => <option key={difficulty} value={difficulty}>{messages(language).ai.difficulties[difficulty]}</option>)}
+        </select>
       </label>)}
       <label className={styles.row}>{copy.length}<select value={version} onChange={(event) => setVersion(event.currentTarget.value)}>
         <option value={QUICK_RULES.version}>{formatMessage(copy.quick, { rounds: QUICK_RULES.roundLimit })}</option>

@@ -7,7 +7,7 @@ import { makeSave, readSave } from "../../src/storage/snapshot";
 
 it.each([2, 3, 4])("preserves %s configured seats and controller authority through every real saved decision", (size) => {
   const config = { ...createMatchConfig(940), players: SEAT_IDS.slice(0, size).map((id, index) => ({
-    id, defaultNameKey: id, controller: index === size - 1 ? "human" as const : "bot" as const,
+    id, defaultNameKey: id, controller: index === size - 1 ? "human" as const : "bot" as const, difficulty: "normal" as const,
     name: index === size - 1 ? "<b>城市</b>" : null, color: SEAT_COLORS[index]!,
   })) };
   const game = new Game(config);

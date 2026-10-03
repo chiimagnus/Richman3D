@@ -203,13 +203,16 @@ it.each([0, 1, 2, 3])("owns all four cards while awaiting a choice, restores it,
   restored(game);
 });
 
-it("baseline computers can use a held item and discard only the just-drawn fourth card without inspecting future RNG", () => {
+it("computers use a beneficial held item and retain the valuable fourth card without inspecting future RNG", () => {
   for (const game of [itemCheckpoint("controlled-dice"), fullHandCheckpoint()]) {
     const before = game.snapshot;
     const botView = { ...before, config: { ...before.config, players: before.config.players.map((player) => ({ ...player, controller: "bot" as const })) } };
     const command = (chooseBotAction(observeBot(botView), "normal")?.command ?? null)!;
     expect(command.kind).toBe(before.decision.kind === "awaiting_discard" ? "discard_item" : "use_item");
-    if (command.kind === "discard_item") expect(command.instanceId).toBe(before.players[0]!.hand.at(-1));
+    if (command.kind === "discard_item") {
+      expect(command.instanceId).toBe("swap-positions:2");
+      expect(command.instanceId).not.toBe(before.players[0]!.hand.at(-1));
+    }
     expect(game.apply(command).ok).toBe(true);
     restored(game);
   }

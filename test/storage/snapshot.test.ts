@@ -18,8 +18,10 @@ it.each([768, 940, 108])("restores every committed decision and RNG of a real ma
     expect(restored.snapshot).toBe(restored.snapshot);
     expect(Object.isFrozen(restored.snapshot.players[0]?.statistics)).toBe(true);
     if (game.snapshot.decision.kind === "game_over") return;
-    const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!;
-    expect(restored.apply(command)).toEqual(game.apply(command));
+    const command = chooseBotAction(observeBot(game.snapshot))?.command ?? legalCommands(game.snapshot, game.snapshot.decision.actorId).at(-1)!;
+    const result = game.apply(command);
+    expect(result.ok).toBe(true);
+    expect(restored.apply(command)).toEqual(result);
     game = restored;
   }
   throw new Error("Match did not finish");
@@ -69,6 +71,9 @@ it.each([
   (raw: any) => { raw.state.animation = {}; },
   (raw: any) => { raw.state.players[0].externalURL = "https://example.com"; },
   (raw: any) => { raw.state.config.players[0].controller = "remote"; },
+  (raw: any) => { raw.state.config.players[0].difficulty = "expert"; },
+  (raw: any) => { delete raw.state.config.players[0].difficulty; },
+  (raw: any) => { raw.rulesVersion = raw.state.config.rulesVersion = "city-v11-quick"; },
   (raw: any) => { raw.state.config.players.forEach((player: any) => { player.controller = "bot"; }); },
   (raw: any) => { raw.revision = 1; },
   (raw: any) => { raw.savedAt = Infinity; },
@@ -88,7 +93,11 @@ it("rejects an owned pending purchase and tampered final rankings", () => {
   game.apply(legalCommands(game.snapshot, "p1")[0]!);
   const pending = makeSave(game.snapshot, matchId);
   expect(() => readSave({ ...pending, state: { ...pending.state, properties: { ...pending.state.properties, "neon-avenue": { ...pending.state.properties["neon-avenue"]!, ownerId: "p2" } } } })).toThrow();
-  for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!);
+  for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) {
+    const command = chooseBotAction(observeBot(game.snapshot))?.command ?? legalCommands(game.snapshot, game.snapshot.decision.actorId).at(-1)!;
+    expect(game.apply(command).ok).toBe(true);
+  }
+  expect(game.snapshot.decision.kind).toBe("game_over");
   const terminal = JSON.parse(JSON.stringify(makeSave(game.snapshot, matchId)));
   terminal.state.decision.result.rankings[0].netAssets += 1;
   expect(() => readSave(terminal)).toThrow();

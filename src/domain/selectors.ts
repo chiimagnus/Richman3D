@@ -65,7 +65,7 @@ export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
   if (!player) throw new Error("玩家不存在");
   const config = playerConfig(snapshot.config, id);
   return {
-    player: { id: config.id, controller: config.controller, name: config.name, defaultNameKey: config.defaultNameKey, color: config.color },
+    player: { id: config.id, controller: config.controller, difficulty: config.difficulty, name: config.name, defaultNameKey: config.defaultNameKey, color: config.color },
     cash: player.cash, propertyValue: propertyValue(snapshot, id), netAssets: netAssets(snapshot, id), liquidationValue: liquidationValue(snapshot, id), bankrupt: player.bankrupt,
     properties: snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === id).map((tile) => publicProperty(snapshot, tile.id)),
   };

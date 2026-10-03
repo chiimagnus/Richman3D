@@ -60,7 +60,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   if (typeof state.tradeUsed !== "boolean" || typeof state.itemUsed !== "boolean") throw new Error("回合使用机会状态无效");
   const configValue = record(state.config, ["players", "seed", "rulesVersion", "mapId", "mapVersion"]);
   if (!Array.isArray(configValue.players) || configValue.players.length < 2 || configValue.players.length > 4) throw new Error("席位数量无效");
-  for (const player of configValue.players) record(player, ["id", "controller", "name", "defaultNameKey", "color"]);
+  for (const player of configValue.players) record(player, ["id", "controller", "difficulty", "name", "defaultNameKey", "color"]);
   const config = configValue as MatchConfig;
   validateConfig(config);
   if (typeof config.rulesVersion !== "string" || typeof config.mapId !== "string") throw new Error("版本无效");
@@ -453,12 +453,10 @@ function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
     case "trade_proposed":
     case "trade_accepted":
     case "trade_rejected": {
-      record(event, event.kind === "trade_proposed" ? ["kind", "proposal"] : ["kind", "proposal", "reason"]);
+      record(event, ["kind", "proposal"]);
       const proposal = restoreTradeProposal(event.proposal, snapshot);
       if (event.kind === "trade_proposed") return { kind: "trade_proposed", proposal };
-      const bot = snapshot.config.players.find((player) => player.id === proposal.recipientId)!.controller === "bot";
-      if (bot ? !["fair_value", "lower_value", "invalid_trade"].includes(event.reason as string) : event.reason !== null) throw new Error("交易响应原因无效");
-      return { kind: event.kind, proposal, reason: event.reason as "fair_value" | "lower_value" | "invalid_trade" | null };
+      return { kind: event.kind, proposal };
     }
     case "auction_started":
     case "auction_passed":
