@@ -9,6 +9,7 @@ import { restoreSnapshot } from "./restore";
 import { constructionCost, constructionRefund, initialProperties, liquidityOption, mortgageValue, netAssets, obligation, propertyTile, rentFor } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
+import { canBid, nextBidder, startAuction } from "./market";
 
 function cashAfterChange(cash: number, amount: number): number {
   const next = cash + amount;
@@ -43,7 +44,7 @@ export class Game {
       completedRounds: 0,
       turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
-        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, constructionSpent: 0,
+        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, purchaseBookValue: 0, constructionSpent: 0,
           constructionRefunds: 0, constructionSoldCost: 0, mortgageIncome: 0, mortgagePrincipalRepaid: 0, mortgageFeesPaid: 0,
           mortgagePrincipalReleased: 0, debtWrittenOff: 0, rentLost: 0 },
       })),
@@ -71,12 +72,13 @@ export class Game {
 
   apply(command: Command): ApplyResult {
     if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
-        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ||
-        !["roll", "buy", "skip", "bankrupt"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
+        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "mortgage", "redeem", "auction_bid", "auction_pass"].includes(command.kind) ||
+        ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
+        command.kind === "auction_bid" && (!Number.isSafeInteger(command.amount) || command.amount < 0) ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
     }
-    const keys = ["actor", "kind", "expectedRevision", ...(["roll", "buy", "skip", "bankrupt"].includes(command.kind) ? [] : ["propertyId"])];
+    const keys = ["actor", "kind", "expectedRevision", ...(command.kind === "auction_bid" ? ["amount"] : ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ? ["propertyId"] : [])];
     if (Object.keys(command).length !== keys.length || keys.some((key) => !Object.hasOwn(command, key))) return { ok: false, reason: "invalid_command" };
     const before = this.state;
     if (command.expectedRevision !== before.revision) return { ok: false, reason: "stale_revision" };
@@ -94,6 +96,17 @@ export class Game {
       let lastRoll = before.lastRoll;
       const events: GameEvent[] = [];
       let finishTurn = command.kind === "roll" || command.kind === "buy" || command.kind === "skip";
+      const settleAuction = (auction: { propertyId: string; highestBid: number; highestBidderId: PlayerId | null }, reason: "sold" | "all_passed" | "no_bidders") => {
+        events.push({ kind: "auction_ended", propertyId: auction.propertyId, winnerId: auction.highestBidderId, price: auction.highestBid, reason });
+        if (auction.highestBidderId !== null) {
+          const winner = players.find((candidate) => candidate.id === auction.highestBidderId)!;
+          winner.cash = cashAfterChange(winner.cash, -auction.highestBid);
+          properties[auction.propertyId] = { ...properties[auction.propertyId]!, ownerId: winner.id };
+          events.push({ kind: "purchased", actor: winner.id, propertyId: auction.propertyId, price: auction.highestBid });
+        }
+        decision = { kind: "awaiting_roll", actorId: before.turnPlayerId };
+        finishTurn = true;
+      };
       const pay = (debt: PendingDebt, amount: number) => {
         player.cash = cashAfterChange(player.cash, -amount);
         if (debt.creditorId !== null) {
@@ -104,7 +117,18 @@ export class Game {
         events.push({ kind: "paid", actor: player.id, debt, amount, writtenOff: debt.amount - amount });
       };
 
-      if (command.kind === "roll") {
+      if (command.kind === "auction_bid" || command.kind === "auction_pass") {
+        if (before.decision.kind !== "awaiting_auction") throw new Error("没有拍卖");
+        const auction = before.decision;
+        if (command.kind === "auction_bid" && !canBid(before, auction, player.id, command.amount)) return { ok: false, reason: "illegal_action" };
+        const next = command.kind === "auction_bid" ? { ...auction, highestBid: command.amount, highestBidderId: player.id }
+          : { ...auction, withdrawnIds: [...auction.withdrawnIds, player.id] };
+        events.push(command.kind === "auction_bid" ? { kind: "auction_bid", actor: player.id, propertyId: auction.propertyId, amount: command.amount }
+          : { kind: "auction_passed", actor: player.id, propertyId: auction.propertyId });
+        const actorId = nextBidder(before, next, player.id);
+        if (actorId === null) settleAuction(next, next.highestBidderId === null ? "all_passed" : "sold");
+        else decision = { ...next, actorId };
+      } else if (command.kind === "roll") {
         const dice = [random.integer(6) + 1, random.integer(6) + 1] as const;
         const steps = dice[0] + dice[1];
         const from = player.position;
@@ -204,6 +228,9 @@ export class Game {
           events.push({ kind: "purchased", actor: player.id, propertyId: property.id, price: property.price });
         } else {
           events.push({ kind: "skipped", actor: player.id, propertyId: property.id });
+          const auction = startAuction(before, property.id);
+          if (auction) { decision = auction; finishTurn = false; events.push({ kind: "auction_started", actor: auction.actorId, propertyId: property.id }); }
+          else settleAuction({ propertyId: property.id, highestBid: 0, highestBidderId: null }, "no_bidders");
         }
       }
 
@@ -213,7 +240,10 @@ export class Game {
         target.statistics[field] = cashAfterChange(target.statistics[field], amount);
       };
       for (const event of events) {
-        if (event.kind === "purchased") record(event.actor, "purchases", event.price);
+        if (event.kind === "purchased") {
+          record(event.actor, "purchases", event.price);
+          record(event.actor, "purchaseBookValue", propertyTile(before.map, event.propertyId).price);
+        }
         if (event.kind === "upgraded") record(event.actor, "constructionSpent", event.cost);
         if (event.kind === "building_sold") {
           record(event.actor, "constructionSoldCost", event.cost);

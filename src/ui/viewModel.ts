@@ -4,6 +4,7 @@ import { formatMessage, messages, playerName, resultTitle, tileName } from "../i
 import { playerConfig } from "../domain/config";
 import type { Language } from "../i18n/language";
 import { canDeclareBankruptcy, liquidityOption, rentFor, upgradeOption } from "../domain/economy";
+import { minimumBid } from "../domain/market";
 
 function availableCommands(view: GameView) {
   const snapshot = view.displayed;
@@ -39,6 +40,14 @@ export function debtView(view: GameView) {
     bankruptcy: availableCommands(view).find((command) => command.kind === "bankrupt") ?? null };
 }
 
+export function auctionView(view: GameView) {
+  const snapshot = view.displayed;
+  if (snapshot.decision.kind !== "awaiting_auction") return null;
+  const auction = snapshot.decision;
+  return { auction, minimum: minimumBid(snapshot, auction), cash: snapshot.players.find((player) => player.id === auction.actorId)!.cash,
+    commands: availableCommands(view) };
+}
+
 export function actionView(view: GameView, language: Language) {
   const snapshot = view.displayed;
   const property = pendingProperty(snapshot);
@@ -54,6 +63,7 @@ export function actionView(view: GameView, language: Language) {
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
     : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending
+    : snapshot.decision.kind === "awaiting_auction" ? messages(language).auction.pending
     : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
   return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };
 }

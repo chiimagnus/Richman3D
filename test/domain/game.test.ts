@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import type { RollResult } from "../../src/domain/types";
 
-function act(game: Game, kind: "roll" | "buy" | "skip" | "bankrupt") {
+function act(game: Game, kind: "roll" | "buy" | "skip" | "bankrupt" | "auction_pass") {
   const snapshot = game.snapshot;
-  const result = game.apply({ kind, actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision });
+  const result = game.apply({ kind, actor: snapshot.decision.kind === "game_over" ? snapshot.turnPlayerId : snapshot.decision.actorId, expectedRevision: snapshot.revision });
   if (!result.ok) throw new Error(result.reason);
   return result;
 }
@@ -37,6 +37,8 @@ describe("Game", () => {
     const game = new Game(createMatchConfig(17981));
     expect(roll(game).to).toBe(12);
     act(game, "skip");
+    act(game, "auction_pass");
+    act(game, "auction_pass");
     expect(roll(game).landing).toEqual({ kind: "tax", amount: 80 });
     const result = roll(game);
     expect(result.passedStart).toBe(true);

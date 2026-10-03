@@ -48,8 +48,8 @@ describe("atomic commands", () => {
 
   it("rolls back pass-start money, landing and RNG on integer overflow", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
-    for (const kind of ["roll", "skip", "roll"] as const) {
-      expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll"] as const) {
+      expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
     expect(game.apply(legalCommands(before, "p1")[0]!).ok).toBe(false);
@@ -71,8 +71,8 @@ describe("atomic commands", () => {
 
   it("rejects a transient pass-start overflow even when tax would bring final cash back in range", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
-    for (const kind of ["roll", "skip", "roll"] as const) {
-      expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll"] as const) {
+      expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
     const listener = vi.fn();
@@ -86,10 +86,16 @@ describe("atomic commands", () => {
     const game = new Game(createMatchConfig(940), { ...QUICK_RULES, startingCash: 200 });
     expect(game.apply(legalCommands(game.snapshot, "p1")[0]!).ok).toBe(true);
     expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "skip")!).ok).toBe(true);
+    expect(chooseBotCommand(game.snapshot)?.kind).toBe("auction_pass");
+    expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
+    expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "auction_pass")!).ok).toBe(true);
     expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
     const command = chooseBotCommand(game.snapshot)!;
     expect(command.kind).toBe("skip");
     expect(game.apply(command).ok).toBe(true);
+    expect(game.snapshot.decision.kind).toBe("awaiting_auction");
+    expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "auction_pass")!).ok).toBe(true);
+    expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
     expect(game.snapshot.turnPlayerId).toBe("p1");
     expect(Object.values(game.snapshot.properties).every((property) => property.ownerId === null)).toBe(true);
   });

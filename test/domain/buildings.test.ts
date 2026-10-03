@@ -18,7 +18,7 @@ it("charges the upgraded rent through real movement, credits exactly once and ke
   let charged = false;
   for (let index = 0; index < 80 && game.snapshot.decision.kind !== "game_over"; index += 1) {
     const before = game.snapshot;
-    const command = chooseBotCommand(before) ?? legalCommands(before, before.turnPlayerId).find((candidate) => candidate.kind === (before.decision.kind === "awaiting_purchase" ? "skip" : "roll"))!;
+    const command = chooseBotCommand(before) ?? legalCommands(before, before.decision.kind === "game_over" ? before.turnPlayerId : before.decision.actorId).find((candidate) => candidate.kind === (before.decision.kind === "awaiting_purchase" ? "skip" : before.decision.kind === "awaiting_auction" ? "auction_pass" : "roll"))!;
     const result = game.apply(command);
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.reason);
@@ -82,7 +82,7 @@ it.each([
   expect(snapshot.properties["neon-avenue"]!.level).toBe(0);
   const saved = makeSave(snapshot, propertyMatchId).state;
   const players = reason === "incomplete_group" ? candidate.players.map((player) => player.id === "p1" ? {
-    ...player, statistics: { ...player.statistics, purchases: player.statistics.purchases - 140, taxesPaid: player.statistics.taxesPaid + 140 },
+    ...player, statistics: { ...player.statistics, purchases: player.statistics.purchases - 140, purchaseBookValue: player.statistics.purchaseBookValue - 140, taxesPaid: player.statistics.taxesPaid + 140 },
   } : player) : reason === "insufficient_cash" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + 1228 - 89 },
   } : player) : reason === "mortgaged" ? candidate.players.map((player) => player.id === "p1" ? {

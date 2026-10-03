@@ -15,7 +15,7 @@ export type RuleSet = {
 };
 
 export const QUICK_RULES: RuleSet = {
-  version: "city-v6-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
+  version: "city-v7-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
   rentMultipliers: [1, 2, 4, 7], groupRentPercent: 150,
   constructionCostPercent: 50, constructionSalePercent: 50, mortgagePercent: 50, mortgageRedemptionPercent: 10,
   chanceCards: [
@@ -23,7 +23,7 @@ export const QUICK_RULES: RuleSet = {
     { id: "community-event", amount: 60 }, { id: "traffic-fine", amount: -50 },
   ],
 };
-export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v6-standard", roundLimit: 40 };
+export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v7-standard", roundLimit: 40 };
 
 export function rulesFor(version: string): RuleSet {
   if (version === QUICK_RULES.version) return QUICK_RULES;

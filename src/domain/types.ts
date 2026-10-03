@@ -27,6 +27,7 @@ export type FinancialStats = {
   readonly chanceIncome: number;
   readonly chanceExpense: number;
   readonly purchases: number;
+  readonly purchaseBookValue: number;
   readonly constructionSpent: number;
   readonly constructionRefunds: number;
   readonly constructionSoldCost: number;
@@ -58,7 +59,19 @@ export type Decision =
   | { readonly kind: "awaiting_roll"; readonly actorId: PlayerId }
   | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
   | { readonly kind: "awaiting_debt"; readonly actorId: PlayerId; readonly debt: PendingDebt }
+  | AuctionDecision
   | { readonly kind: "game_over"; readonly result: MatchResult };
+
+export type AuctionDecision = {
+  readonly kind: "awaiting_auction";
+  readonly actorId: PlayerId;
+  readonly propertyId: string;
+  readonly landingPlayerId: PlayerId;
+  readonly highestBid: number;
+  readonly highestBidderId: PlayerId | null;
+  readonly withdrawnIds: readonly PlayerId[];
+  readonly continuation: "finish_turn";
+};
 
 export type RandomState = {
   readonly version: "xorshift32-v1";
@@ -116,7 +129,8 @@ export type RollResult = {
 export type Command = {
   readonly actor: PlayerId;
   readonly expectedRevision: number;
-} & ({ readonly kind: "roll" | "buy" | "skip" | "bankrupt" } | { readonly kind: "upgrade" | "sell_building" | "mortgage" | "redeem"; readonly propertyId: string });
+} & ({ readonly kind: "roll" | "buy" | "skip" | "bankrupt" | "auction_pass" } | { readonly kind: "auction_bid"; readonly amount: number }
+  | { readonly kind: "upgrade" | "sell_building" | "mortgage" | "redeem"; readonly propertyId: string });
 
 export type GameEvent =
   | { readonly kind: "rolled"; readonly result: RollResult }
@@ -126,6 +140,10 @@ export type GameEvent =
   | { readonly kind: "mortgaged"; readonly actor: PlayerId; readonly propertyId: string; readonly principal: number }
   | { readonly kind: "redeemed"; readonly actor: PlayerId; readonly propertyId: string; readonly principal: number; readonly fee: number }
   | { readonly kind: "skipped"; readonly actor: PlayerId; readonly propertyId: string }
+  | { readonly kind: "auction_started"; readonly actor: PlayerId; readonly propertyId: string }
+  | { readonly kind: "auction_bid"; readonly actor: PlayerId; readonly propertyId: string; readonly amount: number }
+  | { readonly kind: "auction_passed"; readonly actor: PlayerId; readonly propertyId: string }
+  | { readonly kind: "auction_ended"; readonly propertyId: string; readonly winnerId: PlayerId | null; readonly price: number; readonly reason: "sold" | "all_passed" | "no_bidders" }
   | { readonly kind: "paid"; readonly actor: PlayerId; readonly debt: PendingDebt; readonly amount: number; readonly writtenOff: number }
   | { readonly kind: "liquidated"; readonly actor: PlayerId; readonly constructionCost: number; readonly constructionRefund: number; readonly mortgageIncome: number; readonly principalReleased: number }
   | { readonly kind: "turn"; readonly actor: PlayerId }

@@ -68,6 +68,10 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "mortgaged":
               case "redeemed": audio.playPurchase(); break;
               case "skipped": break;
+              case "auction_started":
+              case "auction_bid":
+              case "auction_passed":
+              case "auction_ended": break;
               case "paid":
               case "liquidated": break;
               case "turn": audio.playTurn(playerConfig(snapshot.config, event.actor).controller === "human"); break;

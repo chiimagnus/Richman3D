@@ -49,7 +49,7 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
         return restored;
       }
     }
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, "p1").find((candidate) => candidate.kind === "roll" || candidate.kind === "skip");
+    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.decision.kind === "game_over" ? "p1" : snapshot.decision.actorId).find((candidate) => candidate.kind === "roll" || candidate.kind === "skip" || candidate.kind === "auction_pass");
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a rent checkpoint");
   }
   throw new Error("No suitable real owned rent property");
@@ -81,14 +81,14 @@ export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false): Ga
       if (!result.ok || restored.snapshot.decision.kind !== "awaiting_debt") throw new Error("Expected a built-group rent obligation");
       return restored;
     }
-    const actor = snapshot.turnPlayerId;
+    const actor = snapshot.decision.actorId;
     const commands = legalCommands(snapshot, actor);
     const upgrade = commands.find((command) => command.kind === "upgrade" && snapshot.properties[command.propertyId]!.level < (actor === "p1" ? 1 : actor === "p2" ? 2 : 0));
     const decision = snapshot.decision;
     const target = decision.kind === "awaiting_purchase" ? snapshot.map.tiles.find((tile) => tile.id === decision.propertyId) : null;
     const group = actor === "p1" ? "cyan" : actor === "p2" ? "emerald" : null;
     const kind = snapshot.decision.kind === "awaiting_purchase" ? target?.type === "property" && target.group === group && commands.some((command) => command.kind === "buy") ? "buy" : "skip"
-      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
+      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : "roll";
     const command = upgrade ?? commands.find((candidate) => candidate.kind === kind) ?? commands[0];
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a built-group checkpoint");
   }

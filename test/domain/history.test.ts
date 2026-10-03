@@ -17,7 +17,7 @@ it("atomically retains the last 100 semantic events and restores without replay 
   const game = new Game(createMatchConfig(940, 4));
   const all: GameSnapshot["history"][number][] = [];
   for (let count = 0; count < 400 && game.snapshot.decision.kind !== "game_over"; count += 1) {
-    const result = game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!);
+    const result = game.apply(legalCommands(game.snapshot, game.snapshot.decision.actorId).at(-1)!);
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.reason);
     all.push(...result.events.map((event) => ({ revision: result.snapshot.revision, event })));

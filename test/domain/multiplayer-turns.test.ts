@@ -48,12 +48,14 @@ it.each([3, 4])("waits for the %s-seat final purchase before ending, then ranks 
   const tail = game.snapshot.turnOrder.at(-1)!;
   for (let count = 0; count < 20; count += 1) {
     if (game.snapshot.turnPlayerId === tail && game.snapshot.decision.kind === "awaiting_purchase") break;
-    expect(game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!).ok).toBe(true);
+    expect(game.apply(legalCommands(game.snapshot, game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId).at(-1)!).ok).toBe(true);
   }
   expect(game.snapshot.turnPlayerId).toBe(tail);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
   expect(game.snapshot.completedRounds).toBe(0);
   expect(game.apply(legalCommands(game.snapshot, tail).at(-1)!).ok).toBe(true);
+  expect(game.snapshot.decision.kind).toBe("awaiting_auction");
+  for (let count = 0; count < size && game.snapshot.decision.kind === "awaiting_auction"; count += 1) expect(game.apply(legalCommands(game.snapshot, game.snapshot.decision.actorId).find((command) => command.kind === "auction_pass")!).ok).toBe(true);
   expect(game.snapshot.completedRounds).toBe(1);
   expect(game.snapshot.decision).toMatchObject({ kind: "game_over", result: { reason: "round_limit", winnerIds: game.snapshot.config.players.map((player) => player.id) } });
 });

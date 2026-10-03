@@ -44,7 +44,7 @@ it.each(["skip", "pause"] as const)("%s settles the committed turn before routin
   session.bind({ ...instant, present: vi.fn(async () => { if (game.snapshot.revision === 2) await new Promise<void>(() => {}); }) });
   session.confirmHandover("p1");
   await session.dispatch(legalCommands(game.snapshot, "p1")[0]!);
-  const work = session.dispatch(legalCommands(game.snapshot, "p1").find((command) => command.kind === "skip")!);
+  const work = session.dispatch(legalCommands(game.snapshot, "p1").find((command) => command.kind === "buy")!);
   await Promise.resolve();
   expect(game.snapshot.turnPlayerId).toBe("p2");
   expect(session.getSnapshot().displayed.turnPlayerId).toBe("p1");

@@ -16,7 +16,7 @@ function completeCityGroup(): Game {
   const state = makeSave(game.snapshot, matchId).state;
   return Game.restore({ ...state,
     properties: { ...state.properties, "harbor-walk": { ...state.properties["harbor-walk"]!, ownerId: "p1" } },
-    players: state.players.map((player) => player.id === "p1" ? { ...player, cash: player.cash - 140, statistics: { ...player.statistics, purchases: player.statistics.purchases + 140 } } : player),
+    players: state.players.map((player) => player.id === "p1" ? { ...player, cash: player.cash - 140, statistics: { ...player.statistics, purchases: player.statistics.purchases + 140, purchaseBookValue: player.statistics.purchaseBookValue + 140 } } : player),
   });
 }
 
@@ -78,7 +78,7 @@ it("charges a real opponent the projected group rent, preserves the transfer and
   expect(Game.restore(readSave(record).record.state).snapshot).toEqual(game.snapshot);
   const lost = { ...record.state,
     properties: { ...record.state.properties, "harbor-walk": { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] } },
-    players: record.state.players.map((player) => player.id === "p1" ? { ...player, statistics: { ...player.statistics, purchases: 180, taxesPaid: 140 } } : player),
+    players: record.state.players.map((player) => player.id === "p1" ? { ...player, statistics: { ...player.statistics, purchases: 180, purchaseBookValue: 180, taxesPaid: 140 } } : player),
   };
   const restored = Game.restore(lost);
   expect(rentFor(restored.snapshot, "neon-avenue")).toBe(32);

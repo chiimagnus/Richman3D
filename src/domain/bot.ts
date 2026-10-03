@@ -1,13 +1,19 @@
 import { legalCommands, pendingProperty } from "./selectors";
 import type { Command, GameSnapshot } from "./types";
 import { playerConfig } from "./config";
-import { liquidityOption, rentFor } from "./economy";
+import { liquidityOption, propertyTile, rentFor } from "./economy";
 
 export function chooseBotCommand(snapshot: GameSnapshot): Command | null {
   if (snapshot.decision.kind === "game_over") return null;
   const actor = snapshot.decision.actorId;
   if (playerConfig(snapshot.config, actor).controller !== "bot") return null;
   const commands = legalCommands(snapshot, actor);
+  if (snapshot.decision.kind === "awaiting_auction") {
+    const bid = commands.find((command) => command.kind === "auction_bid");
+    const player = snapshot.players.find((candidate) => candidate.id === actor)!;
+    return bid?.kind === "auction_bid" && bid.amount <= propertyTile(snapshot.map, snapshot.decision.propertyId).price && player.cash - bid.amount >= 260 ? bid
+      : commands.find((command) => command.kind === "auction_pass")!;
+  }
   if (snapshot.decision.kind === "awaiting_debt") {
     const bankrupt = commands.find((command) => command.kind === "bankrupt");
     if (bankrupt) return bankrupt;

@@ -25,10 +25,11 @@ it.each([2, 3, 4])("preserves %s configured seats and controller authority throu
       return;
     }
     seen.add(snapshot.turnPlayerId);
-    for (const player of config.players.filter((player) => player.id !== snapshot.turnPlayerId)) {
+    const actor = snapshot.decision.actorId;
+    for (const player of config.players.filter((player) => player.id !== actor)) {
       expect(legalCommands(snapshot, player.id)).toEqual([]);
     }
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.turnPlayerId).at(-1)!;
+    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.decision.actorId).at(-1)!;
     expect(command).toBeDefined();
     const result = game.apply(command);
     expect(result.ok).toBe(true);

@@ -5,6 +5,15 @@ import type { Language } from "../i18n/language";
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
+    case "auction_started":
+    case "auction_bid":
+    case "auction_passed":
+    case "auction_ended": {
+      const copy = messages(language).auction;
+      const property = tileName(language, snapshot.map.tiles.find((tile) => tile.id === event.propertyId)!);
+      if (event.kind === "auction_ended") return formatMessage(copy[event.reason], { property, actor: event.winnerId === null ? "" : playerName(language, event.winnerId, snapshot.config), amount: formatCash(language, event.price) });
+      return formatMessage(copy[event.kind], { property, actor: playerName(language, event.actor, snapshot.config), amount: formatCash(language, event.kind === "auction_bid" ? event.amount : 0) });
+    }
     case "paid": return formatMessage(messages(language).debt.paid, { actor: playerName(language, event.actor, snapshot.config), creditor: event.debt.creditorId === null ? messages(language).assets.bank : playerName(language, event.debt.creditorId, snapshot.config), amount: formatCash(language, event.amount) }) + " " + debtSourceText(language, event.debt, snapshot) + (event.writtenOff > 0 ? " " + formatMessage(messages(language).debt.writtenOff, { writtenOff: formatCash(language, event.writtenOff) }) : "");
     case "liquidated": return formatMessage(messages(language).debt.liquidated, { actor: playerName(language, event.actor, snapshot.config), amount: formatCash(language, event.constructionRefund + event.mortgageIncome) });
     case "building_sold":

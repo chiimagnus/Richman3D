@@ -1,6 +1,7 @@
 .panel { min-width: 0; width: 100%; overflow-wrap: anywhere; }
 .row { display: grid; gap: 8px; margin-block: 16px; }
 .row select { width: 100%; min-width: 0; min-height: 44px; }
+.row input { width: 100%; min-width: 0; min-height: 44px; }
 .values { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; }
 .values dt { color: var(--muted); }
 .values dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

@@ -31,13 +31,19 @@ it("all real event transfers reconcile with each committed cash balance through 
     };
     for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) {
       const before = game.snapshot;
-      const actions = legalCommands(before, before.turnPlayerId);
+      const actions = legalCommands(before, before.decision.kind === "game_over" ? before.turnPlayerId : before.decision.actorId);
       const command = chooseBotCommand(before) ?? actions.find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll")) ?? actions[0]!;
       const result = game.apply(command);
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.reason);
       for (const event of result.events) {
-        if (event.kind === "purchased") { record(event.actor, "purchases", event.price); branches.add("purchase"); }
+        if (event.kind === "purchased") {
+          record(event.actor, "purchases", event.price);
+          const tile = result.snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId)!;
+          if (tile.type !== "property") throw new Error("Expected property");
+          record(event.actor, "purchaseBookValue", tile.price);
+          branches.add("purchase");
+        }
         if (event.kind === "upgraded") record(event.actor, "constructionSpent", event.cost);
         if (event.kind === "building_sold" || event.kind === "liquidated") {
           record(event.actor, "constructionSoldCost", event.kind === "building_sold" ? event.cost : event.constructionCost);
@@ -98,7 +104,7 @@ it("all real event transfers reconcile with each committed cash balance through 
 
 it("failed candidate money calculation cannot commit any statistic", () => {
   const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
-  for (const kind of ["roll", "skip", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const before = game.snapshot;
   expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: before.revision })).toEqual({ ok: false, reason: "calculation_failed" });
   expect(game.snapshot).toBe(before);
