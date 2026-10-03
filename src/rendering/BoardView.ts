@@ -388,6 +388,7 @@ export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, 
     case "tax":
       return `-${tile.amount}`;
     case "property":
+      if (snapshot && snapshot.properties[tile.id]!.mortgagePrincipal > 0) return formatMessage(copy.mortgagedDetail, { principal: snapshot.properties[tile.id]!.mortgagePrincipal, rent: rentFor(snapshot, tile.id) });
       return formatMessage(copy.propertyDetail, {
         price: tile.price,
         rent: snapshot ? rentFor(snapshot, tile.id) : tile.rent,

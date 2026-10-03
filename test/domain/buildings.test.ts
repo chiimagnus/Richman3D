@@ -85,6 +85,8 @@ it.each([
     ...player, statistics: { ...player.statistics, purchases: player.statistics.purchases - 140, taxesPaid: player.statistics.taxesPaid + 140 },
   } : player) : reason === "insufficient_cash" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + 1228 - 89 },
+  } : player) : reason === "mortgaged" ? candidate.players.map((player) => player.id === "p1" ? {
+    ...player, cash: player.cash + 70, statistics: { ...player.statistics, mortgageIncome: player.statistics.mortgageIncome + 70 },
   } : player) : candidate.players;
   const game = Game.restore({ ...saved, properties: candidate.properties, players, decision: candidate.decision, turnPlayerId: candidate.turnPlayerId });
   const before = game.snapshot;

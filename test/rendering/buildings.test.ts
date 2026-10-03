@@ -63,3 +63,29 @@ it("renders the real three levels, replaces their resources once, and restores w
   for (const spy of [...previousSpies, ...remainingSpies]) expect(spy).toHaveBeenCalledTimes(1);
   expect(scene.children).toHaveLength(0);
 });
+
+it("removes sold buildings and updates the mortgage and neighboring rent labels from real operations", () => {
+  const fillText = vi.fn();
+  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  const game = propertyMatch();
+  for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ actor: "p1", kind: "upgrade", propertyId: id, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  const scene = new THREE.Scene();
+  const snapshot = game.snapshot;
+  const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
+  board.syncOwnership(snapshot);
+  const original = scene.getObjectByName("property-building-neon-avenue")!;
+  const spies = trackResources(original);
+  for (const [kind, id] of [["sell_building", "neon-avenue"], ["sell_building", "harbor-walk"], ["mortgage", "neon-avenue"]] as const) {
+    expect(game.apply({ actor: "p1", kind, propertyId: id, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    fillText.mockClear();
+    board.syncOwnership(game.snapshot);
+  }
+  expect(scene.getObjectByName("property-building-neon-avenue")).toBeUndefined();
+  expect(scene.getObjectByName("property-building-harbor-walk")).toBeUndefined();
+  expect(fillText.mock.calls.map((call) => call[0])).toContain("Mortgaged ¥90 · Rent 0");
+  expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 140 · Rent 24");
+  for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  board.dispose();
+  for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  expect(scene.children).toHaveLength(0);
+});

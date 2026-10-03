@@ -3,7 +3,7 @@ import { legalCommands, pendingProperty, currentTile } from "../domain/selectors
 import { formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import { playerConfig } from "../domain/config";
 import type { Language } from "../i18n/language";
-import { rentFor, upgradeOption } from "../domain/economy";
+import { liquidityOption, rentFor, upgradeOption } from "../domain/economy";
 
 function availableCommands(view: GameView) {
   const snapshot = view.displayed;
@@ -18,8 +18,13 @@ export function assetManagementView(view: GameView) {
   if (actor === null || playerConfig(snapshot.config, actor).controller !== "human") return null;
   const commands = availableCommands(view);
   return { actor, properties: Object.fromEntries(snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).map((tile) => {
-    const command = commands.find((candidate) => candidate.kind === "upgrade" && candidate.propertyId === tile.id);
-    return [tile.id, { ...upgradeOption(snapshot, actor, tile.id), command: command?.kind === "upgrade" ? command : null }];
+    const commandFor = (kind: "upgrade" | "sell_building" | "mortgage" | "redeem") => commands.find((candidate) => candidate.kind === kind && "propertyId" in candidate && candidate.propertyId === tile.id) ?? null;
+    const liquidity = (kind: "sell_building" | "mortgage" | "redeem") => {
+      const { nextProperty: _next, originalCost: _original, ...option } = liquidityOption(snapshot, actor, tile.id, kind);
+      return { ...option, command: commandFor(kind) };
+    };
+    return [tile.id, { upgrade: { ...upgradeOption(snapshot, actor, tile.id), proceeds: 0, loss: 0, command: commandFor("upgrade") },
+      sell_building: liquidity("sell_building"), mortgage: liquidity("mortgage"), redeem: liquidity("redeem") }];
   })) };
 }
 

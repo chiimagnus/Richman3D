@@ -13,7 +13,7 @@ it("persists one real construction, rejects repeated captured revisions and publ
   await session.initializeSave();
   const sync = vi.fn();
   session.bind({ sync, stop() {}, async present() {} });
-  const command = assetManagementView(session.getSnapshot())!.properties["neon-avenue"]!.command!;
+  const command = assetManagementView(session.getSnapshot())!.properties["neon-avenue"]!.upgrade.command!;
   const before = game.snapshot;
   await session.dispatch(command);
   const after = game.snapshot;
@@ -29,5 +29,29 @@ it("persists one real construction, rejects repeated captured revisions and publ
   await session.dispatch(command);
   expect(game.snapshot).toBe(after);
   expect(writes).not.toHaveBeenCalled();
+  session.dispose();
+});
+
+it("persists sale, loan principal and fees through the shared session without duplicate notices or stale operation rewrites", async () => {
+  const game = propertyMatch();
+  for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "upgrade", propertyId: id, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  const factory = new IDBFactory();
+  const store = new GameStore(() => factory);
+  const session = new GameSession(game, propertyMatchId, { store, expected: null, source: "local" });
+  await session.initializeSave();
+  session.bind({ sync() {}, stop() {}, async present() {} });
+  for (const [id, kind] of [["neon-avenue", "sell_building"], ["harbor-walk", "sell_building"], ["neon-avenue", "mortgage"], ["neon-avenue", "redeem"]] as const) {
+    const before = game.snapshot;
+    const command = assetManagementView(session.getSnapshot())!.properties[id]![kind].command!;
+    await session.dispatch(command);
+    const after = game.snapshot;
+    expect(after.revision).toBe(before.revision + 1);
+    expect(after.random).toEqual(before.random);
+    expect((await store.read())?.snapshot).toEqual(after);
+    expect(session.getSnapshot().notice).toBeNull();
+    await session.dispatch(command);
+    expect(game.snapshot).toBe(after);
+  }
+  expect(game.snapshot.players[0]).toMatchObject({ cash: 1139, statistics: { constructionRefunds: 80, mortgageIncome: 90, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
   session.dispose();
 });

@@ -91,6 +91,6 @@ it("updates actual group rents and localized labels without reallocating unchang
     fillText.mockClear();
     board.syncOwnership({ ...owned, properties: { ...owned.properties, "harbor-walk": { ...owned.properties["harbor-walk"]!, mortgagePrincipal: 70 } } });
     expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 180, rent: 32 }));
-    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 140, rent: 0 }));
+    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.mortgagedDetail, { principal: 70, rent: 0 }));
   } finally { board.dispose(); }
 });

@@ -62,12 +62,45 @@ export function mortgageValue(tile: PropertyTile, rules: RuleSet): number {
   return money(BigInt(tile.price) * BigInt(rules.mortgagePercent) / 100n);
 }
 
+export function constructionRefund(cost: number, rules: RuleSet): number {
+  return money(BigInt(cost) * BigInt(rules.constructionSalePercent) / 100n);
+}
+
+export function redemptionCost(principal: number, rules: RuleSet): number {
+  return money((BigInt(principal) * BigInt(100 + rules.mortgageRedemptionPercent) + 99n) / 100n);
+}
+
+export function liquidityOption(snapshot: GameSnapshot, actor: PlayerId, propertyId: string, kind: "sell_building" | "mortgage" | "redeem") {
+  const tile = propertyTile(snapshot.map, propertyId);
+  const property = snapshot.properties[propertyId]!;
+  const player = snapshot.players.find((candidate) => candidate.id === actor)!;
+  const group = snapshot.map.tiles.filter((candidate) => candidate.type === "property" && candidate.group === tile.group);
+  const originalCost = property.level > 0 ? property.constructionCosts.at(-1)! : 0;
+  const proceeds = kind === "sell_building" ? constructionRefund(originalCost, snapshot.rules) : kind === "mortgage" ? mortgageValue(tile, snapshot.rules) : 0;
+  const cost = kind === "redeem" ? redemptionCost(property.mortgagePrincipal, snapshot.rules) : 0;
+  let reason: "not_owner" | "not_turn" | "no_building" | "unbalanced_sale" | "group_has_buildings" | "already_mortgaged" | "no_mortgage_value" | "not_mortgaged" | "insufficient_cash" | null = null;
+  if (property.ownerId !== actor) reason = "not_owner";
+  else if (snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor || player.bankrupt) reason = "not_turn";
+  else if (kind === "sell_building" && property.level === 0) reason = "no_building";
+  else if (kind === "sell_building" && group.some((candidate) => snapshot.properties[candidate.id]!.level - (property.level - 1) > 1)) reason = "unbalanced_sale";
+  else if (kind === "mortgage" && group.some((candidate) => snapshot.properties[candidate.id]!.level > 0)) reason = "group_has_buildings";
+  else if (kind === "mortgage" && property.mortgagePrincipal > 0) reason = "already_mortgaged";
+  else if (kind === "mortgage" && proceeds === 0) reason = "no_mortgage_value";
+  else if (kind === "redeem" && property.mortgagePrincipal === 0) reason = "not_mortgaged";
+  else if (player.cash < cost) reason = "insufficient_cash";
+  const nextProperty: PropertyState = kind === "sell_building" && property.level > 0 ? { ...property, level: (property.level - 1) as 0 | 1 | 2, constructionCosts: property.constructionCosts.slice(0, -1) }
+    : kind === "mortgage" ? { ...property, mortgagePrincipal: proceeds } : kind === "redeem" ? { ...property, mortgagePrincipal: 0 } : property;
+  return { reason, cost, proceeds, originalCost, loss: kind === "sell_building" ? originalCost - proceeds : kind === "redeem" ? cost - property.mortgagePrincipal : 0,
+    currentRent: rentFor(snapshot, propertyId), nextRent: rentFor({ ...snapshot, properties: { ...snapshot.properties, [propertyId]: nextProperty } }, propertyId),
+    remainingCash: money(BigInt(player.cash) + BigInt(proceeds) - BigInt(cost)), nextProperty };
+}
+
 export function propertyBookValue(tile: PropertyTile, property: PropertyState): number {
   return money(BigInt(tile.price) - BigInt(property.mortgagePrincipal) + property.constructionCosts.reduce((total, cost) => total + BigInt(cost), 0n));
 }
 
 export function propertyLiquidationValue(tile: PropertyTile, property: PropertyState, rules: RuleSet): number {
-  return money(BigInt(property.mortgagePrincipal > 0 ? 0 : mortgageValue(tile, rules)) + property.constructionCosts.reduce((total, cost) => total + BigInt(cost) * BigInt(rules.constructionSalePercent) / 100n, 0n));
+  return money(BigInt(property.mortgagePrincipal > 0 ? 0 : mortgageValue(tile, rules)) + property.constructionCosts.reduce((total, cost) => total + BigInt(constructionRefund(cost, rules)), 0n));
 }
 
 export function propertyValue(snapshot: GameSnapshot, id: PlayerId): number {

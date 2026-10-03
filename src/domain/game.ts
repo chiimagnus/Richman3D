@@ -6,7 +6,7 @@ import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot } from "./restore";
-import { constructionCost, initialProperties, netAssets, propertyTile, rentFor } from "./economy";
+import { constructionCost, initialProperties, liquidityOption, netAssets, propertyTile, rentFor } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
 
@@ -43,7 +43,8 @@ export class Game {
       completedRounds: 0,
       turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
-        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, constructionSpent: 0 },
+        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, constructionSpent: 0,
+          constructionRefunds: 0, constructionSoldCost: 0, mortgageIncome: 0, mortgagePrincipalRepaid: 0, mortgageFeesPaid: 0 },
       })),
       turnPlayerId: turnOrder[0]!,
       decision: { kind: "awaiting_roll", actorId: turnOrder[0]! },
@@ -69,16 +70,18 @@ export class Game {
 
   apply(command: Command): ApplyResult {
     if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
-        !["roll", "buy", "skip", "upgrade"].includes(command.kind) ||
-        command.kind === "upgrade" && typeof command.propertyId !== "string" ||
+        !["roll", "buy", "skip", "upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ||
+        !["roll", "buy", "skip"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
     }
+    const keys = ["actor", "kind", "expectedRevision", ...(["roll", "buy", "skip"].includes(command.kind) ? [] : ["propertyId"])];
+    if (Object.keys(command).length !== keys.length || keys.some((key) => !Object.hasOwn(command, key))) return { ok: false, reason: "invalid_command" };
     const before = this.state;
     if (command.expectedRevision !== before.revision) return { ok: false, reason: "stale_revision" };
     let result: Extract<ApplyResult, { ok: true }>;
     try {
-      if (!legalCommands(before, command.actor).some((action) => action.kind === command.kind && (action.kind !== "upgrade" || command.kind === "upgrade" && action.propertyId === command.propertyId))) return { ok: false, reason: "illegal_action" };
+      if (!legalCommands(before, command.actor).some((action) => action.kind === command.kind && (!("propertyId" in action) || "propertyId" in command && action.propertyId === command.propertyId))) return { ok: false, reason: "illegal_action" };
       const players = before.players.map((player) => ({ ...player, statistics: { ...player.statistics } }));
       const properties = { ...before.properties };
       const random = new RuleRandom(before.random);
@@ -144,6 +147,14 @@ export class Game {
         player.cash = cashAfterChange(player.cash, -cost);
         properties[tile.id] = { ...property, level, constructionCosts: [...property.constructionCosts, cost] };
         events.push({ kind: "upgraded", actor: player.id, propertyId: tile.id, level, cost });
+      } else if ("propertyId" in command) {
+        const option = liquidityOption(before, player.id, command.propertyId, command.kind);
+        const property = properties[command.propertyId]!;
+        player.cash = cashAfterChange(player.cash, option.proceeds - option.cost);
+        properties[command.propertyId] = option.nextProperty;
+        if (command.kind === "sell_building") events.push({ kind: "building_sold", actor: player.id, propertyId: command.propertyId, level: option.nextProperty.level as 0 | 1 | 2, cost: option.originalCost, refund: option.proceeds });
+        else if (command.kind === "mortgage") events.push({ kind: "mortgaged", actor: player.id, propertyId: command.propertyId, principal: option.proceeds });
+        else events.push({ kind: "redeemed", actor: player.id, propertyId: command.propertyId, principal: property.mortgagePrincipal, fee: option.loss });
       } else {
         const property = pendingProperty(before);
         if (!property) throw new Error("待购地产不存在");
@@ -164,6 +175,15 @@ export class Game {
       for (const event of events) {
         if (event.kind === "purchased") record(event.actor, "purchases", event.price);
         if (event.kind === "upgraded") record(event.actor, "constructionSpent", event.cost);
+        if (event.kind === "building_sold") {
+          record(event.actor, "constructionSoldCost", event.cost);
+          record(event.actor, "constructionRefunds", event.refund);
+        }
+        if (event.kind === "mortgaged") record(event.actor, "mortgageIncome", event.principal);
+        if (event.kind === "redeemed") {
+          record(event.actor, "mortgagePrincipalRepaid", event.principal);
+          record(event.actor, "mortgageFeesPaid", event.fee);
+        }
         if (event.kind === "rolled") {
           const action = event.result;
           record(action.playerId, "startBonus", action.startBonus);
@@ -187,7 +207,7 @@ export class Game {
         const result = matchResult(candidate, "last_survivor");
         decision = { kind: "game_over", result };
         events.push({ kind: "ended", result });
-      } else if (decision.kind === "awaiting_roll" && command.kind !== "upgrade") {
+      } else if (decision.kind === "awaiting_roll" && ["roll", "buy", "skip"].includes(command.kind)) {
         ({ turnPlayerId, completedRounds } = nextTurn(candidate));
         if (completedRounds >= before.rules.roundLimit) {
           const result = matchResult(candidate, "round_limit");

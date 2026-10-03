@@ -12,7 +12,6 @@ export function AssetPanel({ assets, initialPlayer, language, management, onComm
   const copy = messages(language).assets;
   const current = assets.find((asset) => asset.player.id === selected)!;
   const players = assets.map((asset) => asset.player);
-  const build = messages(language).construction;
   return <section className={styles.panel}>
     <button onClick={onClose}>{copy.close}</button>
     <label className={styles.row}>{copy.player}<select value={selected} onChange={(event) => setSelected(event.currentTarget.value as PlayerId)}>
@@ -28,27 +27,40 @@ export function AssetPanel({ assets, initialPlayer, language, management, onComm
     </dl>
     <h3>{copy.properties}</h3>
     {current.properties.length ? current.properties.map((property) => {
-      const option = management?.actor === selected ? management.properties[property.tile.id] : undefined;
-      const reason = option?.reason ? build.reasons[option.reason] : option && !option.command ? build.unavailable : null;
+      const options = management?.actor === selected ? management.properties[property.tile.id] : undefined;
       return <details key={property.tile.id} name="asset-property">
         <summary>{tileName(language, property.tile)}</summary>
         <PropertyDetails property={property} players={players} language={language} />
-        {option && <section className={styles.operation} aria-label={build.title}>
-          {option.nextRent !== null && <>
-            <p>{formatMessage(build.rentChange, { current: formatCash(language, option.currentRent), next: formatCash(language, option.nextRent) })}</p>
-            <dl className={styles.values}>
-              <dt>{build.cost}</dt><dd>{formatCash(language, option.cost)}</dd>
-              <dt>{build.remaining}</dt><dd>{formatCash(language, option.remainingCash)}</dd>
-            </dl>
-          </>}
-          <button className={styles.primary} aria-describedby={`build-reason-${property.tile.id}`} disabled={!option.command} onClick={(event) => {
-            if (!option.command) return;
-            event.currentTarget.closest("details")?.querySelector("summary")?.focus({ preventScroll: true });
-            onCommand(option.command);
-          }}>{formatMessage(build.upgrade, { cost: formatCash(language, option.cost) })}</button>
-          <p id={`build-reason-${property.tile.id}`}>{reason}</p>
-        </section>}
+        {options && <PropertyOperations options={options} propertyId={property.tile.id} language={language} onCommand={onCommand} />}
       </details>;
     }) : <p>{copy.empty}</p>}
+  </section>;
+}
+
+function PropertyOperations({ options, propertyId, language, onCommand }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void }) {
+  const [kind, setKind] = useState<keyof typeof options>("upgrade");
+  const option = options[kind];
+  const build = messages(language).construction;
+  const copy = messages(language).liquidity;
+  const reasons = { ...build.reasons, ...copy.reasons };
+  const reason = option.reason ? reasons[option.reason] : !option.command ? build.unavailable : null;
+  const preview = option.reason === null && option.nextRent !== null;
+  return <section className={styles.operation} aria-label={copy.title}>
+    <label className={styles.row}>{copy.operation}<select value={kind} onChange={(event) => setKind(event.currentTarget.value as keyof typeof options)}>
+      {Object.entries(copy.choices).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+    </select></label>
+    {preview && <p>{formatMessage(build.rentChange, { current: formatCash(language, option.currentRent), next: formatCash(language, option.nextRent!) })}</p>}
+    {preview && <dl className={styles.values}>
+      <dt>{kind === "upgrade" ? build.cost : kind === "redeem" ? copy.cost : copy.proceeds}</dt><dd>{formatCash(language, kind === "upgrade" || kind === "redeem" ? option.cost : option.proceeds)}</dd>
+      <dt>{copy.remaining}</dt><dd>{formatCash(language, option.remainingCash)}</dd>
+      {option.loss > 0 && <><dt>{copy.loss}</dt><dd>{formatCash(language, option.loss)}</dd></>}
+    </dl>}
+    {kind === "mortgage" && preview && <p>{copy.mortgageEffect}</p>}
+    <button className={styles.primary} aria-describedby={`property-reason-${propertyId}`} disabled={!option.command} onClick={(event) => {
+      if (!option.command) return;
+      event.currentTarget.closest("details")?.querySelector("summary")?.focus({ preventScroll: true });
+      onCommand(option.command);
+    }}>{kind === "upgrade" ? formatMessage(build.upgrade, { cost: formatCash(language, option.cost) }) : formatMessage(copy.actions[kind], { amount: formatCash(language, kind === "redeem" ? option.cost : option.proceeds) })}</button>
+    <p id={`property-reason-${propertyId}`}>{reason}</p>
   </section>;
 }

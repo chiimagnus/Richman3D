@@ -5,6 +5,14 @@ import type { Language } from "../i18n/language";
 export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
+    case "building_sold":
+    case "mortgaged":
+    case "redeemed": {
+      const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId)!;
+      return formatMessage(copy[event.kind], { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile),
+        amount: formatCash(language, event.kind === "building_sold" ? event.refund : event.principal),
+        fee: formatCash(language, event.kind === "redeemed" ? event.fee : 0) });
+    }
     case "rolled": return rollStatus(language, event.result.playerId, event.result, snapshot) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: event.result.startBonus }) : "");
     case "purchased":
     case "upgraded":

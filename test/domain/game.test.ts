@@ -2,9 +2,9 @@ import { QUICK_RULES } from "../../src/domain/rules";
 import { createMatchConfig } from "../../src/domain/config";
 import { describe, expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
-import type { Command, RollResult } from "../../src/domain/types";
+import type { RollResult } from "../../src/domain/types";
 
-function act(game: Game, kind: Exclude<Command["kind"], "upgrade">) {
+function act(game: Game, kind: "roll" | "buy" | "skip") {
   const snapshot = game.snapshot;
   const result = game.apply({ kind, actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision });
   if (!result.ok) throw new Error(result.reason);

@@ -28,6 +28,11 @@ export type FinancialStats = {
   readonly chanceExpense: number;
   readonly purchases: number;
   readonly constructionSpent: number;
+  readonly constructionRefunds: number;
+  readonly constructionSoldCost: number;
+  readonly mortgageIncome: number;
+  readonly mortgagePrincipalRepaid: number;
+  readonly mortgageFeesPaid: number;
 };
 export type ChanceCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
 
@@ -99,12 +104,15 @@ export type RollResult = {
 export type Command = {
   readonly actor: PlayerId;
   readonly expectedRevision: number;
-} & ({ readonly kind: "roll" | "buy" | "skip" } | { readonly kind: "upgrade"; readonly propertyId: string });
+} & ({ readonly kind: "roll" | "buy" | "skip" } | { readonly kind: "upgrade" | "sell_building" | "mortgage" | "redeem"; readonly propertyId: string });
 
 export type GameEvent =
   | { readonly kind: "rolled"; readonly result: RollResult }
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
   | { readonly kind: "upgraded"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 1 | 2 | 3; readonly cost: number }
+  | { readonly kind: "building_sold"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 0 | 1 | 2; readonly cost: number; readonly refund: number }
+  | { readonly kind: "mortgaged"; readonly actor: PlayerId; readonly propertyId: string; readonly principal: number }
+  | { readonly kind: "redeemed"; readonly actor: PlayerId; readonly propertyId: string; readonly principal: number; readonly fee: number }
   | { readonly kind: "skipped"; readonly actor: PlayerId; readonly propertyId: string }
   | { readonly kind: "turn"; readonly actor: PlayerId }
   | { readonly kind: "ended"; readonly result: MatchResult };
