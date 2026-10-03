@@ -1,0 +1,13 @@
+.row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; padding-block: 14px; border-bottom: 1px solid var(--border); line-height: 1.5; }
+.row select { min-width: 0; max-width: 100%; width: 240px; }
+.row input { appearance: none; position: relative; flex: 0 0 44px; width: 44px; height: 26px; margin: 9px 0; border: 1px solid var(--border); border-radius: 20px; background: #234453; cursor: pointer; }
+.row input::before { content: ""; position: absolute; inset: 3px auto auto 3px; width: 18px; height: 18px; border-radius: 50%; background: #d0e0e7; }
+.row input:checked { background: var(--accent); border-color: transparent; }
+.row input:checked::before { transform: translateX(18px); background: #09212c; }
+.done { background: var(--primary); color: #09212c; border-color: transparent; }
+.look { width: 100%; margin-top: 16px; }
+.more { margin-top: 20px; }
+.more > button { width: 100%; }
+.more details > button { margin: 4px 4px 4px 0; }
+.more details > p { color: var(--muted); line-height: 1.6; }
+@media (forced-colors: active) { .row input { appearance: auto; } .row input::before { display: none; } }

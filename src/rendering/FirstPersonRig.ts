@@ -3,6 +3,8 @@ import { PointerLockControls } from "three/addons/controls/PointerLockControls.j
 
 import { boardDirection, boardPosition, worldPath } from "./boardGeometry";
 import { animatePositions } from "./motion";
+import { MotionClock } from "./MotionClock";
+import type { MapDefinition } from "../domain/board";
 
 const EYE_HEIGHT = 1.72;
 
@@ -11,13 +13,15 @@ export class FirstPersonRig {
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
-    canvas: HTMLCanvasElement,
+    private readonly canvas: HTMLCanvasElement,
+    private readonly clock: MotionClock,
+    private readonly map: MapDefinition,
   ) {
     this.controls = new PointerLockControls(camera, canvas);
   }
 
   setPosition(index: number): void {
-    const position = boardPosition(index);
+    const position = boardPosition(this.map, index);
     this.camera.position.set(position.x, EYE_HEIGHT, position.z);
     this.faceBoardDirection(index);
   }
@@ -25,16 +29,18 @@ export class FirstPersonRig {
   async moveAlong(
     path: readonly number[],
     onStep?: () => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     const points = [
       this.camera.position.clone(),
-      ...worldPath(path, EYE_HEIGHT),
+      ...worldPath(this.map, path, EYE_HEIGHT),
     ];
     const previous = this.camera.position.clone();
     const movement = new THREE.Vector3();
     const lookTarget = new THREE.Vector3();
 
-    await animatePositions(
+    const finished = await animatePositions(
+      this.clock,
       points,
       (position, frame) => {
         this.camera.position.copy(position);
@@ -53,11 +59,11 @@ export class FirstPersonRig {
 
         previous.copy(position);
       },
-      { onSegment: () => onStep?.() },
+      { onSegment: () => onStep?.(), signal },
     );
 
     const destination = path.at(-1);
-    if (destination !== undefined && !this.controls.isLocked) {
+    if (finished && destination !== undefined && !this.controls.isLocked) {
       this.faceBoardDirection(destination);
     }
   }
@@ -66,9 +72,19 @@ export class FirstPersonRig {
     this.controls.pointerSpeed = pointerSpeed;
   }
 
-  lock(): void {
-    if (!this.controls.isLocked) {
-      this.controls.lock();
+  setEnabled(enabled: boolean): void { this.controls.enabled = enabled; if (!enabled) this.unlock(); }
+
+  dispose(): void {
+    this.unlock();
+    this.controls.dispose();
+  }
+
+  lock(onFailure: () => void): void {
+    if (this.controls.enabled && !this.controls.isLocked) {
+      try {
+        const request = this.canvas.requestPointerLock();
+        if (request) void request.catch(onFailure);
+      } catch { onFailure(); }
     }
   }
 
@@ -79,23 +95,11 @@ export class FirstPersonRig {
   }
 
   private faceBoardDirection(index: number): void {
-    const direction = boardDirection(index);
+    const direction = boardDirection(this.map, index);
     const lookTarget = this.camera.position
       .clone()
       .add(new THREE.Vector3(direction.x, 0, direction.z));
     this.camera.lookAt(lookTarget);
   }
 
-  onLockChange(listener: (locked: boolean) => void): () => void {
-    const handleLock = (): void => listener(true);
-    const handleUnlock = (): void => listener(false);
-
-    this.controls.addEventListener("lock", handleLock);
-    this.controls.addEventListener("unlock", handleUnlock);
-
-    return () => {
-      this.controls.removeEventListener("lock", handleLock);
-      this.controls.removeEventListener("unlock", handleUnlock);
-    };
-  }
 }

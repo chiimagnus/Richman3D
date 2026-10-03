@@ -2,13 +2,16 @@ import * as THREE from "three";
 
 import { boardPosition, worldPath } from "./boardGeometry";
 import { animatePositions } from "./motion";
-
-const PAWN_OFFSET = new THREE.Vector3(0.72, 0.18, -0.72);
+import { MotionClock } from "./MotionClock";
+import { disposeObject } from "./disposeObject";
+import type { MapDefinition } from "../domain/board";
 
 export class PlayerView {
   private readonly object = new THREE.Group();
+  private readonly offset: THREE.Vector3;
 
-  constructor(scene: THREE.Scene, color: string) {
+  constructor(scene: THREE.Scene, color: string, private readonly clock: MotionClock, private readonly map: MapDefinition, seatIndex: number) {
+    this.offset = new THREE.Vector3(seatIndex % 2 === 0 ? -0.72 : 0.72, 0.18, seatIndex < 2 ? -0.72 : 0.72);
     const body = new THREE.Mesh(
       new THREE.CylinderGeometry(0.48, 0.62, 1.25, 20),
       new THREE.MeshStandardMaterial({
@@ -47,27 +50,32 @@ export class PlayerView {
   }
 
   setPosition(index: number): void {
-    this.object.position.copy(boardPosition(index).add(PAWN_OFFSET));
+    this.object.position.copy(boardPosition(this.map, index).add(this.offset));
   }
 
   async moveAlong(
     path: readonly number[],
     onStep?: () => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     const points = [
       this.object.position.clone(),
-      ...worldPath(path, PAWN_OFFSET.y).map((position) =>
-        position.add(new THREE.Vector3(PAWN_OFFSET.x, 0, PAWN_OFFSET.z)),
+      ...worldPath(this.map, path, this.offset.y).map((position) =>
+        position.add(new THREE.Vector3(this.offset.x, 0, this.offset.z)),
       ),
     ];
 
     await animatePositions(
+      this.clock,
       points,
       (position, frame) => {
         this.object.position.copy(position);
         this.object.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.24;
       },
-      { onSegment: () => onStep?.() },
+      { onSegment: () => onStep?.(), signal },
     );
   }
+
+  dispose(): void { disposeObject(this.object); }
+  setVisible(visible: boolean): void { this.object.visible = visible; }
 }

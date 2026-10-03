@@ -1,0 +1,11 @@
+.panel { min-width: 0; width: 100%; overflow-wrap: anywhere; }
+.row { display: grid; gap: 8px; margin-block: 16px; }
+.row select { width: 100%; min-width: 0; min-height: 44px; }
+.values { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; }
+.values dt { color: var(--muted); }
+.values dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.panel details { border-top: 1px solid var(--border); padding-block: 12px; }
+.panel summary { cursor: pointer; min-height: 44px; overflow-wrap: anywhere; }
+.history { padding-inline-start: 24px; overflow-wrap: anywhere; }
+.history li { margin-block: 16px; }
+.history p { margin-block: 4px; }

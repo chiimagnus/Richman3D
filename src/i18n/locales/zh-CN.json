@@ -1,91 +1,58 @@
 {
+  "navigation": { "loading": "正在载入对局…", "retry": "重新加载菜单", "loadFailed": "对局加载失败，重新加载菜单可重试下载，已有存档没有被删除。" },
   "players": {
-    "human": "你",
-    "bot": "城市玩家"
+    "p1": "玩家一",
+    "p2": "城市玩家",
+    "p3": "玩家3",
+    "p4": "玩家4"
   },
   "worldAria": "3D 大富翁棋盘",
   "hud": {
     "balancesAria": "玩家资金",
     "recentDiceAria": "最近一次骰子",
     "roll": "掷骰子",
+    "rollKey": "空格",
     "buy": "购买",
     "buyWithPrice": "购买 · {price}",
     "skip": "跳过"
   },
   "settings": {
     "title": "设置",
-    "returnToGame": "返回游戏",
-    "returnToGameAria": "返回游戏",
+    "returnToGame": "完成",
     "sound": "声音",
+    "view": "视角 · V",
+    "lookAround": "鼠标环视 · L",
+    "match": "对局",
     "sensitivity": "鼠标灵敏度",
-    "sensitivityAria": "第一人称鼠标灵敏度",
     "low": "低",
     "standard": "标准",
     "high": "高",
     "language": "语言",
-    "languageAria": "游戏语言",
     "languageOptions": {
       "zh-CN": "中文",
       "en": "English"
     }
   },
   "status": {
-    "initial": "你的回合，掷骰开始。",
-    "rolling": "正在掷骰…",
     "insufficientFunds": "资金不足，无法购买这块地产。",
-    "purchased": "已购买「{propertyName}」。",
-    "skipped": "已跳过「{propertyName}」。",
-    "botActing": "城市玩家正在行动…",
-    "yourTurn": "轮到你了。",
-    "botPurchased": "城市玩家购买了「{propertyName}」。",
-    "botSkipped": "城市玩家跳过了「{propertyName}」。",
+    "purchased": "{actor}支付{amount}购买了「{propertyName}」。",
+    "skipped": "{actor}跳过了「{propertyName}」。",
+    "botActing": "{actor}行动中…",
+    "yourTurn": "轮到{actor}了。",
     "winner": "{playerName}获胜。",
-    "gameOver": "游戏结束。",
-    "rollPropertyAvailable": "{actor}移动 {steps} 格，这块地产可以购买。",
-    "rollRent": "{actor}移动 {steps} 格，支付租金 {amount}。",
+    "rollPropertyAvailable": "{actor}移动 {steps} 格，抵达可购买的「{propertyName}」。",
+    "rollRent": "{actor}移动 {steps} 格，为「{propertyName}」向{owner}支付租金 {amount}。",
     "rollTax": "{actor}移动 {steps} 格，支付费用 {amount}。",
     "rollChance": "{actor}移动 {steps} 格：{message}",
-    "rollOwned": "{actor}移动 {steps} 格，回到自己的地产。",
+    "rollOwned": "{actor}移动 {steps} 格，回到自己的「{propertyName}」。",
     "rollStart": "{actor}移动 {steps} 格，回到起点。"
   },
   "feedback": {
-    "yourTurnKicker": "YOUR TURN",
-    "rivalTurnKicker": "RIVAL TURN",
-    "yourTurnTitle": "轮到你了",
-    "rivalTurnTitle": "城市玩家行动",
     "diceActor": "{actor}掷骰",
-    "diceAnnouncement": "{actor}掷出 {left} 加 {right}，共 {total}",
-    "passedStart": "经过起点 +¥200 · ",
-    "moved": "{actor}移动 {steps} 格",
-    "propertyAvailable": "「{propertyName}」待售",
-    "salePrice": "售价 ¥{price}",
-    "propertyOwned": "回到「{propertyName}」",
-    "ownProperty": "这是自己的地产",
-    "rentPaid": "支付租金 -¥{amount}",
-    "landedOn": "停在「{propertyName}」",
-    "feePaid": "支付费用 -¥{amount}",
-    "fundsGain": "资金 +¥{amount}",
-    "fundsLoss": "资金 -¥{amount}",
-    "backToStart": "回到中央起点",
-    "continueNextTurn": "继续下一回合",
-    "moveCompleted": "{actor}完成移动",
-    "propertyAcquiredKicker": "PROPERTY ACQUIRED",
-    "bought": "{actor}买下「{propertyName}」",
-    "dealPrice": "成交价 ¥{price}",
-    "propertyKicker": "PROPERTY",
-    "skipped": "{actor}跳过「{propertyName}」",
-    "propertyUnowned": "地产保持无主状态",
-    "victoryKicker": "VICTORY",
-    "gameOverKicker": "GAME OVER",
-    "humanWonTitle": "你赢了",
-    "botWonTitle": "城市玩家获胜",
-    "humanWonDetail": "对手已经破产。",
-    "botWonDetail": "你的资金已经跌破 0。",
-    "gameOverDetail": "本局已经结束。",
     "restart": "再来一局"
   },
   "board": {
-    "startDetail": "+200 / 圈",
+    "startDetail": "+{amount} / 圈",
     "chanceDetail": "随机事件",
     "propertyDetail": "售价 {price} · 租金 {rent}",
     "tiles": {
@@ -112,9 +79,78 @@
     }
   },
   "chanceCards": {
-    "innovation-bonus": "城市创新奖金 +120",
-    "maintenance-cost": "临时维修支出 -90",
-    "community-event": "社区活动收益 +60",
-    "traffic-fine": "交通违章罚款 -50"
+    "innovation-bonus": "城市创新奖金 +{amount}",
+    "maintenance-cost": "临时维修支出 {amount}",
+    "community-event": "社区活动收益 +{amount}",
+    "traffic-fine": "交通违章罚款 {amount}"
+  },
+  "setup": {
+    "title": "新对局",
+    "seats": "对局人数", "seatOption": "{count}席", "computerSeat": "电脑{number}的名字",
+    "humans": "本地真人", "humanOption": "{count}名本地真人", "humanSeat": "本地玩家{number}的名字",
+    "turnOrder": "固定轮序：{players}", "spectating": "你已淘汰，可继续观看或从设置返回主菜单。跳过动画仅加速演出。",
+    "length": "对局长度", "quick": "快速 · {rounds}轮", "standard": "标准 · {rounds}轮",
+    "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项", "city": "城市 · {spaces}格 · 普通电脑",
+    "color": "{player} · 棋子颜色", "colors": { "cyan": "青色", "amber": "琥珀", "violet": "紫色", "emerald": "绿色" },
+    "launch": "开始对局", "cancel": "取消", "nameError": "名字需为1–16个可见字符，留空则使用默认名。",
+    "round": "第{round} / {limit}轮", "tied": "{playerName}并列获胜。", "nameSeparator": "、",
+    "round_limit": "已完成整轮上限。按净资产、再按现金排名；仍相同则并列。",
+    "last_survivor": "只剩一名未破产玩家。", "overview": "棋盘总览", "firstPerson": "本人第一人称"
+  },
+  "handover": { "title": "交接设备", "instruction": "请把设备交给下一位玩家，接手后再确认。确认前游戏快捷键不会推进对局。", "pawn": "下一位玩家与棋子：", "seat": "席位{number}", "confirm": "我已接手" },
+  "results": {
+    "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
+    "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
+    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出" },
+    "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
+  },
+  "storage": {
+    "transfer": {
+      "title": "导入与恢复存档", "limit": "选择不超过 1 MiB 的 .richman.json 文件。读取与校验不会替换当前对局。",
+      "file": "对局文件", "backup": "预览上一有效备份", "raw": "导出当前原始数据", "working": "正在处理存档……",
+      "preview": "存档预览", "savedAt": "快照保存时间：{time}", "confirm": "确认替换存档", "cancel": "取消并返回",
+      "replace": "确认将替换当前存档及本页未保存进度，请先导出需要保留的数据。有效的当前快照成为备份；损坏数据仅在你确认后替换。之后从主菜单点击继续。",
+      "imported": "此局将标记为导入来源，不作为正式挑战成绩。来源标记不是反作弊证明。",
+      "errors": {
+        "unavailable": "无法读取文件或访问本地存储。当前对局保留，请在可访问后重试。",
+        "invalid": "数据无效或无法原样导出。当前对局保留，请选择有效文件或备份。",
+        "incompatible": "文件的格式、地图或规则版本不受支持。请保留原文件，它没有替换当前对局。",
+        "conflict": "其他页面已更改存档，本次没有替换。请重新读取预览后再确认。",
+        "too_large": "文件超过 1 MiB，尚未读取。请选择更小的对局文件。",
+        "backupUnavailable": "没有有效且受支持的备份。当前数据保留，请导出原始数据或选择有效文件。"
+      }
+    },
+    "export": "导出对局文件", "exportWarning": "文件包含玩家名字与完整局面；除非有意分享，请妥善保管。",
+    "continue": "继续已保存对局", "results": "查看已保存结算", "problemTitle": "对局保存",
+    "unsaved": "本局有尚未保存的进度，之前的存档仍然保留。",
+    "conflict": "另一页面已更改存档，本页已暂停，不能覆盖较新的对局。",
+    "loadLatest": "载入最新存档", "retry": "重试保存", "continueUnsaved": "继续但不保存",
+    "discard": "放弃未保存进度并返回", "discardWarning": "放弃只会丢失本页未保存进度，不会删除已有存档。",
+    "preserved": "已提交的局面已保存在本地。返回主菜单可保留对局；再来一局会替换它。",
+    "replaceWarning": "开始此局将替换当前存档，前一有效快照会保留为备份。",
+    "unavailable": "本地对局存储不可用，可以开局并选择不保存继续。",
+    "invalid": "存档损坏或版本不受支持，原数据没有被删除。"
+  },
+  "assets": {
+    "title": "公开资产", "open": "查看{player}的公开资产", "player": "查看席位", "seat": "席位{number} · {player}",
+    "cash": "现金", "value": "地产账面价值", "net": "净资产", "rent": "当前租金", "owner": "归属", "bank": "银行",
+    "liquidation": "资产可清算收入", "level": "建筑等级", "mortgagePrincipal": "未偿抵押本金",
+    "price": "购买价格", "properties": "拥有的地产", "empty": "没有地产。", "details": "查看地产详情", "close": "关闭资产查看",
+    "bankrupt": "已淘汰，地产已归还银行。", "publicOnly": "仅展示公开资产，不包含手牌或未来随机结果。"
+  },
+  "history": { "title": "行动历史", "count": "保留最近{limit}条事件，当前{count}条。", "empty": "尚无行动。", "revision": "行动{revision}", "back": "关闭历史" },
+  "runtime": {
+    "title": "Richman 3D",
+    "start": "开始游戏",
+    "leave": "主菜单",
+    "paused": "已暂停，已结算的行动已保留。",
+    "presenting": "{actor}正在移动…",
+    "settling": "{actor}的行动结果",
+    "purchaseDecision": "是否以 ¥{price} 购买「{propertyName}」？租金 ¥{rent}。",
+    "skipAnimation": "跳过动画",
+    "pointerLockFailed": "鼠标锁定被拒绝，仍可使用所有游戏按钮。",
+    "presentation_failed": "3D 画面不可用，已提交的局面已保留。可以返回主菜单。",
+    "command_rejected": "此行动已失效，请选择当前可用行动。",
+    "passedStart": "经过起点，获得 ¥{amount}。"
   }
 }

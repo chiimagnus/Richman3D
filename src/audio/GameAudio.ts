@@ -1,12 +1,44 @@
-import type { LandingResult, PlayerId } from "../domain/game";
+import type { LandingResult } from "../domain/types";
 
 export class GameAudio {
   private context: AudioContext | null = null;
+  private master: GainNode | null = null;
+  private readonly nodes = new Map<OscillatorNode, GainNode>();
+  private disposed = false;
 
   constructor(private enabled = true) {}
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+    if (!enabled) this.stop();
+    if (this.master && this.context) this.master.gain.setValueAtTime(enabled ? 1 : 0, this.context.currentTime);
+  }
+
+  get activeNodeCount(): number { return this.nodes.size; }
+
+  unlock(): void {
+    const context = this.audioContext(true);
+    try { if (context) void context.resume().catch(() => undefined); } catch { }
+  }
+
+  stop(): void {
+    for (const [oscillator, gain] of this.nodes) {
+      oscillator.onended = null;
+      try { oscillator.stop(); } catch { }
+      oscillator.disconnect();
+      gain.disconnect();
+    }
+    this.nodes.clear();
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stop();
+    this.master?.disconnect();
+    if (this.context) void this.context.close().catch(() => undefined);
+    this.context = null;
+    this.master = null;
   }
 
   playRoll(): void {
@@ -59,8 +91,8 @@ export class GameAudio {
     ]);
   }
 
-  playTurn(playerId: PlayerId): void {
-    if (playerId === "human") {
+  playTurn(isLocal: boolean): void {
+    if (isLocal) {
       this.sequence([
         [440, 0, 0.025],
         [660, 0.09, 0.03],
@@ -73,8 +105,8 @@ export class GameAudio {
     }
   }
 
-  playGameOver(winnerId: PlayerId | null): void {
-    if (winnerId === "human") {
+  playGameOver(localWon: boolean): void {
+    if (localWon) {
       this.sequence([
         [440, 0, 0.04],
         [554, 0.12, 0.045],
@@ -135,20 +167,28 @@ export class GameAudio {
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
 
     oscillator.connect(gain);
-    gain.connect(context.destination);
+    gain.connect(this.master!);
+    this.nodes.set(oscillator, gain);
+    oscillator.onended = () => {
+      this.nodes.delete(oscillator);
+      oscillator.disconnect();
+      gain.disconnect();
+    };
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
   }
 
-  private audioContext(): AudioContext | null {
-    if (!this.enabled) {
+  private audioContext(create = false): AudioContext | null {
+    if (!this.enabled || this.disposed) {
       return null;
     }
 
     try {
-      this.context ??= new AudioContext();
-      if (this.context.state === "suspended") {
-        void this.context.resume().catch(() => undefined);
+      if (!this.context) {
+        if (!create) return null;
+        this.context = new AudioContext();
+        this.master = this.context.createGain();
+        this.master.connect(this.context.destination);
       }
       return this.context;
     } catch {

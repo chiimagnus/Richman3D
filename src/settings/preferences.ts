@@ -1,5 +1,6 @@
+import { isLanguage, type Language } from "../i18n/language";
+
 export type LookSensitivity = "low" | "standard" | "high";
-export type Language = "zh-CN" | "en";
 
 export type GamePreferences = {
   readonly soundEnabled: boolean;
@@ -18,10 +19,10 @@ export const DEFAULT_PREFERENCES: GamePreferences = {
 };
 
 export function loadPreferences(
-  storage: PreferencesStorage = window.localStorage,
+  storage?: PreferencesStorage,
 ): GamePreferences {
   try {
-    const raw = storage.getItem(STORAGE_KEY);
+    const raw = (storage ?? window.localStorage).getItem(STORAGE_KEY);
     if (!raw) {
       return { ...DEFAULT_PREFERENCES };
     }
@@ -50,10 +51,10 @@ export function loadPreferences(
 
 export function savePreferences(
   preferences: GamePreferences,
-  storage: PreferencesStorage = window.localStorage,
+  storage?: PreferencesStorage,
 ): void {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    (storage ?? window.localStorage).setItem(STORAGE_KEY, JSON.stringify(preferences));
   } catch {
     // 浏览器拒绝持久化时，当前会话仍继续使用内存中的设置。
   }
@@ -74,10 +75,6 @@ export function lookSensitivityScale(
 
 function isLookSensitivity(value: unknown): value is LookSensitivity {
   return value === "low" || value === "standard" || value === "high";
-}
-
-export function isLanguage(value: unknown): value is Language {
-  return value === "zh-CN" || value === "en";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

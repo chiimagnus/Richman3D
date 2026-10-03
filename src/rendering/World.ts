@@ -1,23 +1,32 @@
 import * as THREE from "three";
 
-import type { GameSnapshot, LandingResult } from "../domain/game";
+import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
+import type { MapDefinition } from "../domain/board";
+import type { RuleSet } from "../domain/rules";
+import { observerId } from "../domain/config";
 import { messages } from "../i18n";
-import type { Language } from "../settings/preferences";
+import type { Language } from "../i18n/language";
 import { BoardView } from "./BoardView";
-import { FirstPersonRig } from "./FirstPersonRig";
+import { CameraRig, type CameraView } from "./CameraRig";
 import { PlayerView } from "./PlayerView";
+import { MotionClock } from "./MotionClock";
+import { disposeObject } from "./disposeObject";
 
 export class World {
   readonly canvas: HTMLCanvasElement;
 
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(68, 1, 0.08, 180);
   private readonly renderer: THREE.WebGLRenderer;
   private readonly board: BoardView;
-  private readonly bot: PlayerView;
-  private readonly firstPerson: FirstPersonRig;
+  private readonly players = new Map<PlayerId, PlayerView>();
+  private readonly cameraRig: CameraRig;
+  private observer: PlayerId | null;
+  private readonly clock = new MotionClock();
+  private lastTime: number | null = null;
+  private disposed = false;
 
-  constructor(container: HTMLElement, language: Language) {
+  constructor(container: HTMLElement, language: Language, config: MatchConfig, map: MapDefinition, rules: RuleSet, private readonly onFailure: () => void = () => {}) {
+    this.observer = observerId(config);
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
@@ -26,7 +35,11 @@ export class World {
     this.canvas.className = "game-canvas";
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("aria-label", messages(language).worldAria);
+    this.canvas.setAttribute("aria-keyshortcuts", "L");
     container.append(this.canvas);
+
+    let disconnectControls = () => {};
+    try {
 
     this.scene.background = new THREE.Color(0x07111a);
     this.scene.fog = new THREE.FogExp2(0x07111a, 0.016);
@@ -39,27 +52,32 @@ export class World {
     this.renderer.toneMappingExposure = 1.05;
 
     this.addEnvironment();
-    this.board = new BoardView(this.scene, language);
-    this.bot = new PlayerView(this.scene, "#ffb75e");
-    this.firstPerson = new FirstPersonRig(this.camera, this.canvas);
+    this.board = new BoardView(this.scene, language, map, config, rules);
+    config.players.forEach((player, index) => this.players.set(player.id, new PlayerView(this.scene, player.color, this.clock, map, index)));
+    this.cameraRig = new CameraRig(map, this.canvas, this.clock);
+    disconnectControls = () => this.cameraRig.dispose();
+    this.setView(window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
 
     this.resize();
     window.addEventListener("resize", this.resize);
     this.renderer.setAnimationLoop(this.render);
+    } catch (error) {
+      disconnectControls();
+      window.removeEventListener("resize", this.resize);
+      disposeObject(this.scene);
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+      this.canvas.remove();
+      throw error;
+    }
   }
 
   sync(snapshot: GameSnapshot): void {
     this.board.syncOwnership(snapshot);
 
-    const human = snapshot.players.find((player) => player.id === "human");
-    const bot = snapshot.players.find((player) => player.id === "bot");
-
-    if (human) {
-      this.firstPerson.setPosition(human.position);
-    }
-
-    if (bot) {
-      this.bot.setPosition(bot.position);
+    for (const player of snapshot.players) {
+      this.players.get(player.id)?.setPosition(player.position);
+      if (player.id === this.observer) this.cameraRig.firstPerson.setPosition(player.position);
     }
   }
 
@@ -67,12 +85,26 @@ export class World {
     this.board.syncOwnership(snapshot);
   }
 
-  moveHuman(path: readonly number[], onStep?: () => void): Promise<void> {
-    return this.firstPerson.moveAlong(path, onStep);
+  setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
+    if (id === this.observer) return;
+    this.unlockFirstPerson();
+    this.observer = id;
+    const player = snapshot.players.find((candidate) => candidate.id === id);
+    if (player) this.cameraRig.firstPerson.setPosition(player.position);
+    this.setView(id === null ? "overview" : this.cameraRig.mode);
   }
 
-  moveBot(path: readonly number[], onStep?: () => void): Promise<void> {
-    return this.bot.moveAlong(path, onStep);
+  async movePlayer(id: PlayerId, path: readonly number[], onStep?: () => void, signal?: AbortSignal): Promise<void> {
+    await Promise.all([
+      this.players.get(id)?.moveAlong(path, onStep, signal),
+      id === this.observer ? this.cameraRig.firstPerson.moveAlong(path, undefined, signal) : undefined,
+    ]);
+  }
+
+  setView(view: CameraView): void {
+    this.cameraRig.setView(view);
+    for (const [id, player] of this.players) player.setVisible(view === "overview" || id !== this.observer);
+    this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0x07111a, 0.016);
   }
 
   landOnTile(index: number, landing: LandingResult): void {
@@ -80,7 +112,7 @@ export class World {
   }
 
   setLookSensitivity(pointerSpeed: number): void {
-    this.firstPerson.setPointerSpeed(pointerSpeed);
+    this.cameraRig.firstPerson.setPointerSpeed(pointerSpeed);
   }
 
   setLanguage(language: Language): void {
@@ -88,21 +120,50 @@ export class World {
     this.board.setLanguage(language);
   }
 
-  lockFirstPerson(): void {
-    this.firstPerson.lock();
+  lockFirstPerson(onFailure: () => void): void {
+    this.cameraRig.firstPerson.lock(onFailure);
   }
 
   unlockFirstPerson(): void {
-    this.firstPerson.unlock();
+    this.cameraRig.firstPerson.unlock();
   }
 
-  onPointerLockChange(listener: (locked: boolean) => void): () => void {
-    return this.firstPerson.onLockChange(listener);
+  wait(duration: number, signal?: AbortSignal): Promise<boolean> {
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    return this.clock.animate(reduced ? 0 : duration, () => {}, signal);
+  }
+
+  cancelPresentation(): void { this.clock.cancel(); }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.renderer.setAnimationLoop(null);
+    window.removeEventListener("resize", this.resize);
+    this.clock.cancel();
+    this.cameraRig.dispose();
+    for (const player of this.players.values()) player.dispose();
+    this.players.clear();
+    this.board.dispose();
+    disposeObject(this.scene);
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.canvas.remove();
   }
 
   private readonly render = (time: number): void => {
+    if (this.disposed) return;
+    try {
+    const delta = this.lastTime === null ? 0 : Math.max(time - this.lastTime, 0);
+    this.lastTime = time;
+    this.clock.update(delta);
     this.board.update(time);
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.cameraRig.camera);
+    } catch {
+      this.renderer.setAnimationLoop(null);
+      this.clock.cancel();
+      this.onFailure();
+    }
   };
 
   private readonly resize = (): void => {
@@ -112,8 +173,7 @@ export class World {
       1,
     );
 
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    this.cameraRig.resize(width / height);
     this.renderer.setSize(width, height, false);
   };
 

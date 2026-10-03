@@ -2,33 +2,11 @@
 
 [中文](README.md) | **English**
 
-A first-person 3D Richman-style browser board game built with **TypeScript + Three.js + WebGL + Vite**. Play a complete 1v1 match against a computer-controlled rival directly in the browser.
+A first-person 3D Richman-style browser board game built with **TypeScript + Three.js + WebGL + Vite**. Play 2–4 seats with local humans and computers on one device.
 
 **Play online: https://chiimagnus.github.io/Richman3D/**
 
 ![Richman 3D gameplay](public/og-image.png)
-
-## Features
-
-- First-person 3D board with mouse-look controls
-- Two-dice movement and rewards for passing Start
-- Property purchasing, ownership, and rent settlement
-- Tax spaces, chance events, and bankruptcy rules
-- Single-player 1v1 against a computer-controlled rival
-- Live Chinese / English switching with saved language preference
-- Compact HUD, persistent settings, and keyboard shortcuts
-
-## Controls
-
-| Action | Key |
-| --- | --- |
-| Roll dice | `Space` |
-| Buy the current property | `B` |
-| Skip the current property | `N` |
-| Toggle sound | `M` |
-| Exit first-person view | `Esc` |
-
-Click **Settings** in the upper-right corner to change sound, mouse sensitivity, or language. Language changes immediately update the interface, feedback messages, and 3D board labels.
 
 ## Local Development
 
@@ -43,6 +21,7 @@ Open the local address shown by Vite in a modern desktop browser.
 
 - TypeScript
 - Three.js / WebGL
+- React / React DOM
 - Vite
 - Vitest
 
@@ -53,3 +32,5 @@ npm run typecheck
 npm test -- --run
 npm run build
 ```
+
+When actual interaction needs checking, use the installed Helium browser on the real game page. This project does not maintain browser automation tests.

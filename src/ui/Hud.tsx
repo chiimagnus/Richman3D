@@ -1,0 +1,56 @@
+import type { GameSession } from "../app/GameSession";
+import { useEffect, useRef, type ReactNode } from "react";
+import type { PlayerId } from "../domain/types";
+import { publicProperty } from "../domain/selectors";
+import { PropertyDetails } from "./PropertyDetails";
+import { useGameView } from "./useGameView";
+import { actionView } from "./viewModel";
+import { formatCash, formatMessage, messages, playerName, tileName } from "../i18n";
+import type { Language } from "../i18n/language";
+import styles from "./Hud.module.css";
+
+export function Hud({ session, language, onAssets, assetPanel }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; assetPanel: ReactNode }) {
+  const view = useGameView(session);
+  const model = actionView(view, language);
+  const copy = messages(language);
+  const actions = useRef<HTMLDivElement>(null);
+  const decisionKind = view.displayed.decision.kind;
+  useEffect(() => {
+    if (!view.presenting && view.mode === "running" && document.activeElement === document.body) {
+      actions.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
+    }
+  }, [decisionKind, view.presenting, view.mode, view.attached]);
+  const execute = (kind: "roll" | "buy" | "skip") => {
+    const command = model.commands.find((action) => action.kind === kind);
+    if (command) void session.dispatch(command);
+  };
+  const buying = view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId && !view.presenting;
+  return <>
+    <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
+      {view.displayed.players.map((player) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: playerName(language, player.id, view.displayed.config) })} onClick={() => onAssets(player.id)}>
+        <span>{playerName(language, player.id, view.displayed.config)}</span><strong>{formatCash(language, player.cash)}</strong>
+      </button>)}
+      <span className={styles.round}>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
+    </aside>
+    <footer className={styles.dock}>
+      <div className={styles.copy}><strong>{tileName(language, model.tile)}</strong><span>{model.status}</span></div>
+      <div ref={actions} className={styles.actions}>
+        <span className={styles.dice} role="img" aria-label={`${copy.hud.recentDiceAria}: ${view.displayed.lastRoll ? view.displayed.lastRoll.join(" + ") : "— + —"}`}>
+          {(view.displayed.lastRoll ?? [null, null]).map((value, index) => <span key={index} aria-hidden="true">{value ?? "—"}</span>)}
+        </span>
+        {buying ? <>
+          <button className={styles.primary} aria-keyshortcuts="B" disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: formatCash(language, model.property.price) }) : copy.hud.buy}<kbd aria-hidden="true">B</kbd></button>
+          <button aria-keyshortcuts="N" disabled={!model.commands.some((action) => action.kind === "skip")} onClick={() => execute("skip")}>{copy.hud.skip}<kbd aria-hidden="true">N</kbd></button>
+          {model.insufficientFunds && <span className={styles.reason}>{copy.status.insufficientFunds}</span>}
+        </> : <button className={styles.primary} aria-keyshortcuts="Space" disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}<kbd aria-hidden="true">{copy.hud.rollKey}</kbd></button>}
+        {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
+      </div>
+      {buying && model.property && <details className={styles.property} key={model.property.id}>
+        <summary>{copy.assets.details}</summary><PropertyDetails property={publicProperty(view.displayed, model.property.id)} players={view.displayed.config.players} language={language} />
+      </details>}
+      {view.displayed.players.find((player) => player.id === view.viewPlayerId)?.bankrupt && <p className={styles.notice}>{copy.setup.spectating}</p>}
+      {view.save.kind === "unsaved" && view.save.acknowledged && <span className={styles.notice} role="status">{copy.storage.unsaved}</span>}
+      {assetPanel && <div className={styles.assets}>{assetPanel}</div>}
+    </footer>
+  </>;
+}
