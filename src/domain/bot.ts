@@ -27,7 +27,7 @@ export type BotObservation = {
   readonly activeItem: GameSnapshot["activeItem"];
   readonly decision: Exclude<Decision, { kind: "game_over" }>;
   readonly actions: readonly Command[];
-  readonly liquidity: readonly { readonly command: LiquidityCommand; readonly cost: number; readonly proceeds: number; readonly valueLoss: number; readonly rentLoss: number;
+  readonly liquidity: readonly { readonly command: LiquidityCommand; readonly cost: number; readonly proceeds: number; readonly valueLoss: number;
     readonly rentChanges: readonly { readonly propertyId: string; readonly currentRent: number; readonly nextRent: number }[] }[];
   readonly upgrades: readonly { readonly command: UpgradeCommand; readonly cost: number; readonly currentRent: number; readonly nextRent: number }[];
   readonly trade: TradeEvaluation | null;
@@ -71,8 +71,7 @@ export function observeBot(snapshot: GameSnapshot): BotObservation | null {
       const rentChanges = snapshot.map.tiles.filter((other) => other.type === "property" && (other.id === tile.id || tile.type === "property" && other.group === tile.group))
         .map((other) => ({ propertyId: other.id, currentRent: rentFor(snapshot, other.id), nextRent: rentFor(candidate, other.id) }))
         .filter((change) => change.currentRent !== change.nextRent);
-      return { command, cost: option.cost, proceeds: option.proceeds, valueLoss: option.loss,
-        rentLoss: rentChanges.reduce((loss, change) => loss + change.currentRent - change.nextRent, 0), rentChanges };
+      return { command, cost: option.cost, proceeds: option.proceeds, valueLoss: option.loss, rentChanges };
     });
   const upgrades = actions.filter((command): command is UpgradeCommand => command.kind === "upgrade").map((command) => {
     const option = upgradeOption(snapshot, actor, command.propertyId);

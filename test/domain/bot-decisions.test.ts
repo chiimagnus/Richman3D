@@ -184,7 +184,7 @@ it("redemption scores include the income recovered on the other member of a mort
   expect(rentFor(bot.snapshot, "neon-avenue")).toBe(0);
   expect(rentFor(bot.snapshot, "harbor-walk")).toBe(24);
   const option = observeBot(bot.snapshot)!.liquidity.find((option) => option.command.kind === "redeem")!;
-  expect(option).toMatchObject({ rentLoss: -60, valueLoss: 9, cost: 99 });
+  expect(option).toMatchObject({ valueLoss: 9, cost: 99 });
   expect(option.rentChanges).toEqual([{ propertyId: "harbor-walk", currentRent: 24, nextRent: 36 }, { propertyId: "neon-avenue", currentRent: 0, nextRent: 48 }]);
   expect(applyChoice(bot)).toMatchObject({ command: { kind: "redeem", propertyId: "neon-avenue" }, reason: "redeem_income" });
   expect(rentFor(bot.snapshot, "neon-avenue")).toBe(48);
