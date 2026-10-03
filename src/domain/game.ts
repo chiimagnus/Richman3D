@@ -6,7 +6,7 @@ import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot } from "./restore";
-import { initialProperties, netAssets, rentFor } from "./economy";
+import { constructionCost, initialProperties, netAssets, propertyTile, rentFor } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
 
@@ -43,7 +43,7 @@ export class Game {
       completedRounds: 0,
       turnOrder,
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false,
-        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0 },
+        statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, constructionSpent: 0 },
       })),
       turnPlayerId: turnOrder[0]!,
       decision: { kind: "awaiting_roll", actorId: turnOrder[0]! },
@@ -69,18 +69,16 @@ export class Game {
 
   apply(command: Command): ApplyResult {
     if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
-        !["roll", "buy", "skip"].includes(command.kind) ||
+        !["roll", "buy", "skip", "upgrade"].includes(command.kind) ||
+        command.kind === "upgrade" && typeof command.propertyId !== "string" ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
     }
     const before = this.state;
     if (command.expectedRevision !== before.revision) return { ok: false, reason: "stale_revision" };
-    if (!legalCommands(before, command.actor).some((action) => action.kind === command.kind)) {
-      return { ok: false, reason: "illegal_action" };
-    }
-
     let result: Extract<ApplyResult, { ok: true }>;
     try {
+      if (!legalCommands(before, command.actor).some((action) => action.kind === command.kind && (action.kind !== "upgrade" || command.kind === "upgrade" && action.propertyId === command.propertyId))) return { ok: false, reason: "illegal_action" };
       const players = before.players.map((player) => ({ ...player, statistics: { ...player.statistics } }));
       const properties = { ...before.properties };
       const random = new RuleRandom(before.random);
@@ -138,6 +136,14 @@ export class Game {
           }
         }
         events.push({ kind: "rolled", result: { playerId: player.id, dice, steps, from, to, path, passedStart, startBonus, landing } });
+      } else if (command.kind === "upgrade") {
+        const tile = propertyTile(before.map, command.propertyId);
+        const property = properties[tile.id]!;
+        const cost = constructionCost(tile, before.rules);
+        const level = (property.level + 1) as 1 | 2 | 3;
+        player.cash = cashAfterChange(player.cash, -cost);
+        properties[tile.id] = { ...property, level, constructionCosts: [...property.constructionCosts, cost] };
+        events.push({ kind: "upgraded", actor: player.id, propertyId: tile.id, level, cost });
       } else {
         const property = pendingProperty(before);
         if (!property) throw new Error("待购地产不存在");
@@ -157,6 +163,7 @@ export class Game {
       };
       for (const event of events) {
         if (event.kind === "purchased") record(event.actor, "purchases", event.price);
+        if (event.kind === "upgraded") record(event.actor, "constructionSpent", event.cost);
         if (event.kind === "rolled") {
           const action = event.result;
           record(action.playerId, "startBonus", action.startBonus);
@@ -180,7 +187,7 @@ export class Game {
         const result = matchResult(candidate, "last_survivor");
         decision = { kind: "game_over", result };
         events.push({ kind: "ended", result });
-      } else if (decision.kind === "awaiting_roll") {
+      } else if (decision.kind === "awaiting_roll" && command.kind !== "upgrade") {
         ({ turnPlayerId, completedRounds } = nextTurn(candidate));
         if (completedRounds >= before.rules.roundLimit) {
           const result = matchResult(candidate, "round_limit");

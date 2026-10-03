@@ -1,7 +1,7 @@
 import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
-import { liquidationValue, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor } from "./economy";
+import { liquidationValue, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
@@ -19,7 +19,10 @@ export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.t
 export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Command[] {
   if (snapshot.decision.kind === "game_over" || actor !== snapshot.decision.actorId || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
   const base = { actor, expectedRevision: snapshot.revision };
-  if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }];
+  if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" },
+    ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor && upgradeOption(snapshot, actor, tile.id).reason === null)
+      .map((tile) => ({ ...base, kind: "upgrade" as const, propertyId: tile.id })),
+  ];
   const property = pendingProperty(snapshot);
   const player = snapshot.players.find((candidate) => candidate.id === actor);
   if (!property || !player || property.id !== currentTile(snapshot, actor).id || snapshot.properties[property.id]!.ownerId !== null) return [];

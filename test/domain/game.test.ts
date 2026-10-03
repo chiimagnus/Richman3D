@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { Game } from "../../src/domain/game";
 import type { Command, RollResult } from "../../src/domain/types";
 
-function act(game: Game, kind: Command["kind"]) {
+function act(game: Game, kind: Exclude<Command["kind"], "upgrade">) {
   const snapshot = game.snapshot;
   const result = game.apply({ kind, actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision });
   if (!result.ok) throw new Error(result.reason);

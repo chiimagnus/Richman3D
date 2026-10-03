@@ -6,6 +6,8 @@
 .values dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .panel details { border-top: 1px solid var(--border); padding-block: 12px; }
 .panel summary { cursor: pointer; min-height: 44px; overflow-wrap: anywhere; }
+.operation { padding-block: 4px; }
+.primary { background: var(--primary); color: #09212c; border-color: transparent; width: 100%; }
 .history { padding-inline-start: 24px; overflow-wrap: anywhere; }
 .history li { margin-block: 16px; }
 .history p { margin-block: 4px; }

@@ -36,6 +36,7 @@
   "status": {
     "insufficientFunds": "Not enough cash to buy this property.",
     "purchased": "{actor} paid {amount} to buy “{propertyName}”.",
+    "upgraded": "{actor} paid {amount} to build level {level} on “{propertyName}”.",
     "skipped": "{actor} skipped “{propertyName}”.",
     "botActing": "{actor} is taking a turn…",
     "yourTurn": "{actor}'s turn.",
@@ -101,7 +102,7 @@
   "results": {
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
-    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs" },
+    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "constructionSpent": "Construction costs" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
   "storage": {
@@ -139,6 +140,11 @@
     "bankrupt": "Eliminated; properties returned to the bank.", "publicOnly": "Public assets only; no private cards or future random results."
   },
   "history": { "title": "Action history", "count": "Keeping the latest {limit} events; {count} currently stored.", "empty": "No actions yet.", "revision": "Action {revision}", "back": "Close history" },
+  "construction": {
+    "title": "Build one level", "rentChange": "Rent: {current} → {next}", "cost": "Construction cost", "remaining": "Cash after construction", "upgrade": "Build · {cost}",
+    "unavailable": "Wait until the current action is saved and presented.",
+    "reasons": { "not_owner": "Only the owner may build.", "not_turn": "Build before rolling on your own turn.", "incomplete_group": "Own every property in this color group first.", "mortgaged": "Redeem all mortgages in this group first.", "max_level": "Maximum building level reached.", "unbalanced": "Build on a lower-level property in this group first.", "insufficient_cash": "Not enough cash for construction." }
+  },
   "runtime": {
     "title": "Richman 3D",
     "start": "Start Game",

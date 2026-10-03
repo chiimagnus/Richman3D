@@ -1,0 +1,33 @@
+import { expect, it, vi } from "vitest";
+import { IDBFactory } from "fake-indexeddb";
+import { GameSession } from "../../src/app/GameSession";
+import { GameStore } from "../../src/storage/GameStore";
+import { assetManagementView } from "../../src/ui/viewModel";
+import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+
+it("persists one real construction, rejects repeated captured revisions and publishes no duplicate success notice or next turn", async () => {
+  const game = propertyMatch();
+  const factory = new IDBFactory();
+  const store = new GameStore(() => factory);
+  const session = new GameSession(game, propertyMatchId, { store, expected: null, source: "local" });
+  await session.initializeSave();
+  const sync = vi.fn();
+  session.bind({ sync, stop() {}, async present() {} });
+  const command = assetManagementView(session.getSnapshot())!.properties["neon-avenue"]!.command!;
+  const before = game.snapshot;
+  await session.dispatch(command);
+  const after = game.snapshot;
+  expect(after.revision).toBe(before.revision + 1);
+  expect(after.properties["neon-avenue"]!.level).toBe(1);
+  expect(after.players[0]!.cash).toBe(before.players[0]!.cash - 90);
+  expect(after.turnPlayerId).toBe("p1");
+  expect(after.random).toEqual(before.random);
+  expect(session.getSnapshot()).toMatchObject({ notice: null, presenting: false, mode: "running", save: { kind: "saved" } });
+  expect(sync).toHaveBeenLastCalledWith(after);
+  expect((await store.read())?.snapshot).toEqual(after);
+  const writes = vi.spyOn(store, "save");
+  await session.dispatch(command);
+  expect(game.snapshot).toBe(after);
+  expect(writes).not.toHaveBeenCalled();
+  session.dispose();
+});

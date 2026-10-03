@@ -45,7 +45,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   const initialRandom = new RuleRandom(config.seed);
   if (!sameData(state.turnOrder, initialTurnOrder(config, initialRandom))) throw new Error("固定轮序无效");
   if (!Array.isArray(state.players) || state.players.length !== config.players.length) throw new Error("玩家数量无效");
-  const statsKeys = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases"] as const;
+  const statsKeys = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases", "constructionSpent"] as const;
   for (const [index, raw] of state.players.entries()) {
     const player = record(raw, ["id", "cash", "position", "bankrupt", "statistics"]);
     if (player.id !== config.players[index]!.id || typeof player.bankrupt !== "boolean") throw new Error("玩家身份无效");
@@ -55,7 +55,7 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     const stats = record(player.statistics, statsKeys);
     for (const field of statsKeys) integer(stats[field]);
     const balance = BigInt(rules.startingCash) + BigInt(stats.startBonus as number) + BigInt(stats.rentReceived as number) + BigInt(stats.chanceIncome as number)
-      - BigInt(stats.rentPaid as number) - BigInt(stats.taxesPaid as number) - BigInt(stats.chanceExpense as number) - BigInt(stats.purchases as number);
+      - BigInt(stats.rentPaid as number) - BigInt(stats.taxesPaid as number) - BigInt(stats.chanceExpense as number) - BigInt(stats.purchases as number) - BigInt(stats.constructionSpent as number);
     if (balance !== BigInt(cash)) throw new Error("财务统计不平");
   }
   const propertyTiles = map.tiles.filter((tile) => tile.type === "property");
@@ -106,6 +106,8 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     netAssets(snapshot, player.id);
     const purchased = map.tiles.reduce((total, tile) => total + (tile.type === "property" && snapshot.properties[tile.id]!.ownerId === player.id ? BigInt(tile.price) : 0n), 0n);
     if (!player.bankrupt && purchased !== BigInt(player.statistics.purchases)) throw new Error("购地统计不平");
+    const construction = Object.values(snapshot.properties).reduce((total, property) => property.ownerId === player.id ? total + property.constructionCosts.reduce((sum, cost) => sum + BigInt(cost), 0n) : total, 0n);
+    if (!player.bankrupt && construction !== BigInt(player.statistics.constructionSpent)) throw new Error("建设统计不平");
   }
   if (snapshot.players.reduce((total, player) => total + BigInt(player.statistics.rentReceived) - BigInt(player.statistics.rentPaid), 0n) !== 0n) throw new Error("租金统计不平");
   if (snapshot.revision === 0 && (snapshot.completedRounds !== 0 || snapshot.turnPlayerId !== snapshot.turnOrder[0] || decision.kind !== "awaiting_roll" || Object.values(snapshot.properties).some((property) => property.ownerId !== null) ||
@@ -147,6 +149,13 @@ function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
     return value as PlayerId;
   };
   switch (event.kind) {
+    case "upgraded": {
+      record(event, ["kind", "actor", "propertyId", "level", "cost"]);
+      const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId);
+      if (!tile || tile.type !== "property") throw new Error("历史建筑地产无效");
+      return { kind: "upgraded", actor: actor(event.actor), propertyId: tile.id,
+        level: integer(event.level, 1, 3) as 1 | 2 | 3, cost: integer(event.cost, 0, constructionCost(tile, snapshot.rules)) };
+    }
     case "turn":
       record(event, ["kind", "actor"]);
       return { kind: "turn", actor: actor(event.actor) };

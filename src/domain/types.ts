@@ -27,6 +27,7 @@ export type FinancialStats = {
   readonly chanceIncome: number;
   readonly chanceExpense: number;
   readonly purchases: number;
+  readonly constructionSpent: number;
 };
 export type ChanceCardId = "innovation-bonus" | "maintenance-cost" | "community-event" | "traffic-fine";
 
@@ -98,12 +99,12 @@ export type RollResult = {
 export type Command = {
   readonly actor: PlayerId;
   readonly expectedRevision: number;
-  readonly kind: "roll" | "buy" | "skip";
-};
+} & ({ readonly kind: "roll" | "buy" | "skip" } | { readonly kind: "upgrade"; readonly propertyId: string });
 
 export type GameEvent =
   | { readonly kind: "rolled"; readonly result: RollResult }
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
+  | { readonly kind: "upgraded"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 1 | 2 | 3; readonly cost: number }
   | { readonly kind: "skipped"; readonly actor: PlayerId; readonly propertyId: string }
   | { readonly kind: "turn"; readonly actor: PlayerId }
   | { readonly kind: "ended"; readonly result: MatchResult };

@@ -36,6 +36,7 @@
   "status": {
     "insufficientFunds": "资金不足，无法购买这块地产。",
     "purchased": "{actor}支付{amount}购买了「{propertyName}」。",
+    "upgraded": "{actor}支付{amount}将「{propertyName}」建至{level}级。",
     "skipped": "{actor}跳过了「{propertyName}」。",
     "botActing": "{actor}行动中…",
     "yourTurn": "轮到{actor}了。",
@@ -101,7 +102,7 @@
   "results": {
     "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
     "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
-    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出" },
+    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "constructionSpent": "建设支出" },
     "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
   },
   "storage": {
@@ -139,6 +140,11 @@
     "bankrupt": "已淘汰，地产已归还银行。", "publicOnly": "仅展示公开资产，不包含手牌或未来随机结果。"
   },
   "history": { "title": "行动历史", "count": "保留最近{limit}条事件，当前{count}条。", "empty": "尚无行动。", "revision": "行动{revision}", "back": "关闭历史" },
+  "construction": {
+    "title": "建设一级", "rentChange": "租金：{current} → {next}", "cost": "建设费用", "remaining": "建设后现金", "upgrade": "建设 · {cost}",
+    "unavailable": "等待当前行动保存并展示完成。",
+    "reasons": { "not_owner": "只有所有者可以建设。", "not_turn": "仅可在自己的回合掷骰前建设。", "incomplete_group": "请先拥有同色组的全部地产。", "mortgaged": "请先赎回组内全部抵押地产。", "max_level": "已达到最高建筑等级。", "unbalanced": "请先建设组内等级较低的地产。", "insufficient_cash": "现金不足以支付建设费用。" }
+  },
   "runtime": {
     "title": "Richman 3D",
     "start": "开始游戏",

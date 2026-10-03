@@ -205,7 +205,7 @@ export class GameSession {
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
         const event = result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
-        const meaningful = event && !(event.kind === "purchased" && playerConfig(before.config, event.actor).controller === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
+        const meaningful = event && !((event.kind === "purchased" || event.kind === "upgraded") && playerConfig(before.config, event.actor).controller === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
         let settled = false;
         const settle = () => {
           if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;

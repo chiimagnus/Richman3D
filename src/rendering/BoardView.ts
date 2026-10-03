@@ -9,6 +9,7 @@ import type { Language } from "../i18n/language";
 import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
 import { rentFor } from "../domain/economy";
+import { createPropertyBuilding } from "./PropertyBuilding";
 
 const GROUP_COLORS = {
   cyan: 0x1da9c5,
@@ -26,6 +27,7 @@ export class BoardView {
   private readonly tilePulses = new Map<number, number>();
   private readonly markerPops = new Map<THREE.Mesh, number>();
   private readonly tileDetails = new Map<number, string>();
+  private readonly propertyBuildings = new Map<string, { level: number; ownerId: PlayerId; object: THREE.Group }>();
   private snapshot: GameSnapshot | null = null;
 
   constructor(
@@ -58,6 +60,7 @@ export class BoardView {
       }
 
       this.updateLabel(tile, index);
+      this.syncBuilding(tile.id, index, snapshot);
       const ownerId = snapshot.properties[tile.id]!.ownerId;
       const existing = this.ownerMarkers.get(tile.id);
 
@@ -92,6 +95,23 @@ export class BoardView {
       this.object.add(marker);
       this.ownerMarkers.set(tile.id, marker);
     }
+  }
+
+  private syncBuilding(propertyId: string, index: number, snapshot: GameSnapshot): void {
+    const property = snapshot.properties[propertyId]!;
+    const existing = this.propertyBuildings.get(propertyId);
+    if (existing?.level === property.level && existing.ownerId === property.ownerId) return;
+    if (existing) {
+      disposeObject(existing.object);
+      this.propertyBuildings.delete(propertyId);
+    }
+    if (property.level === 0 || property.ownerId === null) return;
+    const building = createPropertyBuilding(property.level, playerConfig(this.config, property.ownerId).color);
+    building.name = `property-building-${propertyId}`;
+    const position = boardPosition(this.map, index);
+    building.position.set(position.x - TILE_SIZE * 0.28, 0.2, position.z - TILE_SIZE * 0.28);
+    this.object.add(building);
+    this.propertyBuildings.set(propertyId, { level: property.level, ownerId: property.ownerId, object: building });
   }
 
   private updateLabel(tile: BoardTile, index: number, force = false): void {
@@ -197,6 +217,7 @@ export class BoardView {
     this.tilePulses.clear();
     this.markerPops.clear();
     this.tileDetails.clear();
+    this.propertyBuildings.clear();
     this.snapshot = null;
   }
 

@@ -25,6 +25,7 @@ import { PanelHost } from "./PanelHost";
 import { downloadSave } from "../storage/transfer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
+import { assetManagementView } from "./viewModel";
 import styles from "./App.module.css";
 
 const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: module.SceneHost })));
@@ -77,7 +78,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
     if (playerId) document.querySelector<HTMLButtonElement>(`#assets-open-${playerId}`)?.focus({ preventScroll: true });
   };
   const assets = view.displayed.players.map((player) => playerAssets(view.displayed, player.id));
-  const assetPanel = typeof panel === "object" && panel ? <AssetPanel key={panel.playerId} assets={assets} initialPlayer={panel.playerId} language={preferences.language} onClose={closeAssets} /> : null;
+  const assetPanel = typeof panel === "object" && panel ? <AssetPanel key={panel.playerId} assets={assets} initialPlayer={panel.playerId} language={preferences.language} management={assetManagementView(view)} onCommand={(command) => { void session.dispatch(command); }} onClose={closeAssets} /> : null;
   const pause = () => { session.pause(); setPanel("pause"); };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {

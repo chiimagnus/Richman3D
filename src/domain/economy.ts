@@ -39,6 +39,25 @@ export function constructionCost(tile: PropertyTile, rules: RuleSet): number {
   return money((BigInt(tile.price) * BigInt(rules.constructionCostPercent) + 99n) / 100n);
 }
 
+export function upgradeOption(snapshot: GameSnapshot, actor: PlayerId, propertyId: string) {
+  const tile = propertyTile(snapshot.map, propertyId);
+  const property = snapshot.properties[propertyId]!;
+  const player = snapshot.players.find((candidate) => candidate.id === actor)!;
+  const cost = constructionCost(tile, snapshot.rules);
+  const group = snapshot.map.tiles.filter((candidate) => candidate.type === "property" && candidate.group === tile.group);
+  let reason: "not_owner" | "not_turn" | "incomplete_group" | "mortgaged" | "max_level" | "unbalanced" | "insufficient_cash" | null = null;
+  if (property.ownerId !== actor) reason = "not_owner";
+  else if (snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor || player.bankrupt) reason = "not_turn";
+  else if (group.some((candidate) => snapshot.properties[candidate.id]!.ownerId !== actor)) reason = "incomplete_group";
+  else if (group.some((candidate) => snapshot.properties[candidate.id]!.mortgagePrincipal > 0)) reason = "mortgaged";
+  else if (property.level === 3) reason = "max_level";
+  else if (group.some((candidate) => property.level + 1 - snapshot.properties[candidate.id]!.level > 1)) reason = "unbalanced";
+  else if (player.cash < cost) reason = "insufficient_cash";
+  return { reason, cost, currentRent: rentFor(snapshot, propertyId),
+    nextRent: property.level === 3 ? null : rentAmount(tile, { ...property, level: (property.level + 1) as PropertyState["level"] }, snapshot.rules, completeGroup(snapshot, tile)),
+    remainingCash: player.cash - cost };
+}
+
 export function mortgageValue(tile: PropertyTile, rules: RuleSet): number {
   return money(BigInt(tile.price) * BigInt(rules.mortgagePercent) / 100n);
 }
