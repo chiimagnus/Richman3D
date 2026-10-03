@@ -88,7 +88,7 @@
     "title": "New match",
     "seats": "Players", "seatOption": "{count} seats", "computerSeat": "Computer {number} name",
     "humans": "Local humans", "humanOption": "{count} local humans", "humanSeat": "Local player {number} name",
-    "turnOrder": "Fixed turn order: {players}", "spectating": "You are eliminated. Watch the remaining players or return to Main Menu from Pause. Skip Animation only speeds presentation.",
+    "turnOrder": "Fixed turn order: {players}", "spectating": "You are eliminated. Watch the remaining players or return to Main Menu from Settings. Skip Animation only speeds presentation.",
     "length": "Match length", "quick": "Quick · {rounds} rounds", "standard": "Standard · {rounds} rounds",
     "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options", "city": "City · {spaces} spaces · Normal computer",
     "color": "{player} · Pawn color", "colors": { "cyan": "Cyan", "amber": "Amber", "violet": "Violet", "emerald": "Emerald" },

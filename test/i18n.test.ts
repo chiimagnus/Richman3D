@@ -83,4 +83,10 @@ describe("i18n", () => {
       }),
     ).toBe("You paid ¥180 to buy “Harbor Walk”.");
   });
+
+  it.each(["zh-CN", "en"] as const)("%s directs eliminated observers to the actual settings entry", (language) => {
+    const copy = messages(language);
+    expect(copy.setup.spectating).toContain(copy.settings.title);
+    expect(copy.setup.spectating).not.toMatch(/暂停菜单|\bPause\b/);
+  });
 });

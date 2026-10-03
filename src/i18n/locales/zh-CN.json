@@ -88,7 +88,7 @@
     "title": "新对局",
     "seats": "对局人数", "seatOption": "{count}席", "computerSeat": "电脑{number}的名字",
     "humans": "本地真人", "humanOption": "{count}名本地真人", "humanSeat": "本地玩家{number}的名字",
-    "turnOrder": "固定轮序：{players}", "spectating": "你已淘汰，可继续观看或从暂停菜单返回主菜单。跳过动画仅加速演出。",
+    "turnOrder": "固定轮序：{players}", "spectating": "你已淘汰，可继续观看或从设置返回主菜单。跳过动画仅加速演出。",
     "length": "对局长度", "quick": "快速 · {rounds}轮", "standard": "标准 · {rounds}轮",
     "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项", "city": "城市 · {spaces}格 · 普通电脑",
     "color": "{player} · 棋子颜色", "colors": { "cyan": "青色", "amber": "琥珀", "violet": "紫色", "emerald": "绿色" },
