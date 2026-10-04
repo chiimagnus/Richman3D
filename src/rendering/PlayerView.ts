@@ -9,6 +9,7 @@ import type { MapDefinition } from "../domain/board";
 export class PlayerView {
   private readonly object = new THREE.Group();
   private readonly offset: THREE.Vector3;
+  private readonly ring: THREE.Mesh;
 
   constructor(scene: THREE.Scene, color: string, private readonly clock: MotionClock, private readonly map: MapDefinition, seatIndex: number) {
     this.offset = new THREE.Vector3(seatIndex % 2 === 0 ? -0.72 : 0.72, 0.18, seatIndex < 2 ? -0.72 : 0.72);
@@ -44,6 +45,9 @@ export class PlayerView {
     );
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 0.18;
+    ring.name = "acting-player-ring";
+    ring.visible = false;
+    this.ring = ring;
 
     this.object.add(body, head, ring);
     scene.add(this.object);
@@ -80,4 +84,5 @@ export class PlayerView {
 
   dispose(): void { disposeObject(this.object); }
   setVisible(visible: boolean): void { this.object.visible = visible; }
+  setActing(acting: boolean): void { this.ring.visible = acting; }
 }

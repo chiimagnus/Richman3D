@@ -61,6 +61,12 @@ it.each([2, 3, 4])("draws %s real pawns with stable same-tile offsets, visibilit
   }
   pawns[0]!.setVisible(false); expect(scene.children[0]!.visible).toBe(false);
   pawns[0]!.setVisible(true); expect(scene.children[0]!.visible).toBe(true);
+  for (const [actor, pawn] of pawns.entries()) {
+    pawns.forEach((candidate, index) => candidate.setActing(index === actor));
+    expect(scene.children.filter((object) => object.getObjectByName("acting-player-ring")!.visible)).toHaveLength(1);
+    expect(scene.children[actor]!.getObjectByName("acting-player-ring")!.visible).toBe(true);
+    expect(pawn.position).toEqual(boardPosition(CITY, 0));
+  }
   pawns[0]!.dispose();
   pawns.slice(1).forEach((pawn) => pawn.setPosition(6));
   scene.children.forEach((object, index) => expect(object.position.clone().sub(boardPosition(CITY, 6)).distanceTo(offsets[index + 1]!)).toBeLessThan(1e-10));

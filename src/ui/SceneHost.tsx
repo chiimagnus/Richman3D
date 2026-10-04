@@ -11,7 +11,7 @@ import type { CameraView } from "../rendering/CameraRig";
 
 export type SceneControls = { lookAround(): void; centerCurrent(): void };
 
-export function SceneHost({ app, session, preferences, cameraView, interactive, onInspect, ref }: { app: GameApp; session: GameSession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; onInspect: (tileId: string) => void; ref: Ref<SceneControls> }) {
+export function SceneHost({ app, session, preferences, cameraView, interactive, selectedTileId, onInspect, ref }: { app: GameApp; session: GameSession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; selectedTileId: string | null; onInspect: (tileId: string) => void; ref: Ref<SceneControls> }) {
   const host = useRef<HTMLDivElement>(null);
   const resources = useRef<{ world: World } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -39,6 +39,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
       world.setInteractive(interactive && session.getSnapshot().mode === "running");
       const activeWorld = world;
       resources.current = { world };
+      world.setSelectedTile(selectedTileId);
       world.setLookSensitivity(lookSensitivityScale(settings.lookSensitivity));
       unbind = session.bind({
         sync: (snapshot) => activeWorld.sync(snapshot),
@@ -131,6 +132,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
     if (view.mode !== "running") world.unlockFirstPerson();
   }, [view.viewPlayerId, view.mode, cameraView]);
   useEffect(() => { resources.current?.world.setInteractive(interactive && view.mode === "running"); }, [interactive, view.mode]);
+  useEffect(() => { resources.current?.world.setSelectedTile(selectedTileId); }, [selectedTileId]);
   useEffect(() => {
     const world = resources.current?.world;
     if (!world) return;

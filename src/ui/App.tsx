@@ -121,7 +121,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   };
   return <main className={styles.game}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
-      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost ref={scene} app={app} session={session} preferences={preferences} cameraView={cameraView} interactive={!surface} onInspect={setInspectedTileId} /></Suspense>
+      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost ref={scene} app={app} session={session} preferences={preferences} cameraView={cameraView} interactive={!surface} selectedTileId={view.viewPlayerId === null ? null : inspectedTileId} onInspect={setInspectedTileId} /></Suspense>
     </ErrorBoundary>
     {!ended && <div className={styles.tools}>
       <button aria-keyshortcuts="Escape" onClick={pause}>{copy.settings.title}<kbd aria-hidden="true">Esc</kbd></button>

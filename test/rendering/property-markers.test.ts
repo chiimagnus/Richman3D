@@ -7,12 +7,38 @@ import { legalCommands, publicProperty } from "../../src/domain/selectors";
 import { makeSave } from "../../src/storage/snapshot";
 import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
 import { stubCanvas } from "../fixtures/canvas";
+import { boardDirection, boardPosition } from "../../src/rendering/boardGeometry";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 function badge(marker: THREE.Object3D) {
   return marker.getObjectByName("owner-seat") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
 }
+
+it("keeps selection distinct from ownership and projects the actual next-path direction on every tile without changing rules", () => {
+  stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene(); const before = game.snapshot;
+  const board = new BoardView(scene, "en", before.map, before.config, before.rules);
+  try {
+    board.syncOwnership(before);
+    const selection = scene.getObjectByName("selected-tile")!;
+    expect(selection.visible).toBe(false); expect(selection.children).toHaveLength(8);
+    for (const [index, tile] of before.map.tiles.entries()) {
+      board.setSelectedTile(tile.id);
+      expect(selection.visible).toBe(true);
+      expect(selection.position).toEqual(boardPosition(before.map, index));
+      const arrow = scene.getObjectByName(`forward-${tile.id}`) as THREE.Mesh;
+      const vertices = arrow.geometry.getAttribute("position");
+      const points = Array.from({ length: vertices.count }, (_, vertex) => new THREE.Vector3().fromBufferAttribute(vertices, vertex));
+      const tip = points.sort((first, second) => second.y - first.y)[0]!;
+      expect(tip.y).toBeCloseTo(0.28);
+      expect(tip.normalize().applyQuaternion(arrow.quaternion).distanceTo(boardDirection(before.map, index))).toBeLessThan(1e-6);
+      board.setLanguage("zh-CN"); board.syncOwnership(before);
+      expect(selection.position).toEqual(boardPosition(before.map, index));
+      expect(game.snapshot).toBe(before);
+    }
+    board.setSelectedTile(null); expect(selection.visible).toBe(false);
+  } finally { board.dispose(); }
+});
 
 it("projects actual group completion, mortgage pattern and redemption without a second economic state or rebuilding static flags", () => {
   stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene();

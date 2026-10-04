@@ -6,7 +6,7 @@ import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../doma
 import { playerConfig } from "../domain/config";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
-import { boardBounds, boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
+import { boardBounds, boardDirection, boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
 import { completeGroup, rentFor } from "../domain/economy";
 import { createNumberTexture, createPropertyBuilding } from "./PropertyBuilding";
@@ -20,6 +20,7 @@ const GROUP_COLORS = {
 
 export class BoardView {
   private readonly object = new THREE.Group();
+  private readonly selection = new THREE.Group();
 
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
   private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
@@ -42,6 +43,7 @@ export class BoardView {
     scene.add(this.object);
     this.buildTiles();
     this.buildCenter();
+    this.buildSelection();
   }
 
   setLanguage(language: Language): void {
@@ -51,6 +53,12 @@ export class BoardView {
 
     this.language = language;
     this.map.tiles.forEach((tile, index) => this.updateLabel(tile, index, true));
+  }
+
+  setSelectedTile(tileId: string | null): void {
+    const index = this.map.tiles.findIndex((tile) => tile.id === tileId);
+    this.selection.visible = index >= 0;
+    if (index >= 0) this.selection.position.copy(boardPosition(this.map, index));
   }
 
   syncOwnership(snapshot: GameSnapshot): void {
@@ -180,6 +188,8 @@ export class BoardView {
   }
 
   private buildTiles(): void {
+    const arrowGeometry = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0.28, 0, -0.19, -0.18, 0, 0.19, -0.18, 0], 3));
+    const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xf5fbff });
     this.map.tiles.forEach((tile, index) => {
       const position = boardPosition(this.map, index);
       const tileGroup = new THREE.Group();
@@ -218,6 +228,13 @@ export class BoardView {
       this.tileLabels.set(index, label);
       this.tileDetails.set(index, tileDetail(tile, this.language, this.rules));
       tileGroup.add(label);
+      const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+      arrow.name = `forward-${tile.id}`;
+      const direction = boardDirection(this.map, index);
+      arrow.rotation.set(-Math.PI / 2, 0, 0);
+      arrow.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-direction.x, -direction.z)));
+      arrow.position.set(1.55, 0.23, 0.3);
+      tileGroup.add(arrow);
 
       if (tile.type === "property") {
         const geometry = new THREE.BoxGeometry();
@@ -247,6 +264,22 @@ export class BoardView {
       }
 
     });
+  }
+
+  private buildSelection(): void {
+    this.selection.name = "selected-tile";
+    this.selection.visible = false;
+    const geometry = new THREE.BoxGeometry(0.5, 0.035, 0.1);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const horizontal of [-1, 1]) for (const depth of [-1, 1]) {
+      const across = new THREE.Mesh(geometry, material);
+      across.position.set(horizontal * 1.45, 0.26, depth * 1.75);
+      const along = new THREE.Mesh(geometry, material);
+      along.rotation.y = Math.PI / 2;
+      along.position.set(horizontal * 1.75, 0.26, depth * 1.45);
+      this.selection.add(across, along);
+    }
+    this.object.add(this.selection);
   }
 
   dispose(): void {

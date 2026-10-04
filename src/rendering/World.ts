@@ -84,13 +84,12 @@ export class World {
 
     for (const player of snapshot.players) {
       this.players.get(player.id)?.setPosition(player.position);
+      this.players.get(player.id)!.setActing(snapshot.decision.kind !== "game_over" && snapshot.decision.actorId === player.id);
       if (player.id === this.observer) this.cameraRig.firstPerson.setPosition(player.position);
     }
   }
 
-  syncOwnership(snapshot: GameSnapshot): void {
-    this.board.syncOwnership(snapshot);
-  }
+  setSelectedTile(tileId: string | null): void { this.board.setSelectedTile(tileId); }
 
   setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
     if (id === this.observer) return;
