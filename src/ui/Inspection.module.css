@@ -2,9 +2,9 @@
 .row { display: grid; gap: 8px; margin-block: 16px; }
 .row select { width: 100%; min-width: 0; min-height: 44px; }
 .row input { width: 100%; min-width: 0; min-height: 44px; }
-.values { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; }
+.values { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; overflow-wrap: anywhere; }
 .values dt { color: var(--muted); }
-.values dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.values dd { margin: 0; font-variant-numeric: tabular-nums; }
 .panel details { border-top: 1px solid var(--border); padding-block: 12px; }
 .panel summary { cursor: pointer; min-height: 44px; overflow-wrap: anywhere; }
 .operation { padding-block: 4px; }
