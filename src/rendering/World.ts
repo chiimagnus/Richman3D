@@ -90,6 +90,7 @@ export class World {
   }
 
   setSelectedTile(tileId: string | null): void { this.board.setSelectedTile(tileId); }
+  growProperty(propertyId: string, signal: AbortSignal): Promise<boolean> { return this.board.growProperty(propertyId, this.clock, signal); }
 
   setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
     if (id === this.observer) return;

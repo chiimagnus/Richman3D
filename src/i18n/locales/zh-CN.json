@@ -232,7 +232,7 @@
     "start": "开始游戏",
     "leave": "主菜单",
     "paused": "已暂停，已结算的行动已保留。",
-    "presenting": "{actor}正在移动…",
+    "presenting": "正在展示{actor}的操作结果…",
     "settling": "{actor}的行动结果",
     "purchaseDecision": "是否以 ¥{price} 购买「{propertyName}」？租金 ¥{rent}。",
     "skipAnimation": "跳过动画",

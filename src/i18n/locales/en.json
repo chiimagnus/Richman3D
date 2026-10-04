@@ -232,7 +232,7 @@
     "start": "Start Game",
     "leave": "Main Menu",
     "paused": "Paused. The completed action is preserved.",
-    "presenting": "{actor} is moving…",
+    "presenting": "Showing {actor}'s action…",
     "settling": "{actor}'s action result",
     "purchaseDecision": "Buy “{propertyName}” for ¥{price}? Rent ¥{rent}.",
     "skipAnimation": "Skip animation",

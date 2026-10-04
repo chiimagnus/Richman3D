@@ -10,6 +10,7 @@ import { boardBounds, boardDirection, boardPosition, TILE_SIZE, TILE_SPACING } f
 import { disposeObject } from "./disposeObject";
 import { completeGroup, rentFor } from "../domain/economy";
 import { createNumberTexture, createPropertyBuilding } from "./PropertyBuilding";
+import type { MotionClock } from "./MotionClock";
 
 const GROUP_COLORS = {
   cyan: 0x1da9c5,
@@ -130,9 +131,18 @@ export class BoardView {
     const building = createPropertyBuilding(property.level, playerConfig(this.config, property.ownerId).color);
     building.name = `property-building-${propertyId}`;
     const position = boardPosition(this.map, index);
-    building.position.set(position.x - TILE_SIZE * 0.28, 0.2, position.z - TILE_SIZE * 0.28);
+    building.position.set(position.x - TILE_SIZE * 0.35, 0.2, position.z - TILE_SIZE * 0.35);
     this.object.add(building);
     this.propertyBuildings.set(propertyId, { level: property.level, ownerId: property.ownerId, object: building });
+  }
+
+  growProperty(propertyId: string, clock: MotionClock, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    const building = this.propertyBuildings.get(propertyId)!.object;
+    if (reducedMotion()) return Promise.resolve(true);
+    building.scale.y = 0.2;
+    return clock.animate(280, (progress) => { building.scale.y = 0.2 + 0.8 * (1 - (1 - progress) ** 3); }, signal)
+      .finally(() => { building.scale.y = 1; });
   }
 
   private updateLabel(tile: BoardTile, index: number, force = false): void {

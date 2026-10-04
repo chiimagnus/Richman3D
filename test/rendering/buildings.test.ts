@@ -6,6 +6,7 @@ import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
 import { stubCanvas } from "../fixtures/canvas";
+import { MotionClock } from "../../src/rendering/MotionClock";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -44,6 +45,8 @@ it("renders the real three levels, replaces their resources once, and restores w
     for (const spy of previousSpies) expect(spy).toHaveBeenCalledTimes(1);
     const height = new THREE.Box3().setFromObject(current).getSize(new THREE.Vector3()).y;
     expect(height).toBeGreaterThan(previousHeight);
+    expect(new THREE.Box3().setFromObject(current).max.y).toBeLessThan(1.72);
+    expect(current.getObjectByName("property-building-base")!.scale.toArray()).toEqual([1.1, 0.1, 1.1]);
     expect(fillText.mock.calls.some((call) => call[0] === String(level))).toBe(true);
     const restored = readSave(makeSave(game.snapshot, propertyMatchId)).snapshot;
     fillText.mockClear();
@@ -63,6 +66,53 @@ it("renders the real three levels, replaces their resources once, and restores w
   board.dispose();
   board.dispose();
   for (const spy of [...previousSpies, ...remainingSpies]) expect(spy).toHaveBeenCalledTimes(1);
+  expect(scene.children).toHaveLength(0);
+});
+
+it("grows only an already committed building through the shared clock, then restores its full outline without replay", async () => {
+  stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene(); const before = game.snapshot;
+  const board = new BoardView(scene, "en", before.map, before.config, before.rules); const clock = new MotionClock();
+  try {
+    board.syncOwnership(before);
+    for (const level of [1, 2, 3] as const) {
+      for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ actor: "p1", kind: "upgrade", propertyId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+      board.syncOwnership(game.snapshot);
+      const saved = makeSave(game.snapshot, propertyMatchId);
+      const building = scene.getObjectByName("property-building-neon-avenue")!;
+      const growth = board.growProperty("neon-avenue", clock, new AbortController().signal);
+      expect(building.scale.y).toBe(0.2); expect(clock.activeCount).toBe(1);
+      clock.update(140); expect(building.scale.y).toBeGreaterThan(0.2); expect(building.scale.y).toBeLessThan(1);
+      expect(game.snapshot.properties["neon-avenue"]!.level).toBe(level);
+      clock.update(140); expect(await growth).toBe(true);
+      expect(building.scale.y).toBe(1); expect(clock.activeCount).toBe(0);
+      expect(makeSave(game.snapshot, propertyMatchId).state).toEqual(saved.state);
+      const restored = readSave(saved).snapshot; const restoredScene = new THREE.Scene();
+      const restoredBoard = new BoardView(restoredScene, "en", restored.map, restored.config, restored.rules);
+      restoredBoard.syncOwnership(restored);
+      expect(restoredScene.getObjectByName("property-building-neon-avenue")!.scale.y).toBe(1);
+      restoredBoard.dispose();
+    }
+  } finally { clock.cancel(); board.dispose(); }
+});
+
+it.each(["abort", "clock", "dispose", "reduced", "already-aborted"] as const)("%s finishes or cancels growth without stale motion, duplicate disposal or economic replay", async (mode) => {
+  stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene(); const before = game.snapshot;
+  expect(game.apply({ actor: "p1", kind: "upgrade", propertyId: "neon-avenue", expectedRevision: before.revision }).ok).toBe(true);
+  const snapshot = game.snapshot; const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
+  board.syncOwnership(snapshot);
+  const building = scene.getObjectByName("property-building-neon-avenue")!; const disposals = trackResources(building);
+  const clock = new MotionClock(); const controller = new AbortController();
+  if (mode === "reduced") vi.stubGlobal("window", { matchMedia: () => ({ matches: true }) });
+  if (mode === "already-aborted") controller.abort();
+  const growth = board.growProperty("neon-avenue", clock, controller.signal);
+  if (mode === "abort") { clock.update(120); controller.abort(); }
+  if (mode === "clock" || mode === "dispose") { clock.update(120); clock.cancel(); }
+  if (mode === "dispose") board.dispose();
+  expect(await growth).toBe(mode === "reduced");
+  expect(building.scale.y).toBe(1); expect(clock.activeCount).toBe(0);
+  clock.update(1000); expect(building.scale.y).toBe(1);
+  expect(game.snapshot).toBe(snapshot);
+  board.dispose(); disposals.forEach((disposed) => expect(disposed).toHaveBeenCalledTimes(1));
   expect(scene.children).toHaveLength(0);
 });
 

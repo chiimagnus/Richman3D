@@ -80,10 +80,14 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
                 break;
               }
               case "purchased":
-              case "upgraded":
               case "building_sold":
               case "mortgaged":
               case "redeemed": audio.playPurchase(); break;
+              case "upgraded":
+                activeWorld.sync(session.getSnapshot().committed);
+                audio.playPurchase();
+                if (!await activeWorld.growProperty(event.propertyId, signal)) return;
+                break;
               case "trade_accepted": audio.playPurchase(); break;
               case "item_used":
                 show(event);
