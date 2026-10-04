@@ -22,8 +22,9 @@ export class FirstPersonRig {
 
   setPosition(index: number): void {
     const position = boardPosition(this.map, index);
+    const moved = this.camera.position.x !== position.x || this.camera.position.z !== position.z;
     this.camera.position.set(position.x, EYE_HEIGHT, position.z);
-    this.faceBoardDirection(index);
+    if (moved && !this.controls.isLocked) this.faceBoardDirection(index);
   }
 
   async moveAlong(

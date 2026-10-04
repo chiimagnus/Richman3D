@@ -9,9 +9,9 @@ import styles from "./App.module.css";
 import { playerConfig } from "../domain/config";
 import type { CameraView } from "../rendering/CameraRig";
 
-export type SceneControls = { lookAround(): void };
+export type SceneControls = { lookAround(): void; centerCurrent(): void };
 
-export function SceneHost({ app, session, preferences, cameraView, interactive, ref }: { app: GameApp; session: GameSession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; ref: Ref<SceneControls> }) {
+export function SceneHost({ app, session, preferences, cameraView, interactive, onInspect, ref }: { app: GameApp; session: GameSession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; onInspect: (tileId: string) => void; ref: Ref<SceneControls> }) {
   const host = useRef<HTMLDivElement>(null);
   const resources = useRef<{ world: World } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -21,10 +21,10 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
     const world = resources.current?.world;
     if (!world) return;
     if (document.pointerLockElement === world.canvas) { world.unlockFirstPerson(); return; }
-    world.setView("first_person");
+    world.setInteractive(true);
     setPointerError(false);
     world.lockFirstPerson(() => setPointerError(true));
-  } }), []);
+  }, centerCurrent() { resources.current?.world.centerCurrent(session.getSnapshot().displayed); } }), [session]);
   useEffect(() => {
     let world: World | null = null;
     let unbind = () => {};
@@ -33,8 +33,10 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
     const fail = () => { session.failPresentation(); setFailed(true); };
     try {
       const snapshot = session.getSnapshot().committed;
-      world = new World(host.current!, settings.language, snapshot.config, snapshot.map, snapshot.rules, fail);
+      world = new World(host.current!, settings.language, snapshot.config, snapshot.map, snapshot.rules, fail, onInspect);
       world.setObserver(session.getSnapshot().viewPlayerId, snapshot);
+      world.setView(session.getSnapshot().viewPlayerId === null ? "overview" : cameraView);
+      world.setInteractive(interactive && session.getSnapshot().mode === "running");
       const activeWorld = world;
       resources.current = { world };
       world.setLookSensitivity(lookSensitivityScale(settings.lookSensitivity));
@@ -128,6 +130,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
     world.setView(view.viewPlayerId === null ? "overview" : cameraView);
     if (view.mode !== "running") world.unlockFirstPerson();
   }, [view.viewPlayerId, view.mode, cameraView]);
+  useEffect(() => { resources.current?.world.setInteractive(interactive && view.mode === "running"); }, [interactive, view.mode]);
   useEffect(() => {
     const world = resources.current?.world;
     if (!world) return;

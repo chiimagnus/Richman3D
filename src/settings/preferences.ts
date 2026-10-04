@@ -1,4 +1,5 @@
 import { isLanguage, type Language } from "../i18n/language";
+import type { CameraView } from "../rendering/CameraRig";
 
 export type LookSensitivity = "low" | "standard" | "high";
 
@@ -6,6 +7,7 @@ export type GamePreferences = {
   readonly soundEnabled: boolean;
   readonly lookSensitivity: LookSensitivity;
   readonly language: Language;
+  readonly cameraView: CameraView | null;
 };
 
 type PreferencesStorage = Pick<Storage, "getItem" | "setItem">;
@@ -16,6 +18,7 @@ export const DEFAULT_PREFERENCES: GamePreferences = {
   soundEnabled: true,
   lookSensitivity: "standard",
   language: "zh-CN",
+  cameraView: null,
 };
 
 export function loadPreferences(
@@ -43,6 +46,7 @@ export function loadPreferences(
       language: isLanguage(value.language)
         ? value.language
         : DEFAULT_PREFERENCES.language,
+      cameraView: value.cameraView === "overview" || value.cameraView === "first_person" ? value.cameraView : null,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

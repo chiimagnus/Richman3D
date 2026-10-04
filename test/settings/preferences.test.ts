@@ -46,6 +46,7 @@ describe("game preferences", () => {
       soundEnabled: false,
       lookSensitivity: "high",
       language: "en",
+      cameraView: null,
     });
   });
 
@@ -61,6 +62,7 @@ describe("game preferences", () => {
       soundEnabled: false,
       lookSensitivity: "high",
       language: "zh-CN",
+      cameraView: null,
     });
   });
 
@@ -87,6 +89,7 @@ describe("game preferences", () => {
         soundEnabled: false,
         lookSensitivity: "low",
         language: "en",
+        cameraView: "overview",
       },
       storage,
     );
@@ -95,6 +98,7 @@ describe("game preferences", () => {
       soundEnabled: false,
       lookSensitivity: "low",
       language: "en",
+      cameraView: "overview",
     });
   });
 
@@ -118,5 +122,13 @@ describe("game preferences", () => {
     expect(lookSensitivityScale("low")).toBe(0.7);
     expect(lookSensitivityScale("standard")).toBe(1);
     expect(lookSensitivityScale("high")).toBe(1.35);
+  });
+
+  it.each(["first_person", "overview"] as const)("persists the explicit %s choice without overriding other valid preferences", (cameraView) => {
+    const storage = memoryStorage();
+    const preferences = { ...DEFAULT_PREFERENCES, cameraView, soundEnabled: false, language: "en" as const };
+    savePreferences(preferences, storage);
+    expect(loadPreferences(storage)).toEqual(preferences);
+    expect(loadPreferences(memoryStorage(JSON.stringify({ ...preferences, cameraView: "free_flight" })))).toEqual({ ...preferences, cameraView: null });
   });
 });

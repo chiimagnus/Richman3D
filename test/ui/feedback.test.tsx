@@ -5,16 +5,37 @@ import { createMatchConfig } from "../../src/domain/config";
 import { GameSession } from "../../src/app/GameSession";
 import { FeedbackLayer } from "../../src/ui/FeedbackLayer";
 import { Hud } from "../../src/ui/Hud";
-import { messages } from "../../src/i18n";
+import { messages, tileName } from "../../src/i18n";
 import { eventText } from "../../src/ui/eventText";
 import type { GameEvent } from "../../src/domain/types";
 
 vi.mock("../../src/ui/useGameView", () => ({ useGameView: (session: GameSession) => session.getSnapshot() }));
 
+it.each(["en", "zh-CN"] as const)("%s provides all board spaces as a native keyboard choice while inspection cannot submit or change a purchase", async (language) => {
+  const game = new Game(createMatchConfig(940));
+  expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 }).ok).toBe(true);
+  const session = new GameSession(game);
+  session.bind({ sync() {}, stop() {}, async present() {} });
+  const inspect = vi.fn();
+  try {
+    const before = session.getSnapshot();
+    const html = renderToStaticMarkup(<Hud session={session} language={language} onAssets={() => {}} assetPanel={null} inspectedTileId="city-tax" onInspect={inspect} />);
+    expect(html).toContain('<details'); expect(html).toContain('open=""');
+    expect(html).toContain(messages(language).assets.tile);
+    expect(html.match(/<option\b/g)).toHaveLength(game.snapshot.map.tiles.length);
+    for (const tile of game.snapshot.map.tiles) expect(html).toContain(tileName(language, tile));
+    expect(html).toContain('value="city-tax" selected=""');
+    expect(html).toContain(messages(language).board.fixedFee);
+    expect(html).toContain('aria-keyshortcuts="B"'); expect(html).toContain('aria-keyshortcuts="N"');
+    expect(html).not.toContain('<dialog');
+    expect(inspect).not.toHaveBeenCalled(); expect(session.getSnapshot()).toBe(before); expect(game.snapshot).toBe(before.committed);
+  } finally { session.dispose(); }
+});
+
 it.each(["zh-CN", "en"] as const)("%s presents the committed dice and preserves visible action shortcuts without changing rules", async (language) => {
   const session = new GameSession(new Game(createMatchConfig(940)));
   session.bind({ sync() {}, stop() {}, present: () => new Promise(() => {}) });
-  const renderHud = () => renderToStaticMarkup(<Hud session={session} language={language} onAssets={() => {}} assetPanel={null} />);
+  const renderHud = () => renderToStaticMarkup(<Hud session={session} language={language} onAssets={() => {}} assetPanel={null} inspectedTileId={null} onInspect={() => {}} />);
   try {
     const roll = renderHud();
     expect(roll).toContain('aria-keyshortcuts="Space"');

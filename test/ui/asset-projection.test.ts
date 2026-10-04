@@ -5,8 +5,9 @@ import { legalCommands, playerAssets, publicProperty } from "../../src/domain/se
 import { netAssets, propertyValue } from "../../src/domain/economy";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PropertyDetails } from "../../src/ui/PropertyDetails";
-import { messages } from "../../src/i18n";
+import { PropertyDetails, TileDetails } from "../../src/ui/PropertyDetails";
+import { formatCash, messages } from "../../src/i18n";
+import { propertyMatch } from "../fixtures/property-match";
 
 it("projects actual purchases and rent through public fields without changing state or leaking rule data", () => {
   const game = new Game(createMatchConfig(940));
@@ -58,4 +59,23 @@ it.each(["en", "zh-CN"] as const)("%s renders the same actual rent, mortgage and
   expect(snapshot.properties["neon-avenue"]!.constructionCosts).toEqual([]);
   expect(publicProperty(snapshot, "neon-avenue").bookValue).toBe(180);
   expect(game.snapshot).toBe(base);
+});
+
+it.each(["en", "zh-CN"] as const)("%s inspects every real board tile using the shared property projection and correct non-property consequences", (language) => {
+  const game = propertyMatch();
+  expect(game.apply({ kind: "mortgage", propertyId: "neon-avenue", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  const before = game.snapshot;
+  for (const tile of before.map.tiles) {
+    const html = renderToStaticMarkup(createElement(TileDetails, { snapshot: before, tile, language }));
+    if (tile.type === "property") {
+      expect(html).toBe(renderToStaticMarkup(createElement(PropertyDetails, { property: publicProperty(before, tile.id), players: before.config.players, language })));
+    } else if (tile.type === "chance") expect(html).toContain(messages(language).board.chanceDetail);
+    else {
+      expect(html).toContain(tile.type === "start" ? messages(language).board.startReward : messages(language).board.fixedFee);
+      expect(html).toContain(formatCash(language, tile.type === "start" ? before.rules.passStartBonus : tile.amount));
+      expect(html).not.toContain(messages(language).construction.cost);
+    }
+    expect(html).not.toContain("<button");
+    expect(game.snapshot).toBe(before);
+  }
 });

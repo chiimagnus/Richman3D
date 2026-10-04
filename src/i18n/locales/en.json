@@ -23,6 +23,7 @@
     "sound": "Sound",
     "view": "View · V",
     "lookAround": "Mouse look · L",
+    "recenter": "Follow current player",
     "match": "Match",
     "sensitivity": "Mouse Sensitivity",
     "low": "Low",
@@ -60,6 +61,8 @@
     "restart": "Play Again"
   },
   "board": {
+    "startReward": "Start reward",
+    "fixedFee": "Fee due",
     "startDetail": "+{amount} / lap",
     "chanceDetail": "Random event",
     "propertyDetail": "Price {price} · Rent {rent}",
@@ -156,7 +159,7 @@
     "title": "Public assets", "open": "View {player}'s public assets", "player": "Inspect seat", "seat": "Seat {number} · {player}",
     "cash": "Cash", "value": "Property book value", "net": "Net assets", "rent": "Current rent", "owner": "Owner", "bank": "Bank",
     "liquidation": "Asset liquidation proceeds", "level": "Building level", "mortgagePrincipal": "Outstanding mortgage principal",
-    "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect property details", "close": "Close asset view",
+    "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect board", "tile": "Board space", "tileOption": "{number} · {tile}", "close": "Close asset view",
     "bankrupt": "Eliminated; properties returned to the bank.", "publicOnly": "Public assets only; no private cards or future random results."
   },
   "history": { "title": "Action history", "count": "Keeping the latest {limit} events; {count} currently stored.", "empty": "No actions yet.", "revision": "Action {revision}", "back": "Close history" },

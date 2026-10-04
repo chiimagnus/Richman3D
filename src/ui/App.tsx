@@ -50,7 +50,9 @@ export function App({ app }: { app: GameApp }) {
 
 function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
   const [panel, setPanel] = useState<"pause" | "transfer" | "history" | "trade_draft" | "hand" | { kind: "assets"; playerId: PlayerId } | null>(null);
-  const [cameraView, setCameraView] = useState<CameraView>(() => window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
+  const cameraView = preferences.cameraView ?? (window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
+  const setCameraView = (cameraView: CameraView) => app.setPreferences({ ...preferences, cameraView });
+  const [inspectedTileId, setInspectedTileId] = useState<string | null>(null);
   const [matchOptionsOpen, setMatchOptionsOpen] = useState(false);
   const scene = useRef<SceneControls>(null);
   const lastPanel = useRef(panel);
@@ -61,6 +63,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
     lastPanel.current = panel;
   }, [panel]);
   const view = useGameView(session);
+  useEffect(() => { if (view.viewPlayerId === null) setInspectedTileId(null); }, [view.viewPlayerId]);
   const copy = messages(preferences.language);
   const ended = view.displayed.decision.kind === "game_over" && !view.presenting;
   const handover = session.handoverActor;
@@ -104,7 +107,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
         const command = actor !== null && actor === view.viewPlayerId && playerConfig(view.displayed.config, actor).controller === "human" ? legalCommands(view.displayed, actor).find((action) => action.kind === kind) : null;
         if (command) { event.preventDefault(); void session.dispatch(command); }
       } else if (event.code === "KeyM") app.setPreferences({ ...preferences, soundEnabled: !preferences.soundEnabled });
-      else if (event.code === "KeyV" && view.viewPlayerId !== null) { event.preventDefault(); setCameraView((current) => current === "overview" ? "first_person" : "overview"); }
+      else if (event.code === "KeyV" && view.viewPlayerId !== null) { event.preventDefault(); setCameraView(cameraView === "overview" ? "first_person" : "overview"); }
       else if (event.code === "KeyL" && view.viewPlayerId !== null) { event.preventDefault(); flushSync(() => setCameraView("first_person")); scene.current?.lookAround(); }
     };
     window.addEventListener("keydown", keydown);
@@ -118,11 +121,15 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   };
   return <main className={styles.game}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
-      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost ref={scene} app={app} session={session} preferences={preferences} cameraView={cameraView} interactive={!surface} /></Suspense>
+      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost ref={scene} app={app} session={session} preferences={preferences} cameraView={cameraView} interactive={!surface} onInspect={setInspectedTileId} /></Suspense>
     </ErrorBoundary>
-    {!ended && <div className={styles.tools}><button aria-keyshortcuts="Escape" onClick={pause}>{copy.settings.title}<kbd aria-hidden="true">Esc</kbd></button></div>}
+    {!ended && <div className={styles.tools}>
+      <button aria-keyshortcuts="Escape" onClick={pause}>{copy.settings.title}<kbd aria-hidden="true">Esc</kbd></button>
+      {view.viewPlayerId !== null && <button aria-keyshortcuts="V" disabled={!!surface} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "first_person" ? copy.setup.overview : copy.setup.firstPerson}<kbd aria-hidden="true">V</kbd></button>}
+      {cameraView === "overview" && view.viewPlayerId !== null && <button disabled={!!surface} onClick={() => scene.current?.centerCurrent()}>{copy.settings.recenter}</button>}
+    </div>}
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
-      {!ended && handover === null && surface !== "fault" && <><Hud session={session} language={preferences.language} onAssets={(playerId) => { if (document.pointerLockElement) document.exitPointerLock(); setPanel({ kind: "assets", playerId }); }} onHand={view.viewPlayerId !== null && !view.displayed.players.find((player) => player.id === view.viewPlayerId)!.bankrupt ? () => { if (document.pointerLockElement) document.exitPointerLock(); setPanel("hand"); } : undefined} assetPanel={surface === "inline_assets" ? assetPanel : null} /><FeedbackLayer session={session} language={preferences.language} /></>}
+      {!ended && handover === null && surface !== "fault" && <><Hud session={session} language={preferences.language} onAssets={(playerId) => { if (document.pointerLockElement) document.exitPointerLock(); setPanel({ kind: "assets", playerId }); }} onHand={view.viewPlayerId !== null && !view.displayed.players.find((player) => player.id === view.viewPlayerId)!.bankrupt ? () => { if (document.pointerLockElement) document.exitPointerLock(); setPanel("hand"); } : undefined} inspectedTileId={inspectedTileId} onInspect={setInspectedTileId} assetPanel={surface === "inline_assets" ? assetPanel : null} /><FeedbackLayer session={session} language={preferences.language} /></>}
     </ErrorBoundary>
     {(surface === "hand" || surface === "discard") && view.viewPlayerId !== null && <HandPanel key={view.displayed.revision} snapshot={view.displayed} actor={view.viewPlayerId} commands={handCommands(view)} language={preferences.language} onCommand={(command) => { setPanel(null); void session.dispatch(command); }} onClose={() => { if (surface === "discard") pause(); else { setPanel(null); document.querySelector<HTMLButtonElement>("#hand-open")?.focus({ preventScroll: true }); } }} />}
     {surface === "fault" ? <PanelHost title={copy.runtime.presentation_failed}>

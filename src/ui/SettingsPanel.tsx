@@ -17,10 +17,14 @@ export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraC
     <label className={styles.row}>{copy.sensitivity}<select value={preferences.lookSensitivity} onChange={(event) => app.setPreferences({ ...preferences, lookSensitivity: event.currentTarget.value as LookSensitivity })}>
       {(["low", "standard", "high"] as const).map((value) => <option key={value} value={value}>{copy[value]}</option>)}
     </select></label>
-    {onCameraChange && <label className={styles.row}>{copy.view}<select value={cameraView} aria-keyshortcuts="V" onChange={(event) => onCameraChange(event.currentTarget.value as CameraView)}>
+    {onCameraChange && <label className={styles.row}>{copy.view}<select value={cameraView} aria-keyshortcuts="V" onChange={(event) => onCameraChange(event.currentTarget.value as CameraView)} onKeyDown={(event) => {
+      if (event.code === "KeyV" && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) { event.preventDefault(); onCameraChange(cameraView === "overview" ? "first_person" : "overview"); }
+    }}>
       <option value="overview">{text.setup.overview}</option><option value="first_person">{text.setup.firstPerson}</option>
     </select></label>}
-    {onLookAround && <button className={styles.look} aria-keyshortcuts="L" onClick={onLookAround}>{copy.lookAround}</button>}
+    {onLookAround && <button className={styles.look} aria-keyshortcuts="L" onClick={onLookAround} onKeyDown={(event) => {
+      if (event.code === "KeyL" && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) { event.preventDefault(); onLookAround(); }
+    }}>{copy.lookAround}</button>}
     {children && <div className={styles.more}>{children}</div>}
   </PanelHost>;
 }

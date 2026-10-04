@@ -3,15 +3,14 @@ import { useEffect, useRef, type ReactNode } from "react";
 import type { PlayerId } from "../domain/types";
 import type { ItemCardId } from "../domain/types";
 import { cardType } from "../domain/cards";
-import { publicProperty } from "../domain/selectors";
-import { PropertyDetails } from "./PropertyDetails";
+import { TileDetails } from "./PropertyDetails";
 import { useGameView } from "./useGameView";
 import { actionView } from "./viewModel";
 import { formatCash, formatMessage, messages, playerName, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import styles from "./Hud.module.css";
 
-export function Hud({ session, language, onAssets, onHand, assetPanel }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; onHand?: (() => void) | undefined; assetPanel: ReactNode }) {
+export function Hud({ session, language, onAssets, onHand, assetPanel, inspectedTileId, onInspect }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; onHand?: (() => void) | undefined; assetPanel: ReactNode; inspectedTileId: string | null; onInspect: (tileId: string | null) => void }) {
   const view = useGameView(session);
   const model = actionView(view, language);
   const copy = messages(language);
@@ -27,6 +26,7 @@ export function Hud({ session, language, onAssets, onHand, assetPanel }: { sessi
     if (command) void session.dispatch(command);
   };
   const buying = view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId && !view.presenting;
+  const inspectedTile = view.displayed.map.tiles.find((tile) => tile.id === inspectedTileId) ?? model.property ?? model.tile;
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
       {view.displayed.players.map((player) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: playerName(language, player.id, view.displayed.config) })} onClick={() => onAssets(player.id)}>
@@ -48,9 +48,16 @@ export function Hud({ session, language, onAssets, onHand, assetPanel }: { sessi
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
         {onHand && <button id="hand-open" disabled={view.presenting} onClick={onHand}>{formatMessage(copy.items.open, { count: view.displayed.players.find((player) => player.id === view.viewPlayerId)!.hand.length })}</button>}
       </div>
-      {buying && model.property && <details className={styles.property} key={model.property.id}>
-        <summary>{copy.assets.details}</summary><PropertyDetails property={publicProperty(view.displayed, model.property.id)} players={view.displayed.config.players} language={language} />
-      </details>}
+      <details className={styles.property} open={inspectedTileId !== null} onToggle={(event) => {
+        if (event.currentTarget.open && inspectedTileId === null) onInspect(inspectedTile.id);
+        else if (!event.currentTarget.open && inspectedTileId !== null) onInspect(null);
+      }}>
+        <summary>{copy.assets.details}</summary>
+        <label className={styles.tilePicker}>{copy.assets.tile}<select value={inspectedTile.id} onChange={(event) => onInspect(event.currentTarget.value)}>
+          {view.displayed.map.tiles.map((tile, index) => <option key={tile.id} value={tile.id}>{formatMessage(copy.assets.tileOption, { number: index + 1, tile: tileName(language, tile) })}</option>)}
+        </select></label>
+        <TileDetails snapshot={view.displayed} tile={inspectedTile} language={language} />
+      </details>
       {view.displayed.players.find((player) => player.id === view.viewPlayerId)?.bankrupt && <p className={styles.notice}>{copy.setup.spectating}</p>}
       {view.displayed.activeItem?.actorId === view.viewPlayerId && !view.presenting && <p className={styles.notice} role="status">{formatMessage(copy.items.active, { card: copy.items.names[cardType(view.displayed.activeItem.instanceId) as ItemCardId] })}{view.displayed.activeItem.total !== null && " " + formatMessage(copy.items.controlled, { total: view.displayed.activeItem.total })}</p>}
       {view.save.kind === "unsaved" && view.save.acknowledged && <span className={styles.notice} role="status">{copy.storage.unsaved}</span>}

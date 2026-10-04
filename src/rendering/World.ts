@@ -25,7 +25,7 @@ export class World {
   private lastTime: number | null = null;
   private disposed = false;
 
-  constructor(container: HTMLElement, language: Language, config: MatchConfig, map: MapDefinition, rules: RuleSet, private readonly onFailure: () => void = () => {}) {
+  constructor(container: HTMLElement, language: Language, config: MatchConfig, map: MapDefinition, rules: RuleSet, private readonly onFailure: () => void = () => {}, onInspect: (tileId: string) => void = () => {}) {
     this.observer = observerId(config);
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -54,9 +54,8 @@ export class World {
     this.addEnvironment();
     this.board = new BoardView(this.scene, language, map, config, rules);
     config.players.forEach((player, index) => this.players.set(player.id, new PlayerView(this.scene, player.color, this.clock, map, index)));
-    this.cameraRig = new CameraRig(map, this.canvas, this.clock);
+    this.cameraRig = new CameraRig(map, this.canvas, this.clock, onInspect);
     disconnectControls = () => this.cameraRig.dispose();
-    this.setView(window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
 
     this.resize();
     window.addEventListener("resize", this.resize);
@@ -112,6 +111,12 @@ export class World {
     this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0x07111a, 0.016);
   }
 
+  setInteractive(interactive: boolean): void { this.cameraRig.setInteractive(interactive); }
+  centerCurrent(snapshot: GameSnapshot): void {
+    const player = snapshot.players.find((player) => player.id === snapshot.turnPlayerId)!;
+    this.cameraRig.focus(player.position, player.id);
+  }
+
   landOnTile(index: number, landing: LandingResult): void {
     this.board.pulseTile(index, landing);
   }
@@ -162,6 +167,8 @@ export class World {
     const delta = this.lastTime === null ? 0 : Math.max(time - this.lastTime, 0);
     this.lastTime = time;
     this.clock.update(delta);
+    const following = this.cameraRig.following;
+    if (following !== null) this.cameraRig.follow(this.players.get(following)!.position);
     this.board.update(time);
     this.renderer.render(this.scene, this.cameraRig.camera);
     } catch {

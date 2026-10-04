@@ -53,6 +53,8 @@ export class PlayerView {
     this.object.position.copy(boardPosition(this.map, index).add(this.offset));
   }
 
+  get position(): THREE.Vector3 { return this.object.position.clone().sub(this.offset); }
+
   async moveAlong(
     path: readonly number[],
     onStep?: () => void,
