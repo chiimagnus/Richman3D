@@ -41,6 +41,8 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
       resources.current = { world };
       world.setSelectedTile(selectedTileId);
       world.setLookSensitivity(lookSensitivityScale(settings.lookSensitivity));
+      world.setPresentationSpeed(settings.presentationSpeed);
+      world.setHeadBobEnabled(settings.headBobEnabled);
       unbind = session.bind({
         sync: (snapshot) => activeWorld.sync(snapshot),
         stop: () => { activeWorld.cancelPresentation(); audio.stop(); },
@@ -127,6 +129,8 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
     if (!resource) return;
     resource.world.setLanguage(preferences.language);
     resource.world.setLookSensitivity(lookSensitivityScale(preferences.lookSensitivity));
+    resource.world.setPresentationSpeed(preferences.presentationSpeed);
+    resource.world.setHeadBobEnabled(preferences.headBobEnabled);
   }, [preferences]);
   useEffect(() => {
     const world = resources.current?.world;

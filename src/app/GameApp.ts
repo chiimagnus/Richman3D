@@ -56,6 +56,7 @@ export class GameApp {
       if (request !== this.request) return;
       const session = new GameSession(restored ? Game.restore(restored.record.state) : new Game(config), restored?.record.matchId ?? crypto.randomUUID(),
         { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local" });
+      session.setPresentationSpeed(this.view.preferences.presentationSpeed);
       if (document.hidden) session.pause();
       this.publish({ ...this.view, session, loading: false });
       await session.initializeSave();
@@ -130,6 +131,7 @@ export class GameApp {
   setPreferences(preferences: GamePreferences): void {
     if (Object.keys(preferences).every((key) => preferences[key as keyof GamePreferences] === this.view.preferences[key as keyof GamePreferences])) return;
     savePreferences(preferences);
+    this.view.session?.setPresentationSpeed(preferences.presentationSpeed);
     this.audio.setEnabled(preferences.soundEnabled);
     if (this.view.session && preferences.soundEnabled && !this.view.preferences.soundEnabled) this.audio.unlock();
     document.documentElement.lang = preferences.language;

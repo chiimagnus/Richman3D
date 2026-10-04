@@ -5,6 +5,7 @@ import type { BotDifficulty, Command, GameEvent, GameSnapshot, PlayerId, RollRes
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
+import { PRESENTATION_RATES, type PresentationSpeed } from "../settings/preferences";
 
 export type SaveView = { readonly kind: "disabled" | "saving" } | { readonly kind: "saved"; readonly savedAt: number }
   | { readonly kind: "unsaved"; readonly acknowledged: boolean; readonly error: SaveError["kind"] } | { readonly kind: "conflict" };
@@ -36,6 +37,7 @@ export class GameSession {
   private saving: Promise<boolean> | null = null;
   private expected: SaveIdentity | null;
   private allowUnsaved = false;
+  private presentationSpeed: PresentationSpeed = "normal";
 
   constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
@@ -44,6 +46,7 @@ export class GameSession {
   }
 
   getSnapshot = (): GameView => this.view;
+  setPresentationSpeed(speed: PresentationSpeed): void { this.presentationSpeed = speed; }
 
   get handoverActor(): PlayerId | null {
     const { decision, config } = this.view.displayed;
@@ -229,7 +232,7 @@ export class GameSession {
           settled = true;
           settleDice();
           const duration = meaningful ? 1750 : 0;
-          this.publish({ displayed: result.snapshot, presentationEvent: null, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration } : null });
+          this.publish({ displayed: result.snapshot, presentationEvent: null, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration / PRESENTATION_RATES[this.presentationSpeed] } : null });
           return duration;
         };
         const finished = await this.queue.run(port, result.events, settle, (event) => this.publish({ presentationEvent: event }), settleDice);

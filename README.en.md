@@ -2,7 +2,7 @@
 
 [中文](README.md) | **English**
 
-A 3D Richman-style browser board game with first-person and board-overview views, built with **TypeScript + Three.js + WebGL + Vite**. Play 2–4 seats with local humans and computers on one device. View choice is stored locally with sound, language and mouse sensitivity preferences, separately from rule saves.
+A 3D Richman-style browser board game with first-person and board-overview views, built with **TypeScript + Three.js + WebGL + Vite**. Play 2–4 seats with local humans and computers on one device. View, sound, language, mouse sensitivity, animation speed and first-person head bob preferences are stored locally, separately from rule saves.
 
 **Play online: https://chiimagnus.github.io/Richman3D/**
 

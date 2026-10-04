@@ -2,6 +2,9 @@ type Job = { update(delta: number): void; cancel(): void; finish(): void };
 
 export class MotionClock {
   private readonly jobs = new Set<Job>();
+  private playbackRate: 1 | 2 = 1;
+
+  setPlaybackRate(rate: 1 | 2): void { this.playbackRate = rate; }
 
   animate(duration: number, write: (progress: number) => void, signal?: AbortSignal): Promise<boolean> {
     if (signal?.aborted) return Promise.resolve(false);
@@ -36,7 +39,7 @@ export class MotionClock {
 
   update(delta: number): void {
     if (!Number.isFinite(delta) || delta < 0) throw new RangeError("帧间隔无效");
-    for (const job of [...this.jobs]) job.update(delta);
+    for (const job of [...this.jobs]) job.update(delta * this.playbackRate);
   }
 
   cancel(): void { for (const job of [...this.jobs]) job.cancel(); }

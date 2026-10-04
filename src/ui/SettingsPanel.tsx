@@ -1,6 +1,6 @@
 import type { GameApp } from "../app/GameApp";
 import type { ReactNode } from "react";
-import type { GamePreferences, LookSensitivity } from "../settings/preferences";
+import type { GamePreferences, LookSensitivity, PresentationSpeed } from "../settings/preferences";
 import type { CameraView } from "../rendering/CameraRig";
 import { messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
@@ -14,6 +14,10 @@ export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraC
     <label className={styles.row}>{copy.language}<select value={preferences.language} onChange={(event) => app.setPreferences({ ...preferences, language: event.currentTarget.value as "en" | "zh-CN" })}>
       <option value="zh-CN">{copy.languageOptions["zh-CN"]}</option><option value="en">{copy.languageOptions.en}</option>
     </select></label>
+    <label className={styles.row}>{copy.presentationSpeed}<select value={preferences.presentationSpeed} onChange={(event) => app.setPreferences({ ...preferences, presentationSpeed: event.currentTarget.value as PresentationSpeed })}>
+      <option value="normal">{copy.normalSpeed}</option><option value="fast">{copy.fastSpeed}</option>
+    </select></label>
+    <label className={styles.row}>{copy.headBob}<input type="checkbox" checked={preferences.headBobEnabled} onChange={(event) => app.setPreferences({ ...preferences, headBobEnabled: event.currentTarget.checked })} /></label>
     <label className={styles.row}>{copy.sensitivity}<select value={preferences.lookSensitivity} onChange={(event) => app.setPreferences({ ...preferences, lookSensitivity: event.currentTarget.value as LookSensitivity })}>
       {(["low", "standard", "high"] as const).map((value) => <option key={value} value={value}>{copy[value]}</option>)}
     </select></label>

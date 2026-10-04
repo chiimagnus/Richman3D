@@ -25,7 +25,7 @@ export function animatePositions(
     const pathProgress = progress * segments;
     const segmentIndex = Math.min(Math.floor(pathProgress), Math.max(segments - 1, 0));
     const linear = progress >= 1 ? 1 : pathProgress - segmentIndex;
-    for (let index = lastSegment + 1; index <= segmentIndex; index += 1) options.onSegment?.(index);
+    if (!reduced) for (let index = lastSegment + 1; index <= segmentIndex; index += 1) options.onSegment?.(index);
     lastSegment = segmentIndex;
     const from = points[segmentIndex];
     const to = points[segmentIndex + 1];

@@ -2,7 +2,7 @@
 
 **中文** | [English](README.en.md)
 
-支持第一人称与棋盘总览的 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，支持2–4席同机真人与电脑对局。视角选择与声音、语言和鼠标灵敏度一起保存在本地偏好中，不写入规则存档。
+支持第一人称与棋盘总览的 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，支持2–4席同机真人与电脑对局。视角、声音、语言、鼠标灵敏度、动画速度和第一人称晃动保存在本地偏好中，不写入规则存档。
 
 **在线试玩：https://chiimagnus.github.io/Richman3D/**
 

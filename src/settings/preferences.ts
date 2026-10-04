@@ -2,12 +2,16 @@ import { isLanguage, type Language } from "../i18n/language";
 import type { CameraView } from "../rendering/CameraRig";
 
 export type LookSensitivity = "low" | "standard" | "high";
+export const PRESENTATION_RATES = { normal: 1, fast: 2 } as const;
+export type PresentationSpeed = keyof typeof PRESENTATION_RATES;
 
 export type GamePreferences = {
   readonly soundEnabled: boolean;
   readonly lookSensitivity: LookSensitivity;
   readonly language: Language;
   readonly cameraView: CameraView | null;
+  readonly presentationSpeed: PresentationSpeed;
+  readonly headBobEnabled: boolean;
 };
 
 type PreferencesStorage = Pick<Storage, "getItem" | "setItem">;
@@ -19,6 +23,8 @@ export const DEFAULT_PREFERENCES: GamePreferences = {
   lookSensitivity: "standard",
   language: "zh-CN",
   cameraView: null,
+  presentationSpeed: "normal",
+  headBobEnabled: true,
 };
 
 export function loadPreferences(
@@ -47,6 +53,8 @@ export function loadPreferences(
         ? value.language
         : DEFAULT_PREFERENCES.language,
       cameraView: value.cameraView === "overview" || value.cameraView === "first_person" ? value.cameraView : null,
+      presentationSpeed: value.presentationSpeed === "fast" ? "fast" : "normal",
+      headBobEnabled: typeof value.headBobEnabled === "boolean" ? value.headBobEnabled : DEFAULT_PREFERENCES.headBobEnabled,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

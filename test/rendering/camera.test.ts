@@ -47,6 +47,21 @@ it.each([16 / 9, 9 / 16, 0.35, 2.4])("fits all selected map bounds at aspect %s 
   rig.dispose();
 });
 
+it.each([true, false])("first-person head bob %s changes only the camera's intermediate height", async (enabled) => {
+  const clock = new MotionClock(); const rig = new CameraRig(CITY, canvas(), clock);
+  try {
+    rig.firstPerson.setPosition(0); rig.firstPerson.setHeadBobEnabled(enabled);
+    const moving = rig.firstPerson.moveAlong([1]);
+    clock.update(110);
+    expect(rig.firstPersonCamera.position.y).toBeCloseTo(enabled ? 1.8 : 1.72);
+    const target = boardPosition(CITY, 1);
+    clock.update(110); await moving;
+    expect(rig.firstPersonCamera.position.x).toBeCloseTo(target.x);
+    expect(rig.firstPersonCamera.position.z).toBeCloseTo(target.z);
+    expect(rig.firstPersonCamera.position.y).toBeCloseTo(1.72); expect(clock.activeCount).toBe(0);
+  } finally { rig.dispose(); }
+});
+
 it.each([2, 3, 4])("draws %s real pawns with stable same-tile offsets, visibility and cleanup", (size) => {
   const scene = new THREE.Scene();
   const clock = new MotionClock();

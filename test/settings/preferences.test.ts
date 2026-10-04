@@ -47,6 +47,8 @@ describe("game preferences", () => {
       lookSensitivity: "high",
       language: "en",
       cameraView: null,
+      presentationSpeed: "normal",
+      headBobEnabled: true,
     });
   });
 
@@ -63,6 +65,8 @@ describe("game preferences", () => {
       lookSensitivity: "high",
       language: "zh-CN",
       cameraView: null,
+      presentationSpeed: "normal",
+      headBobEnabled: true,
     });
   });
 
@@ -90,6 +94,8 @@ describe("game preferences", () => {
         lookSensitivity: "low",
         language: "en",
         cameraView: "overview",
+        presentationSpeed: "fast",
+        headBobEnabled: false,
       },
       storage,
     );
@@ -99,6 +105,8 @@ describe("game preferences", () => {
       lookSensitivity: "low",
       language: "en",
       cameraView: "overview",
+      presentationSpeed: "fast",
+      headBobEnabled: false,
     });
   });
 
@@ -122,6 +130,14 @@ describe("game preferences", () => {
     expect(lookSensitivityScale("low")).toBe(0.7);
     expect(lookSensitivityScale("standard")).toBe(1);
     expect(lookSensitivityScale("high")).toBe(1.35);
+  });
+
+  it("persists speed and comfort independently and validates external fields", () => {
+    const preferences = { ...DEFAULT_PREFERENCES, presentationSpeed: "fast" as const, headBobEnabled: false };
+    const storage = memoryStorage();
+    savePreferences(preferences, storage);
+    expect(loadPreferences(storage)).toEqual(preferences);
+    expect(loadPreferences(memoryStorage(JSON.stringify({ ...preferences, presentationSpeed: "turbo", headBobEnabled: "yes" })))).toEqual(DEFAULT_PREFERENCES);
   });
 
   it.each(["first_person", "overview"] as const)("persists the explicit %s choice without overriding other valid preferences", (cameraView) => {

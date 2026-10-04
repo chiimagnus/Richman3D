@@ -12,6 +12,7 @@ import { PlayerView } from "./PlayerView";
 import { MotionClock } from "./MotionClock";
 import { disposeObject } from "./disposeObject";
 import { DiceView } from "./DiceView";
+import { PRESENTATION_RATES, type PresentationSpeed } from "../settings/preferences";
 
 export class World {
   readonly canvas: HTMLCanvasElement;
@@ -133,6 +134,9 @@ export class World {
     this.cameraRig.firstPerson.setPointerSpeed(pointerSpeed);
   }
 
+  setPresentationSpeed(speed: PresentationSpeed): void { this.clock.setPlaybackRate(PRESENTATION_RATES[speed]); }
+  setHeadBobEnabled(enabled: boolean): void { this.cameraRig.firstPerson.setHeadBobEnabled(enabled); }
+
   setLanguage(language: Language): void {
     this.canvas.setAttribute("aria-label", messages(language).worldAria);
     this.board.setLanguage(language);
@@ -147,8 +151,7 @@ export class World {
   }
 
   wait(duration: number, signal?: AbortSignal): Promise<boolean> {
-    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    return this.clock.animate(reduced ? 0 : duration, () => {}, signal);
+    return this.clock.animate(duration, () => {}, signal);
   }
 
   rollDice(values: readonly [number, number], signal: AbortSignal, onSettled: () => void): Promise<boolean> {
