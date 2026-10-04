@@ -34,7 +34,8 @@ it.each(["en", "zh-CN"] as const)("%s provides all board spaces as a native keyb
 
 it.each(["zh-CN", "en"] as const)("%s presents the committed dice and preserves visible action shortcuts without changing rules", async (language) => {
   const session = new GameSession(new Game(createMatchConfig(940)));
-  session.bind({ sync() {}, stop() {}, present: () => new Promise(() => {}) });
+  let settleDice = () => {};
+  session.bind({ sync() {}, stop() {}, present: (_events, _signal, _settle, _show, settled) => { settleDice = settled; return new Promise(() => {}); } });
   const renderHud = () => renderToStaticMarkup(<Hud session={session} language={language} onAssets={() => {}} assetPanel={null} inspectedTileId={null} onInspect={() => {}} />);
   try {
     const roll = renderHud();
@@ -47,9 +48,16 @@ it.each(["zh-CN", "en"] as const)("%s presents the committed dice and preserves 
     expect(event?.kind).toBe("rolled");
     if (event?.kind !== "rolled") throw new Error("Missing roll event");
     const dice = renderToStaticMarkup(<FeedbackLayer session={session} language={language} />);
-    expect(dice).toContain(`aria-label="${messages(language).hud.recentDiceAria}: ${event.result.dice.join(" + ")}"`);
-    for (const value of event.result.dice) expect(dice).toContain(["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][value - 1]);
+    expect(dice).not.toContain('role="img"');
+    expect(dice).not.toMatch(/[⚀⚁⚂⚃⚄⚅]/);
+    expect(dice).toContain('aria-live="polite"');
     expect(session.getSnapshot()).toBe(before);
+    settleDice();
+    const settledHud = renderHud();
+    expect(settledHud).toContain(`aria-label="${messages(language).hud.recentDiceAria}: ${event.result.dice.join(" + ")}"`);
+    expect(settledHud.match(/role="img"/g)).toHaveLength(1);
+    expect(session.getSnapshot().presenting).toBe(true);
+    expect(session.getSnapshot().committed).toBe(before.committed);
     session.pause();
     await work;
     expect(renderToStaticMarkup(<FeedbackLayer session={session} language={language} />)).not.toContain('role="img"');

@@ -57,7 +57,8 @@
     "chanceIgnored": "本次移动不连抽机会卡。"
   },
   "feedback": {
-    "diceActor": "{actor}掷骰",
+    "diceSettled": "{actor}掷出{first}和{second}，合计{total}。",
+    "controlledDiceSettled": "{actor}的遥控骰子落定为{first}和{second}，合计{total}。",
     "restart": "再来一局"
   },
   "board": {

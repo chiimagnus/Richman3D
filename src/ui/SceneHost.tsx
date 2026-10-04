@@ -43,7 +43,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
       unbind = session.bind({
         sync: (snapshot) => activeWorld.sync(snapshot),
         stop: () => { activeWorld.cancelPresentation(); audio.stop(); },
-        present: async (events, signal, settle, show) => {
+        present: async (events, signal, settle, show, settleDice) => {
           let settled = false;
           const feedback = async () => {
             if (settled || signal.aborted) return;
@@ -56,11 +56,11 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
             if (signal.aborted) return;
             switch (event.kind) {
               case "rolled": {
-                if (event.result.controlledBy) show(event);
-                else audio.playRoll();
-                if (!await activeWorld.wait(520, signal)) return;
+                if (!event.result.controlledBy) audio.playRoll();
+                if (!await activeWorld.rollDice(event.result.dice, signal, settleDice)) return;
                 await activeWorld.movePlayer(event.result.playerId, event.result.path, () => audio.playStep(), signal);
                 if (signal.aborted) return;
+                activeWorld.hideDice();
                 activeWorld.landOnTile(event.result.to, event.result.landing);
                 audio.playLanding(event.result.landing);
                 if (event.result.landing.kind === "movement_card" || event.result.landing.kind === "item_received") {

@@ -1,7 +1,7 @@
 import { Game } from "../domain/game";
 import { chooseBotAction, observeBot, type BotAction, type BotReason } from "../domain/bot";
 import { observerId, playerConfig } from "../domain/config";
-import type { BotDifficulty, Command, GameEvent, GameSnapshot, PlayerId } from "../domain/types";
+import type { BotDifficulty, Command, GameEvent, GameSnapshot, PlayerId, RollResult } from "../domain/types";
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
@@ -17,6 +17,7 @@ export type GameView = {
   readonly attached: boolean;
   readonly events: readonly GameEvent[];
   readonly presentationEvent: GameEvent | null;
+  readonly settledRoll: { readonly revision: number; readonly result: RollResult } | null;
   readonly botDecision: { readonly actorId: PlayerId; readonly revision: number; readonly difficulty: BotDifficulty; readonly reason: BotReason } | null;
   readonly error: "presentation_failed" | "command_rejected" | null;
   readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
@@ -30,6 +31,7 @@ export class GameSession {
   private port: PresentationPort | null = null;
   private work: Promise<void> | null = null;
   private announcedNoticeId = 0;
+  private announcedDiceRevision = 0;
   private view: GameView;
   private saving: Promise<boolean> | null = null;
   private expected: SaveIdentity | null;
@@ -38,7 +40,7 @@ export class GameSession {
   constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
     this.expected = persistence?.expected ?? null;
-    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, botDecision: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
+    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, settledRoll: null, botDecision: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
   }
 
   getSnapshot = (): GameView => this.view;
@@ -113,6 +115,11 @@ export class GameSession {
   claimAnnouncement(id: number): boolean {
     if (id <= this.announcedNoticeId || this.view.notice?.id !== id || this.view.notice.expiresAt <= Date.now()) return false;
     this.announcedNoticeId = id;
+    return true;
+  }
+  claimDiceAnnouncement(revision: number): boolean {
+    if (revision <= this.announcedDiceRevision || this.view.settledRoll?.revision !== revision) return false;
+    this.announcedDiceRevision = revision;
     return true;
   }
   subscribe = (listener: () => void): (() => void) => {
@@ -204,21 +211,28 @@ export class GameSession {
           return;
         }
         const port = this.port;
-        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, presenting: true, error: null,
+        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, settledRoll: null, presenting: true, error: null,
           botDecision: botAction ? { actorId: command.actor, revision: result.snapshot.revision, difficulty: playerConfig(before.config, command.actor).difficulty, reason: botAction.reason } : null });
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
         const event = result.events.find((entry) => entry.kind === "paid" || entry.kind === "auction_ended") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
         const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_auction" && result.snapshot.decision.kind !== "awaiting_trade" && result.snapshot.decision.kind !== "awaiting_discard" && !("actor" in event && ["purchased", "upgraded", "building_sold", "mortgaged", "redeemed", "item_used"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available");
         let settled = false;
+        const rolled = result.events.find((event) => event.kind === "rolled");
+        const settleDice = () => {
+          if (rolled?.kind === "rolled" && this.view.mode === "running" && this.port === port && this.view.settledRoll?.revision !== result.snapshot.revision) {
+            this.publish({ settledRoll: { revision: result.snapshot.revision, result: rolled.result } });
+          }
+        };
         const settle = () => {
           if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;
           settled = true;
+          settleDice();
           const duration = meaningful ? 1750 : 0;
           this.publish({ displayed: result.snapshot, presentationEvent: null, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration } : null });
           return duration;
         };
-        const finished = await this.queue.run(port, result.events, settle, (event) => this.publish({ presentationEvent: event }));
+        const finished = await this.queue.run(port, result.events, settle, (event) => this.publish({ presentationEvent: event }), settleDice);
         if (this.getSnapshot().mode === "disposed") return;
         settle();
         this.publish({ displayed: this.game.snapshot, presenting: false, viewPlayerId: this.nextViewPlayer() });

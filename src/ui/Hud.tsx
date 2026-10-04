@@ -27,6 +27,7 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
   };
   const buying = view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId && !view.presenting;
   const inspectedTile = view.displayed.map.tiles.find((tile) => tile.id === inspectedTileId) ?? model.property ?? model.tile;
+  const dice = view.settledRoll?.result.dice ?? view.displayed.lastRoll;
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
       {view.displayed.players.map((player) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: playerName(language, player.id, view.displayed.config) })} onClick={() => onAssets(player.id)}>
@@ -37,8 +38,8 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
     <footer className={styles.dock}>
       <div className={styles.copy}><strong>{tileName(language, model.tile)}</strong><span>{model.status}</span></div>
       <div ref={actions} className={styles.actions}>
-        <span className={styles.dice} role="img" aria-label={`${copy.hud.recentDiceAria}: ${view.displayed.lastRoll ? view.displayed.lastRoll.join(" + ") : "— + —"}`}>
-          {(view.displayed.lastRoll ?? [null, null]).map((value, index) => <span key={index} aria-hidden="true">{value ?? "—"}</span>)}
+        <span className={styles.dice} role="img" aria-label={`${copy.hud.recentDiceAria}: ${dice ? dice.join(" + ") : "— + —"}`}>
+          {(dice ?? [null, null]).map((value, index) => <span key={index} aria-hidden="true">{value ?? "—"}</span>)}
         </span>
         {buying ? <>
           <button className={styles.primary} aria-keyshortcuts="B" disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: formatCash(language, model.property.price) }) : copy.hud.buy}<kbd aria-hidden="true">B</kbd></button>

@@ -57,7 +57,8 @@
     "chanceIgnored": "No further Chance card is drawn on this move."
   },
   "feedback": {
-    "diceActor": "{actor} · Dice Roll",
+    "diceSettled": "{actor} rolled {first} and {second}, total {total}.",
+    "controlledDiceSettled": "{actor}'s chosen dice settled on {first} and {second}, total {total}.",
     "restart": "Play Again"
   },
   "board": {

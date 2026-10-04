@@ -11,6 +11,7 @@ import { CameraRig, type CameraView } from "./CameraRig";
 import { PlayerView } from "./PlayerView";
 import { MotionClock } from "./MotionClock";
 import { disposeObject } from "./disposeObject";
+import { DiceView } from "./DiceView";
 
 export class World {
   readonly canvas: HTMLCanvasElement;
@@ -22,6 +23,7 @@ export class World {
   private readonly cameraRig: CameraRig;
   private observer: PlayerId | null;
   private readonly clock = new MotionClock();
+  private readonly dice: DiceView;
   private lastTime: number | null = null;
   private disposed = false;
 
@@ -39,7 +41,11 @@ export class World {
     container.append(this.canvas);
 
     let disconnectControls = () => {};
+    let disposeDice = () => {};
     try {
+
+    this.dice = new DiceView(this.clock);
+    disposeDice = () => this.dice.dispose();
 
     this.scene.background = new THREE.Color(0x07111a);
     this.scene.fog = new THREE.FogExp2(0x07111a, 0.016);
@@ -50,6 +56,7 @@ export class World {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
+    this.renderer.autoClear = false;
 
     this.addEnvironment();
     this.board = new BoardView(this.scene, language, map, config, rules);
@@ -64,6 +71,7 @@ export class World {
       disconnectControls();
       window.removeEventListener("resize", this.resize);
       disposeObject(this.scene);
+      disposeDice();
       this.renderer.dispose();
       this.renderer.forceContextLoss();
       this.canvas.remove();
@@ -143,7 +151,12 @@ export class World {
     return this.clock.animate(reduced ? 0 : duration, () => {}, signal);
   }
 
-  cancelPresentation(): void { this.clock.cancel(); }
+  rollDice(values: readonly [number, number], signal: AbortSignal, onSettled: () => void): Promise<boolean> {
+    return this.dice.roll(values, onSettled, signal, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  hideDice(): void { this.dice.hide(); }
+  cancelPresentation(): void { this.clock.cancel(); this.dice.hide(); }
 
   dispose(): void {
     if (this.disposed) return;
@@ -152,6 +165,7 @@ export class World {
     window.removeEventListener("resize", this.resize);
     this.clock.cancel();
     this.cameraRig.dispose();
+    this.dice.dispose();
     for (const player of this.players.values()) player.dispose();
     this.players.clear();
     this.board.dispose();
@@ -170,7 +184,9 @@ export class World {
     const following = this.cameraRig.following;
     if (following !== null) this.cameraRig.follow(this.players.get(following)!.position);
     this.board.update(time);
+    this.renderer.clear();
     this.renderer.render(this.scene, this.cameraRig.camera);
+    this.dice.render(this.renderer);
     } catch {
       this.renderer.setAnimationLoop(null);
       this.clock.cancel();
@@ -186,6 +202,7 @@ export class World {
     );
 
     this.cameraRig.resize(width / height);
+    this.dice.resize(width / height);
     this.renderer.setSize(width, height, false);
   };
 
