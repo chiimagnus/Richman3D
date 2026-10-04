@@ -6,7 +6,7 @@ import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../doma
 import { playerConfig } from "../domain/config";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
-import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
+import { boardBounds, boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
 import { rentFor } from "../domain/economy";
 import { createPropertyBuilding } from "./PropertyBuilding";
@@ -224,6 +224,15 @@ export class BoardView {
 
   private buildCenter(): void {
     const centerSize = TILE_SPACING * 4.15;
+    const bounds = boardBounds(this.map);
+    const size = bounds.getSize(new THREE.Vector3());
+    const interior = Math.min(size.x, size.z) - TILE_SIZE * 2;
+    if (interior <= 0) return;
+    const city = new THREE.Group();
+    city.name = "city-decoration";
+    city.position.copy(bounds.getCenter(new THREE.Vector3()));
+    city.scale.set(interior / centerSize, 0.14, interior / centerSize);
+    this.object.add(city);
     const plaza = new THREE.Mesh(
       new THREE.BoxGeometry(centerSize, 0.2, centerSize),
       new THREE.MeshStandardMaterial({
@@ -234,7 +243,7 @@ export class BoardView {
     );
     plaza.position.y = -0.04;
     plaza.receiveShadow = true;
-    this.object.add(plaza);
+    city.add(plaza);
 
     const buildings = [
       [-5.8, -5.4, 2.7, 6.2],
@@ -249,19 +258,18 @@ export class BoardView {
       [5.8, 4.7, 2.2, 6.1],
     ] as const;
 
+    const towerGeometry = new THREE.BoxGeometry();
+    const towerMaterials = [0x1b394b, 0x244d63].map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.28 }));
     for (const [x, z, footprint, height] of buildings) {
       const building = new THREE.Mesh(
-        new THREE.BoxGeometry(footprint, height, footprint),
-        new THREE.MeshStandardMaterial({
-          color: height > 6 ? 0x244d63 : 0x1b394b,
-          roughness: 0.5,
-          metalness: 0.28,
-        }),
+        towerGeometry,
+        towerMaterials[height > 6 ? 1 : 0],
       );
+      building.scale.set(footprint, height, footprint);
       building.position.set(x, height / 2 + 0.08, z);
       building.castShadow = true;
       building.receiveShadow = true;
-      this.object.add(building);
+      city.add(building);
     }
 
     const monument = new THREE.Mesh(
@@ -277,7 +285,7 @@ export class BoardView {
     monument.position.y = 2.3;
     monument.scale.setScalar(0.72);
     monument.castShadow = true;
-    this.object.add(monument);
+    city.add(monument);
   }
 
   private createOwnerMarker(ownerId: PlayerId): THREE.Mesh {
