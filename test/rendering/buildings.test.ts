@@ -5,6 +5,7 @@ import { propertyMatch } from "../fixtures/property-match";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
+import { stubCanvas } from "../fixtures/canvas";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,7 +24,7 @@ function trackResources(root: THREE.Object3D) {
 
 it("renders the real three levels, replaces their resources once, and restores without replay or reallocation", () => {
   const fillText = vi.fn();
-  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  stubCanvas(fillText);
   const game = propertyMatch();
   const scene = new THREE.Scene();
   const snapshot = game.snapshot;
@@ -67,7 +68,7 @@ it("renders the real three levels, replaces their resources once, and restores w
 
 it("removes sold buildings and updates the mortgage and neighboring rent labels from real operations", () => {
   const fillText = vi.fn();
-  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  stubCanvas(fillText);
   const game = propertyMatch();
   for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ actor: "p1", kind: "upgrade", propertyId: id, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const scene = new THREE.Scene();
@@ -93,7 +94,7 @@ it("removes sold buildings and updates the mortgage and neighboring rent labels 
 
 it("removes bankrupt ownership and buildings once, preserves survivors and restores without ghost assets", () => {
   const fillText = vi.fn();
-  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  stubCanvas(fillText);
   const game = builtRentDebtMatch();
   const scene = new THREE.Scene();
   const before = game.snapshot;
@@ -124,7 +125,7 @@ it("removes bankrupt ownership and buildings once, preserves survivors and resto
 
 it("updates the traded owner's color and glow without reallocating a marker, and updates both group rent labels", () => {
   const fillText = vi.fn();
-  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillRect() {}, fillText }) }) });
+  stubCanvas(fillText);
   const game = propertyMatch();
   const scene = new THREE.Scene();
   const before = game.snapshot;

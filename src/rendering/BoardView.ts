@@ -337,7 +337,7 @@ function tileColor(tile: BoardTile): number {
 
 function createTileLabel(tile: BoardTile, language: Language, rules: RuleSet): THREE.Mesh {
   return new THREE.Mesh(
-    new THREE.PlaneGeometry(3.1, 1.55),
+    new THREE.PlaneGeometry(3.1, 2.325),
     new THREE.MeshBasicMaterial({
       map: createTileLabelTexture(tile, language, rules),
       transparent: true,
@@ -354,7 +354,7 @@ function createTileLabelTexture(
 ): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
-  canvas.height = 256;
+  canvas.height = 384;
   const context = canvas.getContext("2d");
 
   if (!context) {
@@ -363,23 +363,41 @@ function createTileLabelTexture(
 
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "rgba(6, 17, 27, 0.82)";
-  roundedRect(context, 24, 24, 464, 208, 28);
+  roundedRect(context, 24, 24, 464, 336, 28);
   context.fill();
 
   context.fillStyle = "#f5fbff";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.font = "700 48px system-ui, sans-serif";
-  context.fillText(tileName(language, tile), 256, 105, 420);
+  const detailTop = drawWrappedText(context, tileName(language, tile), language, 80, 56) + 12;
 
   context.fillStyle = "rgba(224, 241, 249, 0.72)";
   context.font = "600 28px system-ui, sans-serif";
-  context.fillText(detail, 256, 166, 420);
+  drawWrappedText(context, detail, language, detailTop, 38);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
+}
+
+function drawWrappedText(context: CanvasRenderingContext2D, text: string, language: Language, top: number, lineHeight: number): number {
+  const words = new Intl.Segmenter(language, { granularity: "word" });
+  const graphemes = new Intl.Segmenter(language, { granularity: "grapheme" });
+  const segments = [...words.segment(text)].flatMap(({ segment }) => context.measureText(segment).width > 420
+    ? [...graphemes.segment(segment)].map((entry) => entry.segment) : [segment]);
+  let line = "";
+  let baseline = top;
+  for (const segment of segments) {
+    if (line.trim() && context.measureText(line + segment).width > 420) {
+      context.fillText(line.trim(), 256, baseline);
+      baseline += lineHeight;
+      line = segment.trimStart();
+    } else line += segment;
+  }
+  if (line.trim()) context.fillText(line.trim(), 256, baseline);
+  return baseline + lineHeight;
 }
 
 export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, snapshot: GameSnapshot | null = null): string {
