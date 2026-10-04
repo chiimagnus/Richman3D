@@ -27,8 +27,6 @@ export class BoardView {
   private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly tileLabels = new Map<number, THREE.Mesh>();
   private readonly propertyFlags = new Map<string, { group: THREE.Group; mortgage: THREE.Group }>();
-  private readonly tilePulses = new Map<number, number>();
-  private readonly markerPops = new Map<THREE.Mesh, number>();
   private readonly tileDetails = new Map<number, string>();
   private readonly propertyBuildings = new Map<string, { level: number; ownerId: PlayerId; object: THREE.Group }>();
   private snapshot: GameSnapshot | null = null;
@@ -79,7 +77,6 @@ export class BoardView {
 
       if (!ownerId) {
         if (existing) {
-          this.markerPops.delete(existing);
           disposeObject(existing);
         }
         this.ownerMarkers.delete(tile.id);
@@ -110,10 +107,6 @@ export class BoardView {
         0.48,
         position.z - TILE_SIZE * 0.32,
       );
-      if (!reducedMotion()) {
-        marker.scale.setScalar(0.01);
-        this.markerPops.set(marker, performance.now());
-      }
       this.object.add(marker);
       this.ownerMarkers.set(tile.id, marker);
     }
@@ -156,45 +149,25 @@ export class BoardView {
     this.tileDetails.set(index, detail);
   }
 
-  pulseTile(index: number, landing: LandingResult): void {
-    const material = this.tileMaterials.get(index);
-    if (!material) {
-      return;
-    }
-
-    material.emissive.setHex(pulseColor(landing));
-
-    this.tilePulses.set(index, performance.now());
+  popOwner(propertyId: string, clock: MotionClock, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    const marker = this.ownerMarkers.get(propertyId)!;
+    if (reducedMotion()) return Promise.resolve(true);
+    marker.scale.setScalar(0.01);
+    return clock.animate(300, progress => marker.scale.setScalar(Math.max(1 - (1 - progress) ** 3, 0.01)), signal)
+      .finally(() => marker.scale.setScalar(1));
   }
 
-  update(now: number): void {
-    for (const [index, startedAt] of this.tilePulses) {
-      const material = this.tileMaterials.get(index);
-      if (!material) {
-        this.tilePulses.delete(index);
-        continue;
-      }
-
-      const progress = Math.min((now - startedAt) / (reducedMotion() ? 120 : 720), 1);
-      material.emissiveIntensity = Math.sin(Math.PI * progress) * 1.25;
-
-      if (progress >= 1) {
+  pulseTile(index: number, landing: LandingResult, clock: MotionClock, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    const material = this.tileMaterials.get(index);
+    if (!material) return Promise.resolve(true);
+    material.emissive.setHex(pulseColor(landing));
+    return clock.animate(reducedMotion() ? 0 : 720, progress => { material.emissiveIntensity = reducedMotion() ? 0 : Math.sin(Math.PI * progress) * 1.25; }, signal)
+      .finally(() => {
         material.emissiveIntensity = 0;
         material.emissive.setHex(0x000000);
-        this.tilePulses.delete(index);
-      }
-    }
-
-    for (const [marker, startedAt] of this.markerPops) {
-      const progress = Math.min((now - startedAt) / 300, 1);
-      const eased = 1 - (1 - progress) ** 3;
-      marker.scale.setScalar(Math.max(eased, 0.01));
-
-      if (progress >= 1) {
-        marker.scale.setScalar(1);
-        this.markerPops.delete(marker);
-      }
-    }
+      });
   }
 
   private buildTiles(): void {
@@ -298,8 +271,6 @@ export class BoardView {
     this.tileMaterials.clear();
     this.tileLabels.clear();
     this.propertyFlags.clear();
-    this.tilePulses.clear();
-    this.markerPops.clear();
     this.tileDetails.clear();
     this.propertyBuildings.clear();
     this.snapshot = null;

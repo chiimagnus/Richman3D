@@ -92,6 +92,7 @@ export class World {
 
   setSelectedTile(tileId: string | null): void { this.board.setSelectedTile(tileId); }
   growProperty(propertyId: string, signal: AbortSignal): Promise<boolean> { return this.board.growProperty(propertyId, this.clock, signal); }
+  popOwner(propertyId: string, signal: AbortSignal): Promise<boolean> { return this.board.popOwner(propertyId, this.clock, signal); }
 
   setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
     if (id === this.observer) return;
@@ -126,8 +127,8 @@ export class World {
     this.cameraRig.focus(player.position, player.id);
   }
 
-  landOnTile(index: number, landing: LandingResult): void {
-    this.board.pulseTile(index, landing);
+  landOnTile(index: number, landing: LandingResult, signal: AbortSignal): void {
+    void this.board.pulseTile(index, landing, this.clock, signal);
   }
 
   setLookSensitivity(pointerSpeed: number): void {
@@ -186,7 +187,6 @@ export class World {
     this.clock.update(delta);
     const following = this.cameraRig.following;
     if (following !== null) this.cameraRig.follow(this.players.get(following)!.position);
-    this.board.update(time);
     this.renderer.clear();
     this.renderer.render(this.scene, this.cameraRig.camera);
     this.dice.render(this.renderer);

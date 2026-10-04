@@ -10,6 +10,8 @@ import { PlayerView } from "../../src/rendering/PlayerView";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
 import { PRESENTATION_RATES } from "../../src/settings/preferences";
+import { debtCheckpoint } from "../fixtures/debt-match";
+import type { PresentationPort } from "../../src/app/PresentationQueue";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -88,4 +90,51 @@ async function trace(seed: number, mode: "normal" | "fast" | "reduced" | "skip")
 
 it.each([6, 55, 940].flatMap(seed => ["fast", "reduced", "skip"].map(mode => ({ seed, mode: mode as "fast" | "reduced" | "skip" }))))("seed $seed under $mode has the same entire command/save trajectory as normal playback", async ({ seed, mode }) => {
   expect(await trace(seed, mode)).toEqual(await trace(seed, "normal"));
+});
+
+it("fast playback and repeated skip/pause cannot dismiss a real debt decision or re-charge its fixed obligation", async () => {
+  const game = debtCheckpoint(); const session = new GameSession(game); session.setPresentationSpeed("fast");
+  session.bind({ sync() {}, stop() {}, async present(_events, _signal, settle) { expect(settle()).toBe(0); } });
+  try {
+    await session.dispatch({ kind: "roll", actor: "p1", expectedRevision: game.snapshot.revision });
+    const debt = game.snapshot; expect(debt.decision.kind).toBe("awaiting_debt"); expect(session.getSnapshot().notice).toBeNull();
+    session.skipPresentation(); session.pause(); await session.resume(); session.skipPresentation();
+    expect(game.snapshot).toBe(debt); expect(session.getSnapshot().displayed).toBe(debt); expect(session.getSnapshot().notice).toBeNull();
+  } finally { session.dispose(); }
+});
+
+it("fast playback keeps actual auction choices open without manufacturing a bid or dropping the actor handover", async () => {
+  const config = createMatchConfig(940); const game = new Game({ ...config, players: config.players.map(player => ({ ...player, controller: "human" })) });
+  expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 }).ok).toBe(true);
+  const session = new GameSession(game); session.setPresentationSpeed("fast");
+  session.bind({ sync() {}, stop() {}, async present(_events, _signal, settle) { expect(settle()).toBe(0); } });
+  try {
+    expect(session.confirmHandover("p1")).toBe(true); await session.dispatch({ kind: "skip", actor: "p1", expectedRevision: game.snapshot.revision });
+    const auction = game.snapshot; expect(auction.decision.kind).toBe("awaiting_auction"); expect(session.handoverActor).toBe("p2");
+    session.skipPresentation(); session.pause(); await session.resume();
+    expect(session.confirmHandover("p2")).toBe(true); session.skipPresentation();
+    expect(game.snapshot).toBe(auction); expect(session.getSnapshot().notice).toBeNull(); expect(session.getSnapshot().displayed.decision).toBe(auction.decision);
+  } finally { session.dispose(); }
+});
+
+it("pause and resume reject every late projection callback from the old renderer, even during the next committed action", async () => {
+  const config = createMatchConfig(6); const game = new Game({ ...config, players: config.players.map(player => ({ ...player, controller: "human" })) });
+  const session = new GameSession(game);
+  const callbacks: { settle: () => number; show: Parameters<PresentationPort["present"]>[3]; dice: () => void }[] = [];
+  session.bind({ sync() {}, stop() {}, present(_events, _signal, settle, show, dice) {
+    callbacks.push({ settle, show, dice }); return new Promise(() => {});
+  } });
+  try {
+    expect(session.confirmHandover("p1")).toBe(true);
+    const first = session.dispatch({ kind: "roll", actor: "p1", expectedRevision: 0 }); await Promise.resolve();
+    const events = session.getSnapshot().events; session.pause(); await first;
+    expect(session.getSnapshot().notice).toBeNull();
+    await session.resume(); expect(session.confirmHandover("p2")).toBe(true);
+    const second = session.dispatch({ kind: "roll", actor: "p2", expectedRevision: 1 }); await Promise.resolve();
+    const current = session.getSnapshot(); expect(current.committed.revision).toBe(2);
+    expect(callbacks[0]!.settle()).toBe(0); callbacks[0]!.show(events[0]!); callbacks[0]!.dice();
+    expect(session.getSnapshot()).toBe(current); expect(game.snapshot).toBe(current.committed);
+    session.skipPresentation(); await second;
+    expect(session.getSnapshot().displayed).toBe(current.committed);
+  } finally { session.dispose(); }
 });

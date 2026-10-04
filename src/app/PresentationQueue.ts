@@ -19,7 +19,7 @@ export class PresentationQueue {
     });
     try {
       return await Promise.race([
-        port.present(events, controller.signal, settle, (event) => { if (this.current === controller && !controller.signal.aborted) show(event); }, () => { if (this.current === controller && !controller.signal.aborted) settleDice(); }).then(() => !controller.signal.aborted || controller.signal.reason === "skip"),
+        port.present(events, controller.signal, () => this.current === controller && !controller.signal.aborted ? settle() : 0, (event) => { if (this.current === controller && !controller.signal.aborted) show(event); }, () => { if (this.current === controller && !controller.signal.aborted) settleDice(); }).then(() => !controller.signal.aborted || controller.signal.reason === "skip"),
         aborted,
       ]);
     } finally {

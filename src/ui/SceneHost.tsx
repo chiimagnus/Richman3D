@@ -64,7 +64,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
                 await activeWorld.movePlayer(event.result.playerId, event.result.path, () => audio.playStep(), signal);
                 if (signal.aborted) return;
                 activeWorld.hideDice();
-                activeWorld.landOnTile(event.result.to, event.result.landing);
+                activeWorld.landOnTile(event.result.to, event.result.landing, signal);
                 audio.playLanding(event.result.landing);
                 if (event.result.landing.kind === "movement_card" || event.result.landing.kind === "item_received") {
                   show(event);
@@ -77,11 +77,15 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
                 if (event.result.direction === "teleport") activeWorld.teleportPlayer(event.result.playerId, event.result.to);
                 else await activeWorld.movePlayer(event.result.playerId, event.result.path, () => audio.playStep(), signal);
                 if (signal.aborted) return;
-                activeWorld.landOnTile(event.result.to, event.result.landing);
+                activeWorld.landOnTile(event.result.to, event.result.landing, signal);
                 audio.playLanding(event.result.landing);
                 break;
               }
               case "purchased":
+                activeWorld.sync(session.getSnapshot().committed);
+                audio.playPurchase();
+                if (!await activeWorld.popOwner(event.propertyId, signal)) return;
+                break;
               case "building_sold":
               case "mortgaged":
               case "redeemed": audio.playPurchase(); break;
@@ -103,7 +107,14 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "auction_started":
               case "auction_bid":
               case "auction_passed":
-              case "auction_ended": break;
+                break;
+              case "auction_ended":
+                if (event.winnerId !== null) {
+                  activeWorld.sync(session.getSnapshot().committed);
+                  audio.playPurchase();
+                  if (!await activeWorld.popOwner(event.propertyId, signal)) return;
+                }
+                break;
               case "paid":
               case "liquidated": break;
               case "turn": audio.playTurn(playerConfig(snapshot.config, event.actor).controller === "human"); break;

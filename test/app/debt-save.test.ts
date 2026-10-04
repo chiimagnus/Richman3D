@@ -33,7 +33,10 @@ it("saves fixed debt before canceled presentation, resumes without replay and sa
   await resumed.initializeSave();
   resumed.bind({ ...instant, present: async (_events, _signal, settle) => {
     settle();
-    if (restored.snapshot.decision.kind !== "awaiting_debt") resumed.pause();
+    if (restored.snapshot.decision.kind !== "awaiting_debt") {
+      expect(resumed.getSnapshot().notice?.event).toMatchObject({ kind: "paid", amount: 120 });
+      resumed.pause();
+    }
   } });
   const command = debtView(resumed.getSnapshot())!.management!.properties["neon-avenue"]!.mortgage.command!;
   expect(restored.snapshot).toEqual(pending);
@@ -43,7 +46,8 @@ it("saves fixed debt before canceled presentation, resumes without replay and sa
   expect(paid.players[0]!.cash).toBe(0);
   expect(paid.properties["neon-avenue"]!.mortgagePrincipal).toBe(90);
   expect(paid.history.slice(-3).map((entry) => entry.event.kind)).toEqual(["mortgaged", "paid", "turn"]);
-  expect(resumed.getSnapshot().notice?.event).toMatchObject({ kind: "paid", amount: 120 });
+  expect(resumed.getSnapshot().notice).toBeNull();
+  expect(paid.history.at(-2)!.event).toMatchObject({ kind: "paid", amount: 120 });
   expect((await repository.read())?.snapshot).toEqual(paid);
   expect(paid.random).toEqual(pending.random);
   await resumed.resume();

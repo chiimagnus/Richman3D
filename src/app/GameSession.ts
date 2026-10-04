@@ -164,7 +164,7 @@ export class GameSession {
 
   pause(): void {
     if (this.view.mode === "disposed") return;
-    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, viewPlayerId: this.nextViewPlayer() });
+    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, notice: null, viewPlayerId: this.nextViewPlayer() });
     this.queue.cancel();
     try {
       this.port?.stop();
@@ -190,7 +190,7 @@ export class GameSession {
     if (this.view.mode === "disposed") return;
     this.queue.cancel();
     try { this.port?.stop(); } catch { }
-    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, error: "presentation_failed" });
+    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, notice: null, error: "presentation_failed" });
   }
 
   dispose(): void {
@@ -228,7 +228,7 @@ export class GameSession {
           }
         };
         const settle = () => {
-          if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;
+          if (settled || this.getSnapshot().mode !== "running" || this.port !== port) return 0;
           settled = true;
           settleDice();
           const duration = meaningful ? 1750 : 0;
