@@ -83,7 +83,7 @@ it("uses native bounded overview rotation/zoom, keeps pose on resize and never e
     expect(rig.camera.quaternion.angleTo(rotated)).toBeLessThan(1e-7);
     const initialDistance = rig.camera.position.length();
     for (let count = 0; count < 60; count += 1) element.dispatchEvent(Object.assign(new Event("wheel", { cancelable: true }), { deltaY: -100, deltaMode: 0, clientX: 600, clientY: 400 }));
-    expect(rig.camera.position.length()).toBeCloseTo(initialDistance * 0.3);
+    expect(rig.camera.position.length()).toBeCloseTo(initialDistance * 0.6);
     rig.setInteractive(false);
     const blocked = rig.camera.position.clone();
     pointer(element, "pointerdown", 600, 400); pointer(element, "pointermove", 800, 600); pointer(element, "pointerup", 800, 600);
@@ -147,4 +147,26 @@ it("disposes native control and inspection listeners over twenty resource lifecy
     for (const type of ["mousemove", "pointerlockchange", "pointerlockerror", "keydown"]) expect(docRemoved.mock.calls.some((call) => call[0] === type)).toBe(true);
     expect(element.style.touchAction).toBe("auto");
   }
+});
+
+it.each([1.5, 0.35, 2.4])("keeps real board spaces visible at the maximum zoom before and after rotating and resizing at aspect %s", (aspect) => {
+  const element = canvas(); const rig = new CameraRig(CITY, element, new MotionClock());
+  try {
+    rig.resize(aspect); rig.setView("overview");
+    for (let step = 0; step < 60; step += 1) element.dispatchEvent(Object.assign(new Event("wheel", { cancelable: true }), { deltaY: -100, deltaMode: 0, clientX: 600, clientY: 400 }));
+    const assertVisible = () => {
+      rig.camera.updateMatrixWorld();
+      const visible = CITY.path.map((_, index) => boardPosition(CITY, index).project(rig.camera)).filter((point) => Math.abs(point.x) < 1 && Math.abs(point.y) < 1 && Math.abs(point.z) < 1);
+      expect(visible.length).toBeGreaterThan(0);
+    };
+    assertVisible();
+    for (const [horizontal, vertical] of [[300, 500], [-600, -200], [900, 300]] as const) {
+      pointer(element, "pointerdown", 600, 400);
+      pointer(element, "pointermove", 600 + horizontal, 400 + vertical);
+      pointer(element, "pointerup", 600 + horizontal, 400 + vertical);
+      assertVisible();
+    }
+    rig.resize(1.5);
+    assertVisible();
+  } finally { rig.dispose(); }
 });

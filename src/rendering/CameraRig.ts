@@ -72,7 +72,7 @@ export class CameraRig {
     const height = Math.max(size.z, size.x / aspect) / (2 * tangent) * 1.65;
     const offset = this.fitHeight === 0 ? new THREE.Vector3(0, height, 0.001) : this.overviewCamera.position.clone().sub(this.overview.target).multiplyScalar(height / this.fitHeight);
     this.fitHeight = height;
-    this.overview.minDistance = height * 0.3;
+    this.overview.minDistance = height * 0.6;
     this.overview.maxDistance = height * 1.25;
     this.overviewCamera.position.copy(this.overview.target).add(offset);
     this.overview.update();
