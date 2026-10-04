@@ -1,5 +1,5 @@
 version = 1
-current_task_id = "P8-T2"
+current_task_id = ""
 
 [[tasks]]
 id = "P1-T1"
@@ -236,58 +236,58 @@ note = "显式BotObservation去除rng/seed/deck/history/对手手牌，唯一策
 [[tasks]]
 id = "P8-T2"
 title = "三档决策与全玩法策略闭环"
-status = "in_progress"
+status = "completed"
 plan = "plan-p8.md#p8-t2"
-commit = ""
-note = ""
+commit = "d50d9221d804106f914a860a1bd730fadecbac85"
+note = "三档真实策略/配置/短理由；36金标准与3真实会话回归，组合抵押与赎回红绿；typecheck、60文件595测试、build、后台Helium三档/购买KeyB/交易485/双语390px/真实刷新通过；旧平价策略和格式删除。"
 
 [[tasks]]
 id = "P8-T3"
 title = "可重复模拟、调参和局长验证"
-status = "pending"
+status = "completed"
 plan = "plan-p8.md#p8-t3"
-commit = ""
-note = ""
+commit = "8ac1fa93461c7b40e3ad63506e2d6d7086434419"
+note = "f4f0263工具/8ac1fa9完整报告与RPC根因修复/6782046旧投影删除；两批各6000局exit0、全部非耗时统计SHA256一致，595单测/typecheck/build/diff-check通过；保留先手偏置与普通/困难重叠限制，不称真人时长/平衡。"
 
 [[tasks]]
 id = "P9-T1"
 title = "战术总览、第一人称与地块检查"
-status = "pending"
+status = "completed"
 plan = "plan-p9.md#p9-t1"
-commit = ""
-note = ""
+commit = "3536129a56b216922fbe597fc96f0daeb203f79b"
+note = "原生有界总览/单一视角偏好/20格只读检查；605测试/typecheck/build及后台Helium真实拖动、双语390px购买/HUD/设置、两视角购买/用牌/键盘/刷新通过；532.73kB警告和前台锁定成功/真机/200%边界保留。"
 
 [[tasks]]
 id = "P9-T2"
 title = "与规则一致的3D骰子"
-status = "pending"
+status = "completed"
 plan = "plan-p9.md#p9-t2"
-commit = ""
-note = ""
+commit = "44f4438fff55eb25edd5a1a795ced7e3240b9ec3"
+note = "36骰子对/11遥控总数的真实规则-会话-3D链、20次资源释放；664测试/typecheck/build通过；后台真实1/3、6/4、减少动态4/5及UI选择遥控2/12最终面/公告/RNG核对；旧字符/CSS/文案删除。"
 
 [[tasks]]
 id = "P9-T3"
 title = "地产成长、归属与城市可读性"
-status = "pending"
+status = "completed"
 plan = "plan-p9.md#p9-t3"
-commit = ""
-note = ""
+commit = "e79d8931ebdebdd598a3c755c2165af8f7fe60f1"
+note = "标签/zoom/装饰/产权/选择/成长与最后文字溢出根因块均提交；701测试/typecheck/build通过；真实20次GPU与语言资源稳定、四棋子同格、双语两视角八个200%文字组合完整state不变。原生缩放/真机/GPU字节峰值未测。"
 
 [[tasks]]
 id = "P9-T4"
 title = "动画速度、事件优先级与舒适性"
-status = "pending"
+status = "completed"
 plan = "plan-p9.md#p9-t4"
-commit = ""
-note = ""
+commit = "28988413d8423964f015a4042689a8c3c1aa33c8"
+note = "4acee2d节奏与本提交共享棋盘/取消根因；729测试/typecheck/build、实际四模式相等与购买跳过/恢复、债务/拍卖保持通过；未称真人舒适度，两视角整局留阶段收尾。"
 
 [[tasks]]
 id = "P9-T5"
 title = "音乐、音效音量与即时静音"
-status = "pending"
+status = "completed"
 plan = "plan-p9.md#p9-t5"
-commit = ""
-note = ""
+commit = "15064d820e7fbf8ac9193728071f1c6f2fbde818"
+note = "31针对/746全测/typecheck/build/diff-check；后台原生音频M/双音量/暂停及20次进出单Context、3→0源/输出和完整state保持；拒绝为注入，不称设备听测，细证plan-p9。"
 
 [[tasks]]
 id = "P10-T1"
