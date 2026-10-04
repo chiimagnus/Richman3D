@@ -3,6 +3,7 @@
 .balances button[aria-current="true"] { background: rgb(121 217 238 / 9%); }
 .balances button span { font-weight: 500; color: var(--muted); }
 .balances strong { font-variant-numeric: tabular-nums; }
+.balances .seat { display: inline-grid; place-content: center; min-width: 1.5em; margin-inline-end: 6px; border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-variant-numeric: tabular-nums; }
 .round { padding: 10px 12px; color: var(--muted); font-size: .875rem; overflow-wrap: anywhere; }
 .dock { grid-area: 3 / 1 / 4 / -1; justify-self: center; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; width: min(760px, 100%); padding: 18px 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow); }
 .copy { display: grid; min-width: 0; gap: 6px; overflow-wrap: anywhere; }

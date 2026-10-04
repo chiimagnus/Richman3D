@@ -30,8 +30,8 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
   const dice = view.settledRoll?.result.dice ?? view.displayed.lastRoll;
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
-      {view.displayed.players.map((player) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: playerName(language, player.id, view.displayed.config) })} onClick={() => onAssets(player.id)}>
-        <span>{playerName(language, player.id, view.displayed.config)}</span><strong>{formatCash(language, player.cash)}</strong>
+      {view.displayed.players.map((player, index) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: formatMessage(copy.assets.seat, { number: index + 1, player: playerName(language, player.id, view.displayed.config) }) })} onClick={() => onAssets(player.id)}>
+        <span><span className={styles.seat} aria-hidden="true">{index + 1}</span>{playerName(language, player.id, view.displayed.config)}</span><strong>{formatCash(language, player.cash)}</strong>
       </button>)}
       <span className={styles.round}>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
     </aside>

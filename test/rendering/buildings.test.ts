@@ -9,7 +9,7 @@ import { stubCanvas } from "../fixtures/canvas";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function trackResources(root: THREE.Object3D) {
+function trackResources(root: THREE.Object3D, includeTextures = true) {
   const resources = new Set<THREE.BufferGeometry | THREE.Material | THREE.Texture>();
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
@@ -19,7 +19,7 @@ function trackResources(root: THREE.Object3D) {
       for (const value of Object.values(material)) if (value instanceof THREE.Texture) resources.add(value);
     }
   });
-  return [...resources].map((resource) => vi.spyOn(resource, "dispose"));
+  return [...resources].filter((resource) => includeTextures || !(resource instanceof THREE.Texture)).map((resource) => vi.spyOn(resource, "dispose"));
 }
 
 it("renders the real three levels, replaces their resources once, and restores without replay or reallocation", () => {
@@ -105,7 +105,7 @@ it("removes bankrupt ownership and buildings once, preserves survivors and resto
   expect(markers).toHaveLength(5);
   const removedMarkers = markers.filter((object) => (object as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>).material.color.getHexString() === before.config.players[0]!.color.slice(1));
   expect(removedMarkers).toHaveLength(2);
-  const spies = [...buildings, ...removedMarkers].flatMap(trackResources);
+  const spies = [...buildings, ...removedMarkers].flatMap((object) => trackResources(object));
   const survivor = scene.getObjectByName("property-building-financial-center");
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: before.revision }).ok).toBe(true);
   board.syncOwnership(game.snapshot);
@@ -133,20 +133,27 @@ it("updates the traded owner's color and glow without reallocating a marker, and
   board.syncOwnership(before);
   const markers = scene.getObjectByName("board")!.children.filter((object): object is THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> => object instanceof THREE.Mesh && object.geometry instanceof THREE.CylinderGeometry);
   const original = markers.filter((marker) => marker.material.color.getHexString() === before.config.players[0]!.color.slice(1));
-  const spies = original.flatMap(trackResources);
+  const textures = original.map((marker) => (marker.getObjectByName("owner-seat") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>).material.map!);
+  const textureSpies = textures.map((texture) => vi.spyOn(texture, "dispose"));
+  const spies = original.flatMap((marker) => trackResources(marker, false));
   expect(game.apply({ kind: "trade_propose", actor: "p1", expectedRevision: before.revision, terms: { recipientId: "p2", givePropertyIds: ["neon-avenue"], receivePropertyIds: [], cash: { payerId: "p2", amount: 180 } } }).ok).toBe(true);
   expect(game.apply({ kind: "trade_accept", actor: "p2", expectedRevision: game.snapshot.revision, proposalRevision: game.snapshot.revision }).ok).toBe(true);
   fillText.mockClear();
   board.syncOwnership(game.snapshot);
   const changed = original.filter((marker) => marker.material.color.getHexString() === before.config.players[1]!.color.slice(1));
   expect(changed).toHaveLength(1);
+  const nextTexture = (changed[0]!.getObjectByName("owner-seat") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>).material.map!;
+  const nextTextureDisposal = vi.spyOn(nextTexture, "dispose");
   expect(changed[0]!.material.emissive.getHexString()).toBe(before.config.players[1]!.color.slice(1));
   expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 140 · Rent 24");
   expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 180 · Rent 32");
   for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+  expect(textureSpies.reduce((count, spy) => count + spy.mock.calls.length, 0)).toBe(1);
   board.syncOwnership(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot);
   expect(original.every((marker) => marker.parent !== null)).toBe(true);
+  expect(nextTextureDisposal).not.toHaveBeenCalled();
   board.dispose();
   board.dispose();
-  for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  for (const spy of [...spies, ...textureSpies]) expect(spy).toHaveBeenCalledTimes(1);
+  expect(nextTextureDisposal).toHaveBeenCalledTimes(1);
 });

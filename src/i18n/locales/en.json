@@ -157,6 +157,7 @@
     "invalid": "The saved data is damaged or uses an unsupported version. It has not been erased."
   },
   "assets": {
+    "groupBonus": "Color-group bonus", "groupActive": "Active", "groupInactive": "Inactive",
     "title": "Public assets", "open": "View {player}'s public assets", "player": "Inspect seat", "seat": "Seat {number} · {player}",
     "cash": "Cash", "value": "Property book value", "net": "Net assets", "rent": "Current rent", "owner": "Owner", "bank": "Bank",
     "liquidation": "Asset liquidation proceeds", "level": "Building level", "mortgagePrincipal": "Outstanding mortgage principal",

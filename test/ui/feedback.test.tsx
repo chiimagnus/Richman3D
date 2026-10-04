@@ -5,11 +5,27 @@ import { createMatchConfig } from "../../src/domain/config";
 import { GameSession } from "../../src/app/GameSession";
 import { FeedbackLayer } from "../../src/ui/FeedbackLayer";
 import { Hud } from "../../src/ui/Hud";
-import { messages, tileName } from "../../src/i18n";
+import { formatMessage, messages, tileName } from "../../src/i18n";
 import { eventText } from "../../src/ui/eventText";
 import type { GameEvent } from "../../src/domain/types";
 
 vi.mock("../../src/ui/useGameView", () => ({ useGameView: (session: GameSession) => session.getSnapshot() }));
+
+it.each(["en", "zh-CN"] as const)("%s distinguishes four equal names by the same visible and accessible seat numbers as property markers", (language) => {
+  const config = createMatchConfig(31, 4);
+  const session = new GameSession(new Game({ ...config, players: config.players.map((player) => ({ ...player, name: "Same Name" })) }));
+  try {
+    const before = session.getSnapshot();
+    const html = renderToStaticMarkup(<Hud session={session} language={language} onAssets={() => {}} assetPanel={null} inspectedTileId={null} onInspect={() => {}} />);
+    for (let number = 1; number <= 4; number += 1) {
+      const player = formatMessage(messages(language).assets.seat, { number, player: "Same Name" });
+      expect(html).toContain(`aria-label="${formatMessage(messages(language).assets.open, { player }).replaceAll("'", "&#x27;")}"`);
+      expect(html).toContain(`aria-hidden="true">${number}</span>Same Name`);
+    }
+    expect(html.match(/aria-current="true"/g)).toHaveLength(1);
+    expect(session.getSnapshot()).toBe(before);
+  } finally { session.dispose(); }
+});
 
 it.each(["en", "zh-CN"] as const)("%s provides all board spaces as a native keyboard choice while inspection cannot submit or change a purchase", async (language) => {
   const game = new Game(createMatchConfig(940));

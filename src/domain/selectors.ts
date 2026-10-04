@@ -1,7 +1,7 @@
 import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
-import { canDeclareBankruptcy, liquidationValue, liquidityOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
+import { canDeclareBankruptcy, completeGroup, liquidationValue, liquidityOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
 import { canBid, minimumBid, tradeOption } from "./market";
 import { itemCommands } from "./cards";
 
@@ -56,7 +56,7 @@ export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group },
-    ...property, constructionCosts: [...property.constructionCosts], rent: rentFor(snapshot, tile.id),
+    ...property, constructionCosts: [...property.constructionCosts], rent: rentFor(snapshot, tile.id), groupComplete: completeGroup(snapshot, tile),
     bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(tile, property, snapshot.rules) };
 }
 

@@ -8,8 +8,8 @@ import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import { boardBounds, boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
-import { rentFor } from "../domain/economy";
-import { createPropertyBuilding } from "./PropertyBuilding";
+import { completeGroup, rentFor } from "../domain/economy";
+import { createNumberTexture, createPropertyBuilding } from "./PropertyBuilding";
 
 const GROUP_COLORS = {
   cyan: 0x1da9c5,
@@ -24,6 +24,7 @@ export class BoardView {
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
   private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly tileLabels = new Map<number, THREE.Mesh>();
+  private readonly propertyFlags = new Map<string, { group: THREE.Group; mortgage: THREE.Group }>();
   private readonly tilePulses = new Map<number, number>();
   private readonly markerPops = new Map<THREE.Mesh, number>();
   private readonly tileDetails = new Map<number, string>();
@@ -61,6 +62,9 @@ export class BoardView {
 
       this.updateLabel(tile, index);
       this.syncBuilding(tile.id, index, snapshot);
+      const flags = this.propertyFlags.get(tile.id)!;
+      flags.group.visible = completeGroup(snapshot, tile);
+      flags.mortgage.visible = snapshot.properties[tile.id]!.mortgagePrincipal > 0;
       const ownerId = snapshot.properties[tile.id]!.ownerId;
       const existing = this.ownerMarkers.get(tile.id);
 
@@ -79,14 +83,22 @@ export class BoardView {
           material.color.set(playerConfig(this.config, ownerId).color);
           material.emissive.set(playerConfig(this.config, ownerId).color);
         }
+        if (existing.userData.ownerId !== ownerId) {
+          const badge = existing.getObjectByName("owner-seat") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+          badge.material.map!.dispose();
+          badge.material.map = createNumberTexture(this.config.players.findIndex((player) => player.id === ownerId) + 1);
+          badge.material.needsUpdate = true;
+          existing.userData.ownerId = ownerId;
+        }
         continue;
       }
 
       const marker = this.createOwnerMarker(ownerId);
+      marker.name = `owner-marker-${tile.id}`;
       const position = boardPosition(this.map, this.map.tiles.indexOf(tile));
       marker.position.set(
         position.x + TILE_SIZE * 0.32,
-        0.72,
+        0.48,
         position.z - TILE_SIZE * 0.32,
       );
       if (!reducedMotion()) {
@@ -207,6 +219,33 @@ export class BoardView {
       this.tileDetails.set(index, tileDetail(tile, this.language, this.rules));
       tileGroup.add(label);
 
+      if (tile.type === "property") {
+        const geometry = new THREE.BoxGeometry();
+        const group = new THREE.Group();
+        group.name = `complete-group-${tile.id}`;
+        const groupMaterial = new THREE.MeshBasicMaterial({ color: GROUP_COLORS[tile.group] });
+        for (const depth of [-1.65, -1.43]) {
+          const band = new THREE.Mesh(geometry, groupMaterial);
+          band.scale.set(2.95, 0.025, 0.08);
+          band.position.set(0, 0.23, depth);
+          group.add(band);
+        }
+        const mortgage = new THREE.Group();
+        mortgage.name = `mortgage-pattern-${tile.id}`;
+        const mortgageMaterial = new THREE.MeshBasicMaterial({ color: 0xffc66e });
+        for (const horizontal of [-0.72, -0.24, 0.24, 0.72]) {
+          const stripe = new THREE.Mesh(geometry, mortgageMaterial);
+          stripe.scale.set(0.12, 0.025, 0.58);
+          stripe.rotation.y = Math.PI / 4;
+          stripe.position.set(horizontal, 0.23, 1.5);
+          mortgage.add(stripe);
+        }
+        group.visible = false;
+        mortgage.visible = false;
+        tileGroup.add(group, mortgage);
+        this.propertyFlags.set(tile.id, { group, mortgage });
+      }
+
     });
   }
 
@@ -215,6 +254,7 @@ export class BoardView {
     this.ownerMarkers.clear();
     this.tileMaterials.clear();
     this.tileLabels.clear();
+    this.propertyFlags.clear();
     this.tilePulses.clear();
     this.markerPops.clear();
     this.tileDetails.clear();
@@ -290,7 +330,7 @@ export class BoardView {
 
   private createOwnerMarker(ownerId: PlayerId): THREE.Mesh {
     const marker = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.28, 1.2, 8),
+      new THREE.CylinderGeometry(0.36, 0.4, 0.52, 8),
       new THREE.MeshStandardMaterial({
         color: playerConfig(this.config, ownerId).color,
         emissive: playerConfig(this.config, ownerId).color,
@@ -298,6 +338,16 @@ export class BoardView {
         roughness: 0.45,
       }),
     );
+    const material = new THREE.MeshBasicMaterial({ map: createNumberTexture(this.config.players.findIndex((player) => player.id === ownerId) + 1) });
+    const geometry = new THREE.PlaneGeometry(0.48, 0.48);
+    const front = new THREE.Mesh(geometry, material);
+    front.name = "owner-seat";
+    front.position.z = 0.405;
+    const top = new THREE.Mesh(geometry, material);
+    top.rotation.x = -Math.PI / 2;
+    top.position.y = 0.265;
+    marker.add(front, top);
+    marker.userData.ownerId = ownerId;
     marker.castShadow = true;
     return marker;
   }
