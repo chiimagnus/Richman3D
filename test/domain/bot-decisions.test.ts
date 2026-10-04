@@ -299,16 +299,15 @@ it("discards deterministically by value, not the just-drawn order or a hidden ra
   expect(game.snapshot.random).toEqual(before.random);
 });
 
-it.each(BOT_DIFFICULTIES)("%s finishes deterministic 2/3/4-seat quick and standard games with the same rules and no private-information advantage", (difficulty) => {
-  for (const seats of [2, 3, 4]) for (const rulesVersion of [createMatchConfig().rulesVersion, STANDARD_RULES.version]) {
-    const config = createMatchConfig(31, seats);
-    const game = new Game({ ...config, rulesVersion, players: config.players.map((player) => ({ ...player, controller: "bot", difficulty })) });
-    for (let count = 0; count < 1500 && game.snapshot.decision.kind !== "game_over"; count += 1) {
-      const action = chooseBotAction(observeBot(game.snapshot))!;
-      expect(game.apply(action.command).ok).toBe(true);
-      const { rules: _rules, map: _map, ...state } = game.snapshot;
-      expect(Game.restore(state).snapshot).toEqual(game.snapshot);
-    }
-    expect(game.snapshot.decision.kind).toBe("game_over");
+it.each(BOT_DIFFICULTIES.flatMap((difficulty) => [2, 3, 4].flatMap((seats) => [createMatchConfig().rulesVersion, STANDARD_RULES.version].map((rulesVersion) => ({ difficulty, seats, rulesVersion })))))
+  ("$difficulty finishes a deterministic $seats-seat $rulesVersion game with the same rules and no private-information advantage", ({ difficulty, seats, rulesVersion }) => {
+  const config = createMatchConfig(31, seats);
+  const game = new Game({ ...config, rulesVersion, players: config.players.map((player) => ({ ...player, controller: "bot", difficulty })) });
+  for (let count = 0; count < 1500 && game.snapshot.decision.kind !== "game_over"; count += 1) {
+    const action = chooseBotAction(observeBot(game.snapshot))!;
+    expect(game.apply(action.command).ok).toBe(true);
+    const { rules: _rules, map: _map, ...state } = game.snapshot;
+    expect(Game.restore(state).snapshot).toEqual(game.snapshot);
   }
+  expect(game.snapshot.decision.kind).toBe("game_over");
 });
