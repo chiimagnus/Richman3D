@@ -31,17 +31,21 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
     const changeView = vi.fn();
     const settings = renderToStaticMarkup(<SettingsPanel app={app} preferences={state.preferences} onClose={() => {}} cameraView="overview" onCameraChange={changeView} />);
     expect(settings.match(/<select\b/g)).toHaveLength(4);
-    expect(settings.match(/<button\b/g)).toHaveLength(1);
+    expect(settings.match(/<button\b/g)).toHaveLength(2);
     expect(settings).toContain('value="overview" selected=""');
     expect(settings).toContain('type="checkbox"');
     expect(settings).toContain(copy.settings.presentationSpeed);
     expect(settings).toContain(copy.settings.headBob);
     expect(settings).toContain('value="normal" selected=""');
+    expect(settings.match(/type="range"/g)).toHaveLength(2);
+    expect(settings).toContain(copy.settings.effectsVolume); expect(settings).toContain(copy.settings.musicVolume);
+    expect(settings).toContain(copy.settings.enableAudio); expect(settings).toContain('aria-keyshortcuts="M"');
+    expect(settings).toContain('<kbd aria-hidden="true">M</kbd>');
     expect(changeView).not.toHaveBeenCalled();
     const lookAround = vi.fn();
     const cameraSettings = renderToStaticMarkup(<SettingsPanel app={app} preferences={state.preferences} onClose={() => {}} cameraView="first_person" onCameraChange={changeView} onLookAround={lookAround} />);
     expect(cameraSettings).toContain(copy.settings.lookAround);
-    expect(cameraSettings.match(/<button\b/g)).toHaveLength(2);
+    expect(cameraSettings.match(/<button\b/g)).toHaveLength(3);
     expect(lookAround).not.toHaveBeenCalled();
     expect(app.getSnapshot()).toBe(state);
   } finally { app.dispose(); }

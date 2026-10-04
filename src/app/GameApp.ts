@@ -20,7 +20,8 @@ export type AppView = {
 export class GameApp {
   private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false, stored: { kind: "loading" } };
   private readonly listeners = new Set<() => void>();
-  readonly audio = new GameAudio(this.view.preferences.soundEnabled);
+  readonly audio = new GameAudio(this.view.preferences.soundEnabled, this.view.preferences.effectsVolume, this.view.preferences.musicVolume);
+  private unbindAudio = () => {};
   private request = 0;
 
   constructor(readonly store = new GameStore()) {
@@ -48,6 +49,7 @@ export class GameApp {
     }
     if (request !== this.request) return;
     previous?.dispose();
+    this.releaseSessionAudio();
     this.audio.stop();
     this.publish({ ...this.view, session: null, loading: true, loadFailed: false });
     try {
@@ -58,6 +60,12 @@ export class GameApp {
         { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local" });
       session.setPresentationSpeed(this.view.preferences.presentationSpeed);
       if (document.hidden) session.pause();
+      const syncAudio = () => {
+        const view = session.getSnapshot();
+        this.audio.setPlaying(view.mode === "running" && view.committed.decision.kind !== "game_over");
+      };
+      this.unbindAudio = session.subscribe(syncAudio);
+      syncAudio();
       this.publish({ ...this.view, session, loading: false });
       await session.initializeSave();
       if (request !== this.request) return;
@@ -109,6 +117,7 @@ export class GameApp {
       const record = await this.store.replace(next, expectedRaw);
       if (request !== this.request) return;
       previous?.dispose();
+      this.releaseSessionAudio();
       this.audio.stop();
       this.publish({ ...this.view, session: null, loading: false, loadFailed: false, stored: { kind: "valid", record } });
     } finally {
@@ -123,6 +132,7 @@ export class GameApp {
     if (session && !discard && !await session.flush()) return;
     if (request !== this.request || session !== this.view.session) return;
     this.view.session?.dispose();
+    this.releaseSessionAudio();
     this.audio.stop();
     this.publish({ ...this.view, session: null, loading: false, loadFailed: false });
     await this.readStored();
@@ -133,6 +143,7 @@ export class GameApp {
     savePreferences(preferences);
     this.view.session?.setPresentationSpeed(preferences.presentationSpeed);
     this.audio.setEnabled(preferences.soundEnabled);
+    this.audio.setVolumes(preferences.effectsVolume, preferences.musicVolume);
     if (this.view.session && preferences.soundEnabled && !this.view.preferences.soundEnabled) this.audio.unlock();
     document.documentElement.lang = preferences.language;
     this.publish({ ...this.view, preferences });
@@ -141,6 +152,7 @@ export class GameApp {
   dispose(): void {
     this.request += 1;
     this.view.session?.dispose();
+    this.releaseSessionAudio();
     this.publish({ ...this.view, session: null, loading: false });
     this.audio.dispose();
     document.removeEventListener("visibilitychange", this.visibility);
@@ -150,6 +162,8 @@ export class GameApp {
   private readonly visibility = (): void => {
     if (document.hidden) this.view.session?.pause();
   };
+
+  private releaseSessionAudio(): void { this.unbindAudio(); this.unbindAudio = () => {}; this.audio.setPlaying(false); }
 
   private publish(view: AppView): void {
     this.view = view;

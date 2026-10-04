@@ -2,7 +2,7 @@
 
 **中文** | [English](README.en.md)
 
-支持第一人称与棋盘总览的 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，支持2–4席同机真人与电脑对局。视角、声音、语言、鼠标灵敏度、动画速度和第一人称晃动保存在本地偏好中，不写入规则存档。
+支持第一人称与棋盘总览的 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，支持2–4席同机真人与电脑对局。视角、总静音、音效/音乐音量、语言、鼠标灵敏度、动画速度和第一人称晃动保存在本地偏好中，不写入规则存档。
 
 **在线试玩：https://chiimagnus.github.io/Richman3D/**
 
@@ -26,6 +26,8 @@ npm run dev
 - Vitest
 
 ## 开发验证
+
+环境音乐由`src/audio/GameAudio.ts`中的三个110/165/220Hz正弦音在运行时合成，没有外部录音、下载音轨或额外素材文件（新增音频素材0字节），与源代码一同使用仓库`LICENSE`。Web Audio只在开始或声音按钮手势中启用；播放被拒绝时设置提供明确重试按钮，不影响对局。
 
 ```bash
 npm run typecheck

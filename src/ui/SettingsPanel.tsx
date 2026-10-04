@@ -1,5 +1,5 @@
 import type { GameApp } from "../app/GameApp";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import type { GamePreferences, LookSensitivity, PresentationSpeed } from "../settings/preferences";
 import type { CameraView } from "../rendering/CameraRig";
 import { messages } from "../i18n";
@@ -9,8 +9,14 @@ import styles from "./SettingsPanel.module.css";
 export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraChange, onLookAround, children }: { app: GameApp; preferences: GamePreferences; onClose: () => void; cameraView?: CameraView; onCameraChange?: (view: CameraView) => void; onLookAround?: () => void; children?: ReactNode }) {
   const text = messages(preferences.language);
   const copy = text.settings;
+  const audioStatus = useSyncExternalStore(app.audio.subscribe, app.audio.getSnapshot, app.audio.getSnapshot);
   return <PanelHost title={copy.title} onClose={onClose} action={<button className={styles.done} aria-keyshortcuts="Escape" onClick={onClose}>{copy.returnToGame}<kbd aria-hidden="true">Esc</kbd></button>}>
-    <label className={styles.row}>{copy.sound}<input type="checkbox" checked={preferences.soundEnabled} onChange={(event) => app.setPreferences({ ...preferences, soundEnabled: event.currentTarget.checked })} /></label>
+    <label className={styles.row}>{copy.sound}<kbd aria-hidden="true">M</kbd><input type="checkbox" aria-keyshortcuts="M" checked={preferences.soundEnabled} onChange={(event) => app.setPreferences({ ...preferences, soundEnabled: event.currentTarget.checked })} onKeyDown={(event) => {
+      if (event.code === "KeyM" && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) { event.preventDefault(); app.setPreferences({ ...preferences, soundEnabled: !preferences.soundEnabled }); }
+    }} /></label>
+    {preferences.soundEnabled && audioStatus !== "ready" && <div className={styles.audioStatus}><p role="status">{audioStatus === "blocked" ? copy.audioBlocked : copy.audioLocked}</p><button onClick={() => app.audio.unlock()}>{copy.enableAudio}</button></div>}
+    <label className={styles.row}>{copy.effectsVolume}<output>{Math.round(preferences.effectsVolume * 100)}%</output><input type="range" min="0" max="100" step="1" value={Math.round(preferences.effectsVolume * 100)} onChange={(event) => app.setPreferences({ ...preferences, effectsVolume: Number(event.currentTarget.value) / 100 })} /></label>
+    <label className={styles.row}>{copy.musicVolume}<output>{Math.round(preferences.musicVolume * 100)}%</output><input type="range" min="0" max="100" step="1" value={Math.round(preferences.musicVolume * 100)} onChange={(event) => app.setPreferences({ ...preferences, musicVolume: Number(event.currentTarget.value) / 100 })} /></label>
     <label className={styles.row}>{copy.language}<select value={preferences.language} onChange={(event) => app.setPreferences({ ...preferences, language: event.currentTarget.value as "en" | "zh-CN" })}>
       <option value="zh-CN">{copy.languageOptions["zh-CN"]}</option><option value="en">{copy.languageOptions.en}</option>
     </select></label>
