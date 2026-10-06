@@ -1,5 +1,5 @@
 version = 1
-current_task_id = "P11-T2"
+current_task_id = ""
 
 [[tasks]]
 id = "P1-T1"
@@ -327,63 +327,7 @@ title = "收敛PC输入并撤销移动专用适配"
 status = "completed"
 plan = "plan-p11.md#p11-t1"
 commit = "5c625f9bcb4fc897d6a4cdfebdc71537590595d7"
-note = "按用户PC only决定，以5c625f9完整撤销ba668f6移动专用适配，删除粗指针默认总览；保留PC窗口缩放/无障碍/两种视角/显式偏好与存档。33针对和680全测、typecheck、build通过；后台Helium1280×720查看中文HUD与双语购买/设置，默认第一人称、显式总览和刷新偏好保留，切语言/视角/续玩前后存档state相同。手机/平板验收取消；实际按键、屏幕阅读器和性能不由本次后台检查证明，后续PC任务仍待完成。"
-
-[[tasks]]
-id = "P11-T2"
-title = "语义操作、完整双语与减少动态效果"
-status = "pending"
-plan = "plan-p11.md#p11-t2"
-commit = ""
-note = "上一轮开始但尚无该任务代码；用户改为PC only，先完成移动适配撤回与计划收敛。"
-
-[[tasks]]
-id = "P11-T3"
-title = "性能预算与低画质路径的有界实验"
-status = "pending"
-plan = "plan-p11.md#p11-t3"
-commit = ""
-note = ""
-
-[[tasks]]
-id = "P11-T4"
-title = "WebGL、权限和加载失败后的保全路径"
-status = "pending"
-plan = "plan-p11.md#p11-t4"
-commit = ""
-note = ""
-
-[[tasks]]
-id = "P12-T1"
-title = "同一测试入口与部署前门槛"
-status = "pending"
-plan = "plan-p12.md#p12-t1"
-commit = ""
-note = ""
-
-[[tasks]]
-id = "P12-T2"
-title = "双语项目入口、素材来源与隐私说明"
-status = "pending"
-plan = "plan-p12.md#p12-t2"
-commit = ""
-note = ""
-
-[[tasks]]
-id = "P12-T3"
-title = "可复现反馈与小范围试玩工具"
-status = "pending"
-plan = "plan-p12.md#p12-t3"
-commit = ""
-note = ""
-
-[[tasks]]
-id = "P12-T4"
-title = "真实试玩、发布判定与回滚演练"
-status = "pending"
-plan = "plan-p12.md#p12-t4"
-commit = ""
-note = ""
+note = "按用户PC only决定，以5c625f9完整撤销ba668f6移动专用适配，删除粗指针默认总览；保留PC窗口缩放/无障碍/两种视角/显式偏好与存档。33针对和680全测、typecheck、build通过；后台Helium1280×720查看中文HUD与双语购买/设置，默认第一人称、显式总览和刷新偏好保留，切语言/视角/续玩前后存档state相同。手机/平板验收取消；实际按键、屏幕阅读器和性能不由本次后台检查证明。用户随后取消P11/P12其余工作，本项只保留已完成的撤销记录，不表示整个阶段完成。"
 
 [[tasks]]
 id = "P4-T5"
