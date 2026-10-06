@@ -408,3 +408,11 @@ status = "completed"
 plan = "plan-p4.md#p4-t7"
 commit = "1adf486c56b47cdad3e7d16f0e61119ee2609392"
 note = "主实现b3075d6；焦点/英文选项修复1adf486；207单测/typecheck/build。背景Helium确认单设置入口、Esc暂停、B在N按钮获焦仍只买一次、购买180/租金32/真实续玩；主菜单与局内返回存档/历史入口焦点，完整readonly state不变。390px双语及放大布局截图目检不横溢；原生前台PointerLock成功、真实触屏/屏幕阅读器/浏览器原生200%缩放未复验，依用户要求不抢焦点。"
+
+[[tasks]]
+id = "P6-T4"
+title = "移除抵押赎回和拍卖，缺钱必须卖房"
+status = "completed"
+plan = "plan-p6.md#p6-t4"
+commit = "deedc0aa676a76874ef39521dee6612f36e5368e"
+note = "抵押赎回拍卖完整移除；现金不足必须逐级卖建筑，筹足自动付一次，全部卖完仍不足才破产；升级交易保留。typecheck/680测试/build/diff-check、6000局加36局冒烟、后台Helium卖房/不买/交易/刷新和双语390px通过；原生前台键盘/200%缩放/真机/屏幕阅读器未测，现有场景体积警告保留。idea及受影响计划本地同步，audit-p6本次范围Go。"
