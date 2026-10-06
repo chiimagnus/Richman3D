@@ -60,7 +60,7 @@ it("a real session reaching its terminal decision stops ambient music without ch
       if (snapshot.decision.kind === "game_over") break;
       if (session.handoverActor) expect(session.confirmHandover(snapshot.decision.actorId)).toBe(true);
       const commands = legalCommands(snapshot, snapshot.decision.actorId);
-      const command = commands.find(command => command.kind === "roll" || command.kind === "buy" || command.kind === "auction_pass" || command.kind === "discard_item" || command.kind === "bankrupt") ?? commands[0]!;
+      const command = commands.find(command => command.kind === "roll" || command.kind === "buy" || command.kind === "discard_item" || command.kind === "bankrupt") ?? commands[0]!;
       await session.dispatch(command);
     }
     const terminal = session.getSnapshot().committed; expect(terminal.decision.kind).toBe("game_over");

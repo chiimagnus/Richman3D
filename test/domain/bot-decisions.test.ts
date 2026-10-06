@@ -41,7 +41,7 @@ function advanceTo(game: Game, actor: PlayerId): void {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "awaiting_roll" && snapshot.decision.actorId === actor) return;
     if (snapshot.decision.kind === "game_over") break;
-    const command = legalCommands(snapshot, snapshot.decision.actorId).find((command) => ["roll", "skip", "auction_pass", "discard_item"].includes(command.kind));
+    const command = legalCommands(snapshot, snapshot.decision.actorId).find((command) => ["roll", "skip", "discard_item"].includes(command.kind));
     if (!command || !game.apply(command).ok) throw new Error("Could not advance checkpoint");
   }
   throw new Error("Missing ordinary turn");
@@ -79,34 +79,7 @@ it.each(BOT_DIFFICULTIES)("%s refuses an affordable purchase that would leave le
   expect(bot.snapshot.players[0]!.cash).toBe(280);
 });
 
-it.each(BOT_DIFFICULTIES)("%s terminates bidding at its actual price ceiling without consuming RNG or money on a pass", (difficulty) => {
-  const game = new Game(createMatchConfig(940));
-  expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 }).ok).toBe(true);
-  expect(game.apply({ kind: "skip", actor: "p1", expectedRevision: 1 }).ok).toBe(true);
-  const bot = asBot(game, difficulty);
-  for (let count = 0; count < 40; count += 1) {
-    const before = bot.snapshot;
-    const observation = observeBot(before);
-    if (observation) {
-      const action = chooseBotAction(observation)!;
-      if (action.command.kind === "auction_bid") expect(action.command.amount).toBeLessThanOrEqual(180 * (difficulty === "easy" ? 0.65 : difficulty === "normal" ? 0.9 : 1));
-      expect(bot.apply(action.command).ok).toBe(true);
-      expect(bot.snapshot.random).toEqual(before.random);
-      if (action.command.kind === "auction_pass") {
-        expect(bot.snapshot.players.find((player) => player.id === action.command.actor)!.cash).toBe(before.players.find((player) => player.id === action.command.actor)!.cash);
-        expect(action.reason).toBe("reserve_cash");
-        return;
-      }
-    } else {
-      if (before.decision.kind !== "awaiting_auction") throw new Error("Bot did not enforce ceiling");
-      const bid = legalCommands(before, before.decision.actorId).find((command) => command.kind === "auction_bid")!;
-      expect(bot.apply(bid).ok).toBe(true);
-    }
-  }
-  throw new Error("Unbounded auction");
-});
-
-it.each(BOT_DIFFICULTIES)("%s uses legal construction, respects its level/reserve budget and never sells or mortgages outside debt", (difficulty) => {
+it.each(BOT_DIFFICULTIES)("%s uses legal construction, respects its level/reserve budget and never sells outside debt", (difficulty) => {
   const initial = propertyMatch();
   const state = makeSave(initial.snapshot, propertyMatchId).state;
   const game = asBot(Game.restore({ ...state, players: state.players.map((player) => player.id === "p2" ? { ...player, position: 17 } : player) }), difficulty);
@@ -114,7 +87,7 @@ it.each(BOT_DIFFICULTIES)("%s uses legal construction, respects its level/reserv
     const before = game.snapshot;
     const observation = observeBot(before)!;
     const action = chooseBotAction(observation)!;
-    expect(["mortgage", "sell_building"]).not.toContain(action.command.kind);
+    expect(["sell_building"]).not.toContain(action.command.kind);
     if (action.command.kind === "roll") {
       expect(before.properties["harbor-walk"]!.level).toBe(difficulty === "easy" ? 1 : 3);
       expect(before.properties["neon-avenue"]!.level).toBe(difficulty === "easy" ? 1 : 3);
@@ -177,58 +150,6 @@ it.each(BOT_DIFFICULTIES)("%s rejects an unfavorable pure-cash request rather th
   expect(bot.snapshot.properties).toEqual(before.properties);
 });
 
-it("redemption scores include the income recovered on the other member of a mortgaged group", () => {
-  const game = propertyMatch();
-  expect(game.apply({ kind: "mortgage", propertyId: "neon-avenue", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
-  const bot = asBot(game);
-  expect(rentFor(bot.snapshot, "neon-avenue")).toBe(0);
-  expect(rentFor(bot.snapshot, "harbor-walk")).toBe(24);
-  const option = observeBot(bot.snapshot)!.liquidity.find((option) => option.command.kind === "redeem")!;
-  expect(option).toMatchObject({ valueLoss: 9, cost: 99 });
-  expect(option.rentChanges).toEqual([{ propertyId: "harbor-walk", currentRent: 24, nextRent: 36 }, { propertyId: "neon-avenue", currentRent: 0, nextRent: 48 }]);
-  expect(applyChoice(bot)).toMatchObject({ command: { kind: "redeem", propertyId: "neon-avenue" }, reason: "redeem_income" });
-  expect(rentFor(bot.snapshot, "neon-avenue")).toBe(48);
-  expect(rentFor(bot.snapshot, "harbor-walk")).toBe(36);
-});
-
-it("hard redeems for the other group member's reachable income even when its own property cannot be reached next roll", () => {
-  const game = new Game({ ...createMatchConfig(13, 4), rulesVersion: STANDARD_RULES.version });
-  for (let count = 0; count < 400; count += 1) {
-    const snapshot = game.snapshot;
-    if (snapshot.decision.kind === "awaiting_roll" && snapshot.decision.actorId === "p1" && ["neon-avenue", "harbor-walk"].every((id) => snapshot.properties[id]!.ownerId === "p1")) break;
-    if (snapshot.decision.kind === "game_over") throw new Error("No complete group");
-    const kind = snapshot.decision.kind === "awaiting_purchase" ? snapshot.decision.actorId === "p1" && ["neon-avenue", "harbor-walk"].includes(snapshot.decision.propertyId) ? "buy" : "skip"
-      : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : "roll";
-    const command = legalCommands(snapshot, snapshot.decision.actorId).find((command) => command.kind === kind)!;
-    expect(game.apply(command).ok).toBe(true);
-  }
-  expect(game.apply({ kind: "mortgage", propertyId: "harbor-walk", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
-  const state = makeSave(game.snapshot, propertyMatchId).state;
-  const bot = asBot(Game.restore({ ...state, players: state.players.map((player) => player.id !== "p1" ? { ...player, position: 0 } : player) }), "hard");
-  const observation = observeBot(bot.snapshot)!;
-  expect(observation.players.filter((player) => player.id !== "p1").every((player) => player.position === 0)).toBe(true);
-  expect(observation.liquidity.find((option) => option.command.kind === "redeem")!.rentChanges).toEqual([
-    { propertyId: "harbor-walk", currentRent: 0, nextRent: 36 }, { propertyId: "neon-avenue", currentRent: 32, nextRent: 48 },
-  ]);
-  expect(applyChoice(bot)).toMatchObject({ command: { kind: "redeem", propertyId: "harbor-walk" }, reason: "redeem_income" });
-});
-
-it("combines multiple mortgages without counting the same group bonus twice, preserving the cheaper sufficient rental income", () => {
-  const initial = builtRentDebtMatch(3, false, true);
-  const state = makeSave(initial.snapshot, propertyMatchId).state;
-  const game = asBot(Game.restore({ ...state, players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 276,
-    statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid - 246 } } : player) }));
-  for (const propertyId of ["harbor-walk", "neon-avenue"]) expect(game.apply({ kind: "sell_building", actor: "p1", expectedRevision: game.snapshot.revision, propertyId }).ok).toBe(true);
-  expect(game.snapshot.players[0]!.cash).toBe(356);
-  expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_debt", debt: { amount: 516 } });
-  expect(applyChoice(game)).toMatchObject({ command: { kind: "mortgage", propertyId: "harbor-walk" }, reason: "debt_rescue" });
-  expect(applyChoice(game)).toMatchObject({ command: { kind: "mortgage", propertyId: "neon-avenue" }, reason: "debt_rescue" });
-  expect(game.snapshot.players[0]!.cash).toBe(0);
-  expect(game.snapshot.properties["central-station"]!.mortgagePrincipal).toBe(0);
-  expect(rentFor(game.snapshot, "central-station")).toBe(48);
-  expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_roll", actorId: "p3" });
-});
-
 it.each([0, 30])("rescues a real built-group debt with %s cash using minimal sufficient current liquidity and legal balanced sales", (cash) => {
   const game = asBot(debtMatch(cash, 3));
   const random = game.snapshot.random;
@@ -265,18 +186,11 @@ it("uses a construction coupon for a real immediate upgrade and pays the shared 
   expect(bot.snapshot.random).toEqual(before.random);
 });
 
-it("uses a waiver for public rental risk but keeps it when the opponent's actual mortgage makes rent zero", () => {
+it("uses a waiver for actual public rental risk", () => {
   const initial = itemCheckpoint("rent-waiver", true);
   const useful = asBot(relocate(initial, 0), "hard");
   expect(applyChoice(useful)).toMatchObject({ command: { kind: "use_item", instanceId: "rent-waiver:2" }, reason: "use_item" });
-  expect(initial.apply({ kind: "roll", actor: "p1", expectedRevision: initial.snapshot.revision }).ok).toBe(true);
-  advanceTo(initial, "p2");
-  expect(initial.apply({ kind: "mortgage", actor: "p2", expectedRevision: initial.snapshot.revision, propertyId: "skyline-road" }).ok).toBe(true);
-  expect(initial.apply({ kind: "roll", actor: "p2", expectedRevision: initial.snapshot.revision }).ok).toBe(true);
-  advanceTo(initial, "p1");
-  const mortgaged = asBot(relocate(initial, 0), "hard");
-  expect(observeBot(mortgaged.snapshot)!.properties.find((property) => property.tile.id === "skyline-road")!.rent).toBe(0);
-  expect(chooseBotAction(observeBot(mortgaged.snapshot))).toMatchObject({ command: { kind: "roll" }, reason: "roll" });
+
 });
 
 it("uses a position swap only when public landing prospects improve, with the real positions swapped once", () => {

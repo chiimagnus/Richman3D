@@ -64,7 +64,6 @@ it("constructs three balanced levels with real cash/statistics, unchanged turn/R
 
 it.each([
   ["incomplete_group", (snapshot: GameSnapshot) => ({ ...snapshot, properties: { ...snapshot.properties, "harbor-walk": { ...snapshot.properties["harbor-walk"]!, ownerId: null } } })],
-  ["mortgaged", (snapshot: GameSnapshot) => ({ ...snapshot, properties: { ...snapshot.properties, "harbor-walk": { ...snapshot.properties["harbor-walk"]!, mortgagePrincipal: 70 } } })],
   ["not_turn", (snapshot: GameSnapshot) => ({ ...snapshot, decision: { kind: "awaiting_roll" as const, actorId: "p2" as const }, turnPlayerId: "p2" as const })],
   ["insufficient_cash", (snapshot: GameSnapshot) => ({ ...snapshot, players: snapshot.players.map((player) => player.id === "p1" ? { ...player, cash: 89 } : player) })],
 ] as const)("projects and rejects %s without changing the source state", (reason, change) => {
@@ -79,8 +78,6 @@ it.each([
     ...player, statistics: { ...player.statistics, purchases: player.statistics.purchases - 140, purchaseBookValue: player.statistics.purchaseBookValue - 140, taxesPaid: player.statistics.taxesPaid + 140 },
   } : player) : reason === "insufficient_cash" ? candidate.players.map((player) => player.id === "p1" ? {
     ...player, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + snapshot.players[0]!.cash - 89 },
-  } : player) : reason === "mortgaged" ? candidate.players.map((player) => player.id === "p1" ? {
-    ...player, cash: player.cash + 70, statistics: { ...player.statistics, mortgageIncome: player.statistics.mortgageIncome + 70 },
   } : player) : candidate.players;
   const game = Game.restore({ ...saved, properties: candidate.properties, players, decision: candidate.decision, turnPlayerId: candidate.turnPlayerId });
   const before = game.snapshot;

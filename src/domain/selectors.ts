@@ -1,8 +1,8 @@
 import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
-import { canDeclareBankruptcy, completeGroup, liquidationValue, liquidityOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
-import { canBid, minimumBid, tradeOption } from "./market";
+import { canDeclareBankruptcy, completeGroup, liquidationValue, saleOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
+import { tradeOption } from "./market";
 import { itemCommands } from "./cards";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
@@ -27,20 +27,15 @@ export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly
     const response = { ...base, proposalRevision: proposal.revision };
     return [...(tradeOption(snapshot, proposal.proposerId, proposal).reason === null ? [{ ...response, kind: "trade_accept" as const }] : []), { ...response, kind: "trade_reject" }];
   }
-  if (snapshot.decision.kind === "awaiting_auction") {
-    const amount = minimumBid(snapshot, snapshot.decision);
-    return [...(amount !== null && canBid(snapshot, snapshot.decision, actor, amount) ? [{ ...base, kind: "auction_bid" as const, amount }] : []), { ...base, kind: "auction_pass" }];
-  }
   if (snapshot.decision.kind === "awaiting_debt") return [
     ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).flatMap((tile) =>
-      (["sell_building", "mortgage"] as const).filter((kind) => liquidityOption(snapshot, actor, tile.id, kind).reason === null).map((kind) => ({ ...base, kind, propertyId: tile.id }))),
+      saleOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "sell_building" as const, propertyId: tile.id }] : []),
     ...(canDeclareBankruptcy(snapshot, actor) ? [{ ...base, kind: "bankrupt" as const }] : []),
   ];
   if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }, ...itemCommands(snapshot, actor),
     ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).flatMap((tile) => [
       ...(upgradeOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "upgrade" as const, propertyId: tile.id }] : []),
-      ...(["sell_building", "mortgage", "redeem"] as const).filter((kind) => liquidityOption(snapshot, actor, tile.id, kind).reason === null)
-        .map((kind) => ({ ...base, kind, propertyId: tile.id })),
+      ...(saleOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "sell_building" as const, propertyId: tile.id }] : []),
     ]),
   ];
   const property = pendingProperty(snapshot);
@@ -57,7 +52,7 @@ export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
   const property = snapshot.properties[propertyId]!;
   return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group },
     ...property, constructionCosts: [...property.constructionCosts], rent: rentFor(snapshot, tile.id), groupComplete: completeGroup(snapshot, tile),
-    bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(tile, property, snapshot.rules) };
+    bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(property, snapshot.rules) };
 }
 
 export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {

@@ -1,5 +1,8 @@
 import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { Game } from "../../src/domain/game";
+import { makeSave } from "../../src/storage/snapshot";
+import { propertyMatchId } from "../fixtures/property-match";
 import { GameSession } from "../../src/app/GameSession";
 import { playerAssets } from "../../src/domain/selectors";
 import { AssetPanel } from "../../src/ui/AssetPanel";
@@ -42,14 +45,14 @@ it.each(["en", "zh-CN"] as const)("%s projects domain rent/cost/cash and capture
 });
 
 it.each(["en", "zh-CN"] as const)("%s does not promise a transaction's effects when the domain rejects it", (language) => {
-  const game = propertyMatch();
-  expect(game.apply({ kind: "mortgage", propertyId: "neon-avenue", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  const state = makeSave(propertyMatch().snapshot, propertyMatchId).state;
+  const game = Game.restore({ ...state, players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 0, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash } } : player) });
   const session = new GameSession(game);
   session.bind({ sync() {}, stop() {}, async present() {} });
   const management = assetManagementView(session.getSnapshot());
   const assets = game.snapshot.players.map((player) => playerAssets(game.snapshot, player.id));
   const html = renderToStaticMarkup(<AssetPanel assets={assets} initialPlayer="p1" language={language} management={management} onCommand={() => {}} onClose={() => {}} />);
-  expect(html).toContain(messages(language).construction.reasons.mortgaged);
+  expect(html).toContain(messages(language).construction.reasons.insufficient_cash);
   expect(html).not.toContain(messages(language).liquidity.remaining);
   expect(html).not.toContain("→");
   session.dispose();

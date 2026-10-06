@@ -54,8 +54,6 @@ it.each([3, 4])("waits for the %s-seat final purchase before ending, then ranks 
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
   expect(game.snapshot.completedRounds).toBe(0);
   expect(game.apply(legalCommands(game.snapshot, tail).at(-1)!).ok).toBe(true);
-  expect(game.snapshot.decision.kind).toBe("awaiting_auction");
-  for (let count = 0; count < size && game.snapshot.decision.kind === "awaiting_auction"; count += 1) expect(game.apply(legalCommands(game.snapshot, game.snapshot.decision.actorId).find((command) => command.kind === "auction_pass")!).ok).toBe(true);
   expect(game.snapshot.completedRounds).toBe(1);
   expect(game.snapshot.decision).toMatchObject({ kind: "game_over", result: { reason: "round_limit", winnerIds: game.snapshot.config.players.map((player) => player.id) } });
 });
@@ -91,14 +89,13 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
   for (const kind of ["roll", "buy"] as const) expect(game.apply(legalCommands(game.snapshot, "p1").find((command) => command.kind === kind)!).ok).toBe(true);
   const record = makeSave(game.snapshot, "00000000-0000-4000-8000-000000000004");
   const management = Game.restore({ ...record.state, turnPlayerId: "p1", decision: { kind: "awaiting_roll", actorId: "p1" } });
-  expect(management.apply({ kind: "mortgage", propertyId: "river-market", actor: "p1", expectedRevision: management.snapshot.revision }).ok).toBe(true);
-  const mortgaged = makeSave(management.snapshot, record.matchId);
-  const restored = Game.restore({ ...mortgaged.state, players: mortgaged.state.players.map((player) => player.id === "p1" ? {
+  const checkpoint = makeSave(management.snapshot, record.matchId);
+  const restored = Game.restore({ ...checkpoint.state, players: checkpoint.state.players.map((player) => player.id === "p1" ? {
     ...player, cash: 0, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash },
   } : player) });
   expect(restored.apply(legalCommands(restored.snapshot, "p1")[0]!).ok).toBe(true);
   expect(restored.apply(legalCommands(restored.snapshot, "p1").find((command) => command.kind === "bankrupt")!).ok).toBe(true);
-  expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: 0, statistics: { purchases: 200, debtWrittenOff: 90, mortgagePrincipalReleased: 100 } });
+  expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: 0, statistics: { purchases: 200, debtWrittenOff: 90 } });
   expect(Object.values(restored.snapshot.properties).map((property) => property.ownerId)).not.toContain("p1");
   const invalid = makeSave(restored.snapshot, record.matchId);
   const ghostEstate = { ...invalid.state, properties: { ...invalid.state.properties, "river-market": { ...invalid.state.properties["river-market"]!, ownerId: "p1" as const } } };

@@ -25,7 +25,7 @@ it("one actual buy and rent payment reconcile cash, ranking and both sides of th
 it("all real event transfers reconcile with each committed cash balance through complete games, not animation counts", () => {
   const branches = new Set<string>();
   const tradeGame = propertyMatch();
-  for (const game of [...[940, 768, 17981].map((seed) => new Game(createMatchConfig(seed))), builtRentDebtMatch(), debtMatch(30, 3), rentDebtMatch(30, true), tradeGame]) {
+  for (const game of [...[940, 768, 17981].map((seed) => new Game(createMatchConfig(seed))), builtRentDebtMatch(), debtMatch(30, 3), rentDebtMatch(30), tradeGame]) {
     const expected = new Map<PlayerId, FinancialStats>(game.snapshot.players.map((player) => [player.id, { ...player.statistics }]));
     const record = (id: PlayerId, field: keyof FinancialStats, amount: number) => {
       const previous = expected.get(id)!;
@@ -36,7 +36,7 @@ it("all real event transfers reconcile with each committed cash balance through 
       const actions = legalCommands(before, before.decision.kind === "game_over" ? before.turnPlayerId : before.decision.actorId);
       const command = game === tradeGame && count === 0 ? { kind: "trade_propose" as const, actor: "p1" as const, expectedRevision: before.revision,
         terms: { recipientId: "p2" as const, givePropertyIds: ["neon-avenue"], receivePropertyIds: [], cash: { payerId: "p2" as const, amount: 180 } } }
-        : (chooseBotAction(observeBot(before), "normal")?.command ?? null) ?? actions.find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : before.decision.kind === "awaiting_auction" ? "auction_pass" : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll")) ?? actions[0]!;
+        : (chooseBotAction(observeBot(before), "normal")?.command ?? null) ?? actions.find((action) => action.kind === (before.decision.kind === "awaiting_purchase" ? (count === 1 ? "buy" : "skip") : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll")) ?? actions[0]!;
       const result = game.apply(command);
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.reason);
@@ -65,21 +65,12 @@ it("all real event transfers reconcile with each committed cash balance through 
           branches.add("purchase");
         }
         if (event.kind === "upgraded") record(event.actor, "constructionSpent", event.cost);
-        if (event.kind === "building_sold" || event.kind === "liquidated") {
-          record(event.actor, "constructionSoldCost", event.kind === "building_sold" ? event.cost : event.constructionCost);
-          record(event.actor, "constructionRefunds", event.kind === "building_sold" ? event.refund : event.constructionRefund);
+        if (event.kind === "building_sold") {
+          record(event.actor, "constructionSoldCost", event.cost);
+          record(event.actor, "constructionRefunds", event.refund);
           branches.add("sale");
         }
-        if (event.kind === "mortgaged") record(event.actor, "mortgageIncome", event.principal);
-        if (event.kind === "redeemed") {
-          record(event.actor, "mortgagePrincipalRepaid", event.principal);
-          record(event.actor, "mortgageFeesPaid", event.fee);
-        }
-        if (event.kind === "liquidated") {
-          record(event.actor, "mortgageIncome", event.mortgageIncome);
-          record(event.actor, "mortgagePrincipalReleased", event.principalReleased);
-          branches.add("liquidation");
-        }
+        if (event.kind === "liquidated") branches.add("liquidation");
         if (event.kind === "paid") {
           record(event.actor, "debtWrittenOff", event.writtenOff);
           const source = event.debt.source;
@@ -108,8 +99,8 @@ it("all real event transfers reconcile with each committed cash balance through 
       for (const player of result.snapshot.players) {
         const totals = expected.get(player.id)!;
         expect(player.statistics).toEqual(totals);
-        expect(player.cash).toBe(result.snapshot.rules.startingCash + totals.startBonus + totals.rentReceived + totals.chanceIncome + totals.constructionRefunds + totals.mortgageIncome + totals.tradeCashReceived - totals.tradeCashPaid
-          - totals.rentPaid - totals.taxesPaid - totals.chanceExpense - totals.purchases - totals.constructionSpent - totals.mortgagePrincipalRepaid - totals.mortgageFeesPaid);
+        expect(player.cash).toBe(result.snapshot.rules.startingCash + totals.startBonus + totals.rentReceived + totals.chanceIncome + totals.constructionRefunds + totals.tradeCashReceived - totals.tradeCashPaid
+          - totals.rentPaid - totals.taxesPaid - totals.chanceExpense - totals.purchases - totals.constructionSpent);
         expect(netAssets(result.snapshot, player.id)).toBe(player.cash + propertyValue(result.snapshot, player.id));
       }
       expect(game.snapshot).toBe(result.snapshot);
@@ -124,7 +115,7 @@ it("all real event transfers reconcile with each committed cash balance through 
 
 it("failed candidate money calculation cannot commit any statistic", () => {
   const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
-  for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  for (const kind of ["roll", "skip", "roll"] as const) expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const before = game.snapshot;
   expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: before.revision })).toEqual({ ok: false, reason: "calculation_failed" });
   expect(game.snapshot).toBe(before);

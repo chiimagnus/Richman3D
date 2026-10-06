@@ -11,7 +11,7 @@ import { propertyMatchId } from "../fixtures/property-match";
 const instant = { sync() {}, stop() {}, async present() {} };
 
 it("saves fixed debt before canceled presentation, resumes without replay and saves a rescue and payment atomically", async () => {
-  const game = debtCheckpoint();
+  const game = debtCheckpoint(100, 1);
   const factory = new IDBFactory();
   const repository = new GameStore(() => factory);
   const session = new GameSession(game, propertyMatchId, { store: repository, expected: null, source: "local" });
@@ -38,14 +38,14 @@ it("saves fixed debt before canceled presentation, resumes without replay and sa
       resumed.pause();
     }
   } });
-  const command = debtView(resumed.getSnapshot())!.management!.properties["neon-avenue"]!.mortgage.command!;
+  const command = debtView(resumed.getSnapshot())!.management!.properties["neon-avenue"]!.sell_building.command!;
   expect(restored.snapshot).toEqual(pending);
   await resumed.dispatch(command);
   const paid = restored.snapshot;
   expect(paid.revision).toBe(pending.revision + 1);
-  expect(paid.players[0]!.cash).toBe(0);
-  expect(paid.properties["neon-avenue"]!.mortgagePrincipal).toBe(90);
-  expect(paid.history.slice(-3).map((entry) => entry.event.kind)).toEqual(["mortgaged", "paid", "turn"]);
+  expect(paid.players[0]!.cash).toBe(25);
+  expect(paid.properties["neon-avenue"]!.level).toBe(0);
+  expect(paid.history.slice(-3).map((entry) => entry.event.kind)).toEqual(["building_sold", "paid", "turn"]);
   expect(resumed.getSnapshot().notice).toBeNull();
   expect(paid.history.at(-2)!.event).toMatchObject({ kind: "paid", amount: 120 });
   expect((await repository.read())?.snapshot).toEqual(paid);
@@ -61,7 +61,7 @@ it("saves fixed debt before canceled presentation, resumes without replay and sa
 });
 
 it("hot-seat restore requires the debtor's explicit handover, and debt resolution routes the next operator", async () => {
-  const original = debtMatch();
+  const original = debtMatch(100, 1);
   const state = makeSave(original.snapshot, propertyMatchId).state;
   const game = Game.restore({ ...state, config: { ...state.config, players: state.config.players.map((player) => ({ ...player, controller: "human" })) } });
   const session = new GameSession(game);
@@ -69,15 +69,15 @@ it("hot-seat restore requires the debtor's explicit handover, and debt resolutio
   const pending = game.snapshot;
   expect(session.handoverActor).toBe("p1");
   expect(debtView(session.getSnapshot())!.management).toBeNull();
-  await session.dispatch({ kind: "mortgage", propertyId: "neon-avenue", actor: "p1", expectedRevision: pending.revision });
+  await session.dispatch({ kind: "sell_building", propertyId: "neon-avenue", actor: "p1", expectedRevision: pending.revision });
   expect(game.snapshot).toBe(pending);
   session.confirmHandover("p1");
-  const command = debtView(session.getSnapshot())!.management!.properties["neon-avenue"]!.mortgage.command!;
+  const command = debtView(session.getSnapshot())!.management!.properties["neon-avenue"]!.sell_building.command!;
   session.pause();
   await session.resume();
   expect(game.snapshot).toBe(pending);
   await session.dispatch(command);
-  expect(game.snapshot.players[0]!.cash).toBe(0);
+  expect(game.snapshot.players[0]!.cash).toBe(25);
   expect(session.handoverActor).toBe("p2");
   expect(session.getSnapshot().viewPlayerId).toBeNull();
   session.dispose();
@@ -85,6 +85,7 @@ it("hot-seat restore requires the debtor's explicit handover, and debt resolutio
 
 it("saves the entire built-estate liquidation and unique terminal result before presentation and restores without economic replay", async () => {
   const game = builtRentDebtMatch(2);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const factory = new IDBFactory();
   const repository = new GameStore(() => factory);
   const session = new GameSession(game, propertyMatchId, { store: repository, expected: null, source: "local" });

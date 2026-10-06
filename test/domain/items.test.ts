@@ -107,7 +107,7 @@ it("a rent waiver does not waive tax and expires at this ordinary turn’s end",
   restored(game);
 });
 
-it("saves a consumed half-tax item with its fixed debt, then pays only the discounted amount after rescue", () => {
+it("saves a consumed half-tax item with its fixed debt, then records only real cash paid on bankruptcy", () => {
   const game = itemLandingCheckpoint("tax-discount", 14, 30);
   use(game, "tax-discount");
   const before = game.snapshot;
@@ -115,9 +115,9 @@ it("saves a consumed half-tax item with its fixed debt, then pays only the disco
   expect(game.snapshot.decision).toMatchObject({ kind: "awaiting_debt", debt: { amount: 60, source: { discountedBy: expect.stringContaining("tax-discount:") } } });
   expect(game.snapshot.activeItem).toBeNull();
   restored(game);
-  const command = legalCommands(game.snapshot, "p1").find((command) => command.kind === "mortgage")!;
+  const command = legalCommands(game.snapshot, "p1").find((command) => command.kind === "bankrupt")!;
   expect(game.apply(command).ok).toBe(true);
-  expect(game.snapshot.players[0]!.statistics.taxesPaid - before.players[0]!.statistics.taxesPaid).toBe(60);
+  expect(game.snapshot.players[0]!.statistics.taxesPaid - before.players[0]!.statistics.taxesPaid).toBe(30);
   restored(game);
 });
 
@@ -233,12 +233,13 @@ it("rejects the wrong actor, an absent card and every item use after a fourth-ca
 
 it("rejects an eliminated swap target in a real three-seat game without consuming the surviving player's card", () => {
   const game = builtRentDebtMatch(3);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   for (let count = 0; game.snapshot.turnPlayerId !== "p2" && count < 10; count += 1) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") throw new Error("Match ended");
     const commands = legalCommands(snapshot, snapshot.decision.actorId);
-    const command = commands.find((command) => ["roll", "buy", "auction_pass", "discard_item", "mortgage", "sell_building", "bankrupt"].includes(command.kind))!;
+    const command = commands.find((command) => ["roll", "buy", "discard_item", "sell_building", "bankrupt"].includes(command.kind))!;
     expect(game.apply(command).ok).toBe(true);
   }
   const before = game.snapshot;

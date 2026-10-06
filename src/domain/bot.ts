@@ -1,16 +1,16 @@
 import { legalCommands, publicProperty } from "./selectors";
 import type { BotDifficulty, CardInstanceId, Command, Decision, GameSnapshot, PlayerId, TradeTerms } from "./types";
 import { playerConfig } from "./config";
-import { completeGroup, discountedCost, liquidityOption, netAssets, rentFor, upgradeOption } from "./economy";
+import { completeGroup, discountedCost, saleOption, netAssets, rentFor, upgradeOption } from "./economy";
 import { canProposeTrade, tradeOption } from "./market";
 import { cardType } from "./cards";
 import { movement } from "./movement";
 import type { RuleSet } from "./rules";
 import type { BoardTile } from "./board";
 
-export type BotReason = "roll" | "use_item" | "keep_valuable" | "reserve_cash" | "buy_property" | "complete_group" | "auction_value" | "upgrade_income" | "redeem_income" | "debt_rescue" | "insolvent" | "fair_trade" | "unfair_trade";
+export type BotReason = "roll" | "use_item" | "keep_valuable" | "reserve_cash" | "buy_property" | "complete_group" | "upgrade_income" | "debt_rescue" | "insolvent" | "fair_trade" | "unfair_trade";
 export type BotAction = { readonly command: Command; readonly reason: BotReason };
-type LiquidityCommand = Extract<Command, { propertyId: string }> & { kind: "sell_building" | "mortgage" | "redeem" };
+type LiquidityCommand = Extract<Command, { propertyId: string }> & { kind: "sell_building" };
 type UpgradeCommand = Extract<Command, { propertyId: string }> & { kind: "upgrade" };
 type TradeEvaluation = { readonly gain: number; readonly cashAfter: number; readonly groupGain: number; readonly opponentGroupGain: number };
 export type BotObservation = {
@@ -63,9 +63,9 @@ export function observeBot(snapshot: GameSnapshot): BotObservation | null {
     }
   }
   const actions = [...legalCommands(snapshot, actor), ...tradeCandidates.map((candidate) => candidate.command)];
-  const liquidity = actions.filter((command): command is LiquidityCommand => command.kind === "sell_building" || command.kind === "mortgage" || command.kind === "redeem")
+  const liquidity = actions.filter((command): command is LiquidityCommand => command.kind === "sell_building")
     .map((command) => {
-      const option = liquidityOption(snapshot, actor, command.propertyId, command.kind);
+      const option = saleOption(snapshot, actor, command.propertyId);
       const tile = snapshot.map.tiles.find((candidate) => candidate.id === command.propertyId)!;
       const candidate = { ...snapshot, properties: { ...snapshot.properties, [tile.id]: option.nextProperty } };
       const rentChanges = snapshot.map.tiles.filter((other) => other.type === "property" && (other.id === tile.id || tile.type === "property" && other.group === tile.group))
@@ -98,7 +98,7 @@ function best(actions: readonly (BotAction & { score: number })[]): (BotAction &
 function completionValue(observation: BotObservation, propertyId: string, actor: PlayerId): number {
   const property = observation.properties.find((property) => property.tile.id === propertyId)!;
   const group = observation.properties.filter((candidate) => candidate.tile.group === property.tile.group);
-  return group.every((candidate) => candidate.tile.id === propertyId || candidate.ownerId === actor && candidate.mortgagePrincipal === 0)
+  return group.every((candidate) => candidate.tile.id === propertyId || candidate.ownerId === actor)
     ? group.reduce((value, candidate) => value + candidate.tile.price, 0) : 0;
 }
 
@@ -203,15 +203,6 @@ export function chooseBotAction(observation: BotObservation | null, difficulty: 
     const value = trade ? trade.gain + trade.groupGain * (difficulty === "easy" ? 0 : difficulty === "normal" ? 0.25 : 0.35) - Math.max(0, trade.opponentGroupGain) * (difficulty === "hard" ? 0.1 : 0) : -Infinity;
     return trade && value >= 0 && trade.cashAfter >= Math.min(observation.cash, reserve) && actions.some((command) => command.kind === "trade_accept") ? action("trade_accept", "fair_trade") : action("trade_reject", "unfair_trade");
   }
-  if (decision.kind === "awaiting_auction") {
-    const bid = actions.find((command) => command.kind === "auction_bid");
-    const property = observation.properties.find((property) => property.tile.id === decision.propertyId)!;
-    const premium = completionValue(observation, decision.propertyId, player.id) * (difficulty === "easy" ? 0 : difficulty === "normal" ? 0.2 : 0.35);
-    const blocking = difficulty === "hard" ? Math.max(0, ...observation.players.filter((other) => other.id !== player.id && !other.bankrupt).map((other) => completionValue(observation, decision.propertyId, other.id))) * 0.1 : 0;
-    const ceiling = property.tile.price * (difficulty === "easy" ? 0.65 : difficulty === "normal" ? 0.9 : 1) + premium + blocking;
-    return bid?.kind === "auction_bid" && bid.amount <= ceiling && observation.cash - bid.amount >= reserve
-      ? { command: bid, reason: "auction_value" } : action("auction_pass", "reserve_cash");
-  }
   if (decision.kind === "awaiting_debt") {
     if (actions.some((command) => command.kind === "bankrupt")) return action("bankrupt", "insolvent");
     return { command: rescueCommand(observation, difficulty), reason: "debt_rescue" };
@@ -251,9 +242,7 @@ export function chooseBotAction(observation: BotObservation | null, difficulty: 
   if (trade && trade.score > 0 && observation.completedRounds < observation.rules.roundLimit - 1) return { command: trade.command, reason: trade.reason };
   const upgrades = observation.upgrades.filter((option) => observation.cash - option.cost >= reserve && (difficulty !== "easy" || observation.properties.find((property) => property.tile.id === option.command.propertyId)!.level === 0))
     .map((option) => ({ command: option.command, reason: "upgrade_income" as const, score: income(option.command.propertyId, option.nextRent - option.currentRent) * remaining / Math.max(1, option.cost) }));
-  const redemptions = observation.liquidity.filter((option) => option.command.kind === "redeem" && observation.cash - option.cost >= reserve)
-    .map((option) => ({ command: option.command, reason: "redeem_income" as const, score: (option.rentChanges.reduce((value, change) => value + income(change.propertyId, change.nextRent - change.currentRent), 0) * remaining - option.valueLoss) / Math.max(1, option.cost) }));
-  const investment = best([...upgrades, ...redemptions]);
+  const investment = best(upgrades);
   if (investment && investment.score > 0) return { command: investment.command, reason: investment.reason };
   return action("roll", "roll");
 }

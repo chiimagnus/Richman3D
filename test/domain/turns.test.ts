@@ -10,9 +10,9 @@ it.each([20, 40])("waits for the last actual purchase at %s complete rounds, the
   const rules = { ...QUICK_RULES, roundLimit, passStartBonus: 0 };
   const map = { ...CITY, tiles: CITY.tiles.map((tile) => tile.type === "start" ? tile : { type: "property" as const, id: tile.id, price: 100, rent: 0, group: "cyan" as const }) };
   const game = new Game(createMatchConfig(940), rules, map);
-  while (game.snapshot.completedRounds < roundLimit - 1 || game.snapshot.turnPlayerId === "p1" || game.snapshot.decision.kind === "awaiting_auction") {
+  while (game.snapshot.completedRounds < roundLimit - 1 || game.snapshot.turnPlayerId === "p1") {
     const snapshot = game.snapshot;
-    expect(game.apply({ kind: snapshot.decision.kind === "awaiting_purchase" ? "skip" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : "roll", actor: snapshot.decision.kind === "game_over" ? snapshot.turnPlayerId : snapshot.decision.actorId, expectedRevision: snapshot.revision }).ok).toBe(true);
+    expect(game.apply({ kind: snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll", actor: snapshot.decision.kind === "game_over" ? snapshot.turnPlayerId : snapshot.decision.actorId, expectedRevision: snapshot.revision }).ok).toBe(true);
   }
   expect(game.apply({ kind: "roll", actor: "p2", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");

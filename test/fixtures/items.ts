@@ -13,7 +13,7 @@ function advance(game: Game): void {
   const actor = snapshot.decision.actorId;
   const targets = actor === "p1" ? ["neon-avenue", "harbor-walk"] : ["skyline-road"];
   const kind = snapshot.decision.kind === "awaiting_purchase" ? targets.includes(snapshot.decision.propertyId) ? "buy" : "skip"
-    : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
+    : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
   const commands = legalCommands(snapshot, actor);
   const command = commands.find((command) => command.kind === kind) ?? commands[0];
   if (!command || !game.apply(command).ok) throw new Error("Could not reach a real item checkpoint");

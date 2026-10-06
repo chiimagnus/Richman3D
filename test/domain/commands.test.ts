@@ -48,7 +48,7 @@ describe("atomic commands", () => {
 
   it("rolls back pass-start money, landing and RNG on integer overflow", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
-    for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll"] as const) {
+    for (const kind of ["roll", "skip", "roll"] as const) {
       expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
@@ -69,9 +69,29 @@ describe("atomic commands", () => {
     expect(game.snapshot).toBe(committed);
   });
 
+  it.each([2, 3, 4])("declining a purchase with %s seats advances once without spending cash or RNG", (seats) => {
+    const game = new Game(createMatchConfig(940, seats));
+    const actor = game.snapshot.turnPlayerId;
+    expect(game.apply({ kind: "roll", actor, expectedRevision: 0 }).ok).toBe(true);
+    const before = game.snapshot;
+    if (before.decision.kind !== "awaiting_purchase") throw new Error("Expected purchase");
+    const command = { kind: "skip" as const, actor, expectedRevision: before.revision };
+    const result = game.apply(command);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.events.map((event) => event.kind)).toEqual(["skipped", "turn"]);
+    expect(game.snapshot.properties).toEqual(before.properties);
+    expect(game.snapshot.players).toEqual(before.players);
+    expect(game.snapshot.random).toEqual(before.random);
+    expect(game.snapshot.turnPlayerId).not.toBe(actor);
+    const committed = game.snapshot;
+    expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
+    expect(game.snapshot).toBe(committed);
+  });
+
   it("rejects a transient pass-start overflow even when tax would bring final cash back in range", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
-    for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll"] as const) {
+    for (const kind of ["roll", "skip", "roll"] as const) {
       expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
@@ -86,16 +106,11 @@ describe("atomic commands", () => {
     const game = new Game(createMatchConfig(940), { ...QUICK_RULES, startingCash: 200 });
     expect(game.apply(legalCommands(game.snapshot, "p1")[0]!).ok).toBe(true);
     expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "skip")!).ok).toBe(true);
-    expect((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)?.kind).toBe("auction_pass");
-    expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
-    expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "auction_pass")!).ok).toBe(true);
+    expect((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)?.kind).toBe("roll");
     expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
     const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!;
     expect(command.kind).toBe("skip");
     expect(game.apply(command).ok).toBe(true);
-    expect(game.snapshot.decision.kind).toBe("awaiting_auction");
-    expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "auction_pass")!).ok).toBe(true);
-    expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
     expect(game.snapshot.turnPlayerId).toBe("p1");
     expect(Object.values(game.snapshot.properties).every((property) => property.ownerId === null)).toBe(true);
   });

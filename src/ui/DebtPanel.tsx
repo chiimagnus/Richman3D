@@ -27,7 +27,7 @@ export function DebtPanel({ model, snapshot, language, onCommand, onPause }: { m
         const options = model.management?.actor === model.actor ? model.management.properties[property.tile.id] : undefined;
         return <details key={property.tile.id} name="debt-property"><summary>{tileName(language, property.tile)}</summary>
           <PropertyDetails property={property} players={snapshot.config.players} language={language} />
-          {options && !model.insolvent && <PropertyOperations options={options} propertyId={property.tile.id} language={language} onCommand={onCommand} kinds={property.level > 0 ? ["sell_building", "mortgage"] : ["mortgage", "sell_building"]} />}
+          {options && property.level > 0 && <PropertyOperations options={options} propertyId={property.tile.id} language={language} onCommand={onCommand} kinds={["sell_building"]} />}
         </details>;
       }) : <p>{assetsCopy.empty}</p>}
       {model.insolvent ? <><p>{copy.insolvent}</p><button className={styles.primary} disabled={!model.bankruptcy} onClick={() => { if (model.bankruptcy) onCommand(model.bankruptcy); }}>{copy.bankrupt}</button>{!model.bankruptcy && <p>{messages(language).construction.unavailable}</p>}</> : <p>{copy.solvent}</p>}

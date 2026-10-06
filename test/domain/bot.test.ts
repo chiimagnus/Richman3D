@@ -3,7 +3,7 @@ import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { legalCommands, publicProperty } from "../../src/domain/selectors";
-import { liquidityOption, upgradeOption } from "../../src/domain/economy";
+import { saleOption, upgradeOption } from "../../src/domain/economy";
 import { makeSave } from "../../src/storage/snapshot";
 import type { GameSnapshot } from "../../src/domain/types";
 import { fullHandCheckpoint, itemCheckpoint } from "../fixtures/items";
@@ -56,7 +56,7 @@ it("projects real upgrade and rescue economics instead of independently recalcul
       expect(option).toMatchObject({ cost: actual.cost, currentRent: actual.currentRent, nextRent: actual.nextRent });
     }
     for (const option of visible.liquidity) {
-      const actual = liquidityOption(snapshot, visible.actorId, option.command.propertyId, option.command.kind);
+      const actual = saleOption(snapshot, visible.actorId, option.command.propertyId);
       expect(option).toMatchObject({ cost: actual.cost, proceeds: actual.proceeds });
     }
   }
@@ -65,13 +65,11 @@ it("projects real upgrade and rescue economics instead of independently recalcul
 it("selects a legal command with a reason in every real nonterminal decision and never bypasses the rule validator", () => {
   const purchase = new Game(createMatchConfig(940));
   expect(purchase.apply({ kind: "roll", actor: "p1", expectedRevision: 0 }).ok).toBe(true);
-  const auction = Game.restore(makeSave(purchase.snapshot, propertyMatchId).state);
-  expect(auction.apply({ kind: "skip", actor: "p1", expectedRevision: auction.snapshot.revision }).ok).toBe(true);
   const trade = propertyMatch();
   expect(trade.apply({ kind: "trade_propose", actor: "p1", expectedRevision: trade.snapshot.revision,
     terms: { recipientId: "p2", givePropertyIds: [], receivePropertyIds: [], cash: { payerId: "p1", amount: 10 } } }).ok).toBe(true);
-  const games = [new Game(createMatchConfig(940)), purchase, auction, trade, fullHandCheckpoint(), chanceDebtMatch(), builtRentDebtMatch(3)];
-  expect(new Set(games.map((game) => game.snapshot.decision.kind))).toEqual(new Set(["awaiting_roll", "awaiting_purchase", "awaiting_auction", "awaiting_trade", "awaiting_discard", "awaiting_debt"]));
+  const games = [new Game(createMatchConfig(940)), purchase, trade, fullHandCheckpoint(), chanceDebtMatch(), builtRentDebtMatch(3)];
+  expect(new Set(games.map((game) => game.snapshot.decision.kind))).toEqual(new Set(["awaiting_roll", "awaiting_purchase", "awaiting_trade", "awaiting_discard", "awaiting_debt"]));
   for (const game of games) {
     const before = game.snapshot;
     const visible = observation(before);
@@ -90,6 +88,7 @@ it("requires a real bot actor and exposes neither terminal commands nor a silent
   expect(observeBot(new Game(createMatchConfig(940)).snapshot)).toBeNull();
   expect(chooseBotAction(null)).toBeNull();
   const terminal = builtRentDebtMatch(2);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(terminal.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: terminal.snapshot.revision }).ok).toBe(true);
   expect(terminal.apply({ kind: "bankrupt", actor: "p1", expectedRevision: terminal.snapshot.revision }).ok).toBe(true);
   expect(observation(terminal.snapshot)).toBeNull();
   const visible = observation(chanceDebtMatch().snapshot);

@@ -6,23 +6,28 @@ import { makeSave, readSave } from "../../src/storage/snapshot";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
 import { propertyMatchId } from "../fixtures/property-match";
 
-it.each([2, 3, 4] as const)("liquidates real built groups in a %s-seat game, transfers actual cash and restores every subsequent turn", (seats) => {
+it.each([2, 3, 4] as const)("requires sales before bankruptcy for real built groups in a %s-seat game, transfers actual cash and restores every subsequent turn", (seats) => {
   let game = builtRentDebtMatch(seats);
   const before = game.snapshot;
   expect(before.decision).toMatchObject({ kind: "awaiting_debt", debt: { amount: 516, creditorId: "p2" } });
-  expect(playerAssets(before, "p1")).toMatchObject({ cash: 30, liquidationValue: 240 });
-  const command = legalCommands(before, "p1").find((candidate) => candidate.kind === "bankrupt")!;
+  expect(playerAssets(before, "p1")).toMatchObject({ cash: 30, liquidationValue: 80 });
+  expect(legalCommands(before, "p1").some((command) => command.kind === "bankrupt")).toBe(false);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) {
+    expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    expect(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot).toEqual(game.snapshot);
+  }
+  const command = legalCommands(game.snapshot, "p1").find((candidate) => candidate.kind === "bankrupt")!;
   expect(game.apply(command).ok).toBe(true);
   const after = game.snapshot;
   expect(after.players[0]).toMatchObject({ cash: 0, bankrupt: true, statistics: {
-    constructionSoldCost: 160, constructionRefunds: 80, mortgageIncome: 160, mortgagePrincipalReleased: 160,
-    rentPaid: before.players[0]!.statistics.rentPaid + 270, debtWrittenOff: 246,
+    constructionSoldCost: 160, constructionRefunds: 80,
+    rentPaid: before.players[0]!.statistics.rentPaid + 110, debtWrittenOff: 406,
   } });
-  expect(after.players[1]).toMatchObject({ cash: before.players[1]!.cash + 270, statistics: { rentLost: 246 } });
-  expect(after.players.reduce((sum, player) => sum + player.cash, 0)).toBe(before.players.reduce((sum, player) => sum + player.cash, 0) + 240);
+  expect(after.players[1]).toMatchObject({ cash: before.players[1]!.cash + 110, statistics: { rentLost: 406 } });
+  expect(after.players.reduce((sum, player) => sum + player.cash, 0)).toBe(before.players.reduce((sum, player) => sum + player.cash, 0) + 80);
   expect(after.random).toEqual(before.random);
   expect(playerAssets(after, "p1")).toMatchObject({ cash: 0, propertyValue: 0, netAssets: 0, liquidationValue: 0, properties: [] });
-  for (const id of ["neon-avenue", "harbor-walk"]) expect(after.properties[id]).toEqual({ ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] });
+  for (const id of ["neon-avenue", "harbor-walk"]) expect(after.properties[id]).toEqual({ ownerId: null, level: 0, constructionCosts: [] });
   expect(after.properties["financial-center"]).toEqual(before.properties["financial-center"]);
   expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
   expect(game.snapshot).toBe(after);
@@ -59,10 +64,11 @@ it.each([2, 3, 4] as const)("liquidates real built groups in a %s-seat game, tra
 it("refunds individual discounted actual costs, not catalog costs or a rounded aggregate", () => {
   const game = builtRentDebtMatch(3, true);
   const before = game.snapshot;
-  expect(playerAssets(before, "p1").liquidationValue).toBe(212);
-  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: before.revision }).ok).toBe(true);
+  expect(playerAssets(before, "p1").liquidationValue).toBe(52);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.snapshot.players[0]).toMatchObject({ cash: 0, statistics: { constructionSpent: 106, constructionSoldCost: 106,
-    constructionRefunds: 52, mortgageIncome: 160, mortgagePrincipalReleased: 160, debtWrittenOff: 274 } });
-  expect(game.snapshot.players[1]!.cash).toBe(before.players[1]!.cash + 242);
+    constructionRefunds: 52, debtWrittenOff: 434 } });
+  expect(game.snapshot.players[1]!.cash).toBe(before.players[1]!.cash + 82);
   expect(readSave(makeSave(game.snapshot, propertyMatchId)).snapshot).toEqual(game.snapshot);
 });

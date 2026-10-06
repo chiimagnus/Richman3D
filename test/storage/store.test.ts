@@ -107,6 +107,25 @@ it("reports synchronous storage denial through the same actionable error channel
   await expect(store.read()).rejects.toMatchObject({ kind: "unavailable" });
 });
 
+it("keeps an old mortgage-era record and backup unchanged rather than silently replacing them", async () => {
+  const { factory, store, initial } = fixture();
+  const old = { ...initial, rulesVersion: "city-v12-quick", state: { ...initial.state,
+    config: { ...initial.state.config, rulesVersion: "city-v12-quick" }, properties: { ...initial.state.properties,
+      "neon-avenue": { ...initial.state.properties["neon-avenue"], mortgagePrincipal: 90 } } } };
+  const request = factory.open("richman3d", 1);
+  request.onupgradeneeded = () => request.result.createObjectStore("games");
+  const database = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+  const transaction = database.transaction("games", "readwrite");
+  transaction.objectStore("games").put(old, "current");
+  transaction.objectStore("games").put(old, "backup");
+  await new Promise<void>((resolve) => { transaction.oncomplete = () => resolve(); });
+  database.close();
+  await expect(store.read()).rejects.toMatchObject({ kind: "incompatible" });
+  await expect(store.save(initial, null)).rejects.toMatchObject({ kind: "incompatible" });
+  expect(await store.readRaw()).toEqual(old);
+  expect(await store.readRaw("backup")).toEqual(old);
+});
+
 it("explicit replacement preserves valid current as backup and rejects stale previews and identity reuse", async () => {
   const { store, game, initial } = fixture();
   await store.save(initial, null);

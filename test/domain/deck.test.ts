@@ -95,7 +95,7 @@ it.each([2, 3, 4])("replays and restores every production command of a %s-seat g
   expect(game.snapshot.activeItem).toBeNull();
 });
 
-it("keeps an unpaid cash card pending through save, rejects another draw and discards only after one actual rescue payment", () => {
+it("keeps an unpaid cash card pending through save, rejects another draw and discards only after one actual bankruptcy payment", () => {
   const game = chanceDebtMatch();
   const pending = game.snapshot;
   expect(pending.deck.pending).toBe("maintenance-cost:2");
@@ -106,13 +106,13 @@ it("keeps an unpaid cash card pending through save, rejects another draw and dis
   expect(restored.snapshot).toEqual(pending);
   expect(restored.apply({ kind: "roll", actor: "p1", expectedRevision: pending.revision }).ok).toBe(false);
   expect(restored.snapshot.deck).toEqual(pending.deck);
-  const command = { kind: "mortgage" as const, propertyId: "river-market", actor: "p1" as const, expectedRevision: pending.revision };
+  const command = { kind: "bankrupt" as const, actor: "p1" as const, expectedRevision: pending.revision };
   expect(game.apply(command)).toEqual(restored.apply(command));
   const paid = restored.snapshot;
-  expect(paid.players[0]).toMatchObject({ cash: 40, statistics: { chanceExpense: 90 } });
+  expect(paid.players[0]).toMatchObject({ cash: 0, bankrupt: true, statistics: { chanceExpense: 30, debtWrittenOff: 60 } });
   expect(paid.deck).toEqual({ drawPile: pending.deck.drawPile, discardPile: [pending.deck.pending], pending: null });
   expect(paid.random).toEqual(pending.random);
-  expect(paid.history.slice(-3).map(({ event }) => event.kind)).toEqual(["mortgaged", "paid", "turn"]);
+  expect(paid.history.slice(-3).map(({ event }) => event.kind)).toEqual(["liquidated", "paid", "turn"]);
   expect(restored.apply(command).ok).toBe(false);
   expect(restored.snapshot).toBe(paid);
   expect(Game.restore(makeSave(paid, propertyMatchId).state).snapshot).toEqual(paid);
@@ -122,8 +122,6 @@ it("a bankrupt computer writes off the unpayable card once, discards its entity 
   const state = makeSave(chanceDebtMatch(0).snapshot, propertyMatchId).state;
   const game = Game.restore({ ...state,
     config: { ...state.config, players: state.config.players.map((player) => ({ ...player, controller: player.id === "p1" ? "bot" : "human" })) },
-    properties: { ...state.properties, "river-market": { ...state.properties["river-market"]!, mortgagePrincipal: 100 } },
-    players: state.players.map((player) => player.id === "p1" ? { ...player, statistics: { ...player.statistics, mortgageIncome: 100, taxesPaid: player.statistics.taxesPaid + 100 } } : player),
   });
   const before = game.snapshot;
   const command = (chooseBotAction(observeBot(before), "normal")?.command ?? null)!;

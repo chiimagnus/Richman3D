@@ -103,18 +103,18 @@ it("a movement-card debt restores the final rent source and pays once after liqu
   expect(Game.restore(makeSave(restored.snapshot, propertyMatchId).state).snapshot).toEqual(restored.snapshot);
 });
 
-it("a moved-to tax debt uses the shared rescue payment and ends once without rediscarding the card", () => {
+it("a moved-to tax debt uses the shared bankruptcy payment and ends once without rediscarding the card", () => {
   const game = movementCheckpoint(53, "p1", 30);
   roll(game);
   const before = game.snapshot;
   expect(before.decision).toMatchObject({ kind: "awaiting_debt", debt: { source: { kind: "tax", amount: 120 } } });
   const restored = Game.restore(makeSave(before, propertyMatchId).state);
-  const command = { kind: "mortgage" as const, actor: "p1" as const, propertyId: "metro-plaza", expectedRevision: before.revision };
+  const command = { kind: "bankrupt" as const, actor: "p1" as const, expectedRevision: before.revision };
   const result = restored.apply(command);
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error(result.reason);
-  expect(result.events.map((event) => event.kind)).toEqual(["mortgaged", "paid", "turn"]);
-  expect(restored.snapshot.players[0]!.cash).toBe(20);
+  expect(result.events.map((event) => event.kind)).toEqual(["liquidated", "paid", "ended"]);
+  expect(restored.snapshot.players[0]!.cash).toBe(0);
   expect(restored.snapshot.deck).toEqual(before.deck);
   expect(restored.snapshot.random).toEqual(before.random);
   const after = restored.snapshot;
@@ -123,13 +123,12 @@ it("a moved-to tax debt uses the shared rescue payment and ends once without red
   expect(Game.restore(makeSave(after, propertyMatchId).state).snapshot).toEqual(after);
 });
 
-it("a moved-to property waits for one purchase or auction before ending the original turn", () => {
+it("a moved-to property waits for one purchase or skip before ending the original turn", () => {
   for (const kind of ["buy", "skip"] as const) {
     const game = new Game(createMatchConfig(55));
     const result = roll(game);
     expect(result.snapshot.turnPlayerId).toBe("p1");
     expect(game.apply({ kind, actor: "p1", expectedRevision: result.snapshot.revision }).ok).toBe(true);
-    if (kind === "skip") for (const actor of ["p2", "p1"] as const) expect(game.apply({ kind: "auction_pass", actor, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     expect(game.snapshot.turnPlayerId).toBe("p2");
     expect(game.snapshot.completedRounds).toBe(0);
     expect(game.snapshot.history.filter((entry) => entry.event.kind === "turn")).toHaveLength(1);

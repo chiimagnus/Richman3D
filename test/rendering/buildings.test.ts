@@ -58,7 +58,7 @@ it("renders the real three levels, replaces their resources once, and restores w
     previousHeight = height;
   }
   board.syncOwnership({ ...game.snapshot, properties: { ...game.snapshot.properties,
-    "neon-avenue": { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] },
+    "neon-avenue": { ownerId: null, level: 0, constructionCosts: [] },
   } });
   expect(scene.getObjectByName("property-building-neon-avenue")).toBeUndefined();
   for (const spy of previousSpies) expect(spy).toHaveBeenCalledTimes(1);
@@ -116,7 +116,7 @@ it.each(["abort", "clock", "dispose", "reduced", "already-aborted"] as const)("%
   expect(scene.children).toHaveLength(0);
 });
 
-it("removes sold buildings and updates the mortgage and neighboring rent labels from real operations", () => {
+it("removes sold buildings and updates neighboring rent labels from real operations", () => {
   const fillText = vi.fn();
   stubCanvas(fillText);
   const game = propertyMatch();
@@ -127,15 +127,14 @@ it("removes sold buildings and updates the mortgage and neighboring rent labels 
   board.syncOwnership(snapshot);
   const original = scene.getObjectByName("property-building-neon-avenue")!;
   const spies = trackResources(original);
-  for (const [kind, id] of [["sell_building", "neon-avenue"], ["sell_building", "harbor-walk"], ["mortgage", "neon-avenue"]] as const) {
+  for (const [kind, id] of [["sell_building", "neon-avenue"], ["sell_building", "harbor-walk"]] as const) {
     expect(game.apply({ actor: "p1", kind, propertyId: id, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     fillText.mockClear();
     board.syncOwnership(game.snapshot);
   }
   expect(scene.getObjectByName("property-building-neon-avenue")).toBeUndefined();
   expect(scene.getObjectByName("property-building-harbor-walk")).toBeUndefined();
-  expect(fillText.mock.calls.map((call) => call[0])).toContain("Mortgaged ¥90 · Rent 0");
-  expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 140 · Rent 24");
+  expect(fillText.mock.calls.map((call) => call[0])).toContain("Price 140 · Rent 36");
   for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
   board.dispose();
   for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
@@ -157,7 +156,11 @@ it("removes bankrupt ownership and buildings once, preserves survivors and resto
   expect(removedMarkers).toHaveLength(2);
   const spies = [...buildings, ...removedMarkers].flatMap((object) => trackResources(object));
   const survivor = scene.getObjectByName("property-building-financial-center");
-  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: before.revision }).ok).toBe(true);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) {
+    expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    board.syncOwnership(game.snapshot);
+  }
+  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   board.syncOwnership(game.snapshot);
   for (const object of [...buildings, ...removedMarkers]) expect(object.parent).toBeNull();
   for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);

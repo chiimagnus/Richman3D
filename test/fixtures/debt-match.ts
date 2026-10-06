@@ -48,8 +48,12 @@ export function chanceDebtMatch(cash = 30): Game {
   return game;
 }
 
-export function rentDebtMatch(cash = 30, mortgaged = false): Game {
+export function rentDebtMatch(cash = 30, levels = 0): Game {
   const game = propertyMatch();
+  for (let level = 0; level < levels; level += 1) for (const propertyId of ["neon-avenue", "harbor-walk"]) {
+    const result = game.apply({ kind: "upgrade", propertyId, actor: "p1", expectedRevision: game.snapshot.revision });
+    if (!result.ok) throw new Error(result.reason);
+  }
   for (let count = 0; count < 80; count += 1) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "awaiting_roll" && snapshot.turnPlayerId === "p1") {
@@ -57,10 +61,6 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
       const steps = random.integer(6) + random.integer(6) + 2;
       const target = snapshot.map.tiles.findIndex((tile, index) => index >= steps && tile.type === "property" && snapshot.properties[tile.id]!.ownerId === "p2" && tile.rent > cash);
       if (target >= 0) {
-        if (mortgaged) for (const propertyId of ["neon-avenue", "harbor-walk"]) {
-          const result = game.apply({ kind: "mortgage", propertyId, actor: "p1", expectedRevision: game.snapshot.revision });
-          if (!result.ok) throw new Error(result.reason);
-        }
         const state = makeSave(game.snapshot, propertyMatchId).state;
         const restored = Game.restore({ ...state, players: state.players.map((player) => player.id === "p1" ? { ...player, cash, position: target - steps,
           statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash - cash } } : player) });
@@ -69,7 +69,7 @@ export function rentDebtMatch(cash = 30, mortgaged = false): Game {
         return restored;
       }
     }
-    const command = (chooseBotAction(observeBot(snapshot), "normal")?.command ?? null) ?? legalCommands(snapshot, snapshot.decision.kind === "game_over" ? "p1" : snapshot.decision.actorId).find((candidate) => candidate.kind === "roll" || candidate.kind === "skip" || candidate.kind === "auction_pass");
+    const command = (chooseBotAction(observeBot(snapshot), "normal")?.command ?? null) ?? legalCommands(snapshot, snapshot.decision.kind === "game_over" ? "p1" : snapshot.decision.actorId).find((candidate) => candidate.kind === "roll" || candidate.kind === "skip");
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a rent checkpoint");
   }
   throw new Error("No suitable real owned rent property");
@@ -108,7 +108,7 @@ export function builtRentDebtMatch(seats: 2 | 3 | 4 = 3, discounted = false, own
     const target = decision.kind === "awaiting_purchase" ? snapshot.map.tiles.find((tile) => tile.id === decision.propertyId) : null;
     const group = actor === "p1" ? "cyan" : actor === "p2" ? "emerald" : null;
     const kind = snapshot.decision.kind === "awaiting_purchase" ? target?.type === "property" && (target.group === group || ownCentral && actor === "p1" && target.id === "central-station") && commands.some((command) => command.kind === "buy") ? "buy" : "skip"
-      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : "roll";
+      : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : "roll";
     const command = upgrade ?? commands.find((candidate) => candidate.kind === kind) ?? commands[0];
     if (!command || !game.apply(command).ok) throw new Error("Could not reach a built-group checkpoint");
   }

@@ -9,7 +9,7 @@ import { propertyMatchId } from "../fixtures/property-match";
 
 const instant = { sync() {}, stop() {}, async present() {} };
 
-it("persists the entire dice/card/tax chain before animation, restores debt and retries only storage after rescue", async () => {
+it("persists the entire dice/card/tax chain before animation, restores debt and retries only storage after bankruptcy", async () => {
   const game = movementCheckpoint(53, "p1", 30);
   const factory = new IDBFactory();
   const store = new GameStore(() => factory);
@@ -32,9 +32,9 @@ it("persists the entire dice/card/tax chain before animation, restores debt and 
   resumed.bind(instant);
   const save = vi.spyOn(store, "save").mockRejectedValueOnce(new SaveError("unavailable"));
   try {
-    await resumed.dispatch({ kind: "mortgage", propertyId: "metro-plaza", actor: "p1", expectedRevision: restored.snapshot.revision });
+    await resumed.dispatch({ kind: "bankrupt", actor: "p1", expectedRevision: restored.snapshot.revision });
     const paid = restored.snapshot;
-    expect(paid.players[0]!.cash).toBe(20);
+    expect(paid.players[0]!.cash).toBe(0);
     expect(paid.deck).toEqual(saved.snapshot.deck);
     expect(resumed.getSnapshot().save.kind).toBe("unsaved");
     await resumed.retrySave();

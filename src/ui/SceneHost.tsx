@@ -86,9 +86,7 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
                 audio.playPurchase();
                 if (!await activeWorld.popOwner(event.propertyId, signal)) return;
                 break;
-              case "building_sold":
-              case "mortgaged":
-              case "redeemed": audio.playPurchase(); break;
+              case "building_sold": audio.playPurchase(); break;
               case "upgraded":
                 activeWorld.sync(session.getSnapshot().committed);
                 audio.playPurchase();
@@ -104,17 +102,6 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "trade_proposed":
               case "trade_rejected": break;
               case "skipped": break;
-              case "auction_started":
-              case "auction_bid":
-              case "auction_passed":
-                break;
-              case "auction_ended":
-                if (event.winnerId !== null) {
-                  activeWorld.sync(session.getSnapshot().committed);
-                  audio.playPurchase();
-                  if (!await activeWorld.popOwner(event.propertyId, signal)) return;
-                }
-                break;
               case "paid":
               case "liquidated": break;
               case "turn": audio.playTurn(playerConfig(snapshot.config, event.actor).controller === "human"); break;

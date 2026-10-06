@@ -27,24 +27,12 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
       const copy = messages(language).trade;
       return formatMessage(copy[event.kind], { proposer: playerName(language, proposal.proposerId, snapshot.config), recipient: playerName(language, proposal.recipientId, snapshot.config), terms: tradeTermsText(language, proposal, snapshot) });
     }
-    case "auction_started":
-    case "auction_bid":
-    case "auction_passed":
-    case "auction_ended": {
-      const copy = messages(language).auction;
-      const property = tileName(language, snapshot.map.tiles.find((tile) => tile.id === event.propertyId)!);
-      if (event.kind === "auction_ended") return formatMessage(copy[event.reason], { property, actor: event.winnerId === null ? "" : playerName(language, event.winnerId, snapshot.config), amount: formatCash(language, event.price) });
-      return formatMessage(copy[event.kind], { property, actor: playerName(language, event.actor, snapshot.config), amount: formatCash(language, event.kind === "auction_bid" ? event.amount : 0) });
-    }
     case "paid": return formatMessage(messages(language).debt.paid, { actor: playerName(language, event.actor, snapshot.config), creditor: event.debt.creditorId === null ? messages(language).assets.bank : playerName(language, event.debt.creditorId, snapshot.config), amount: formatCash(language, event.amount) }) + " " + debtSourceText(language, event.debt, snapshot) + (event.writtenOff > 0 ? " " + formatMessage(messages(language).debt.writtenOff, { writtenOff: formatCash(language, event.writtenOff) }) : "");
-    case "liquidated": return formatMessage(messages(language).debt.liquidated, { actor: playerName(language, event.actor, snapshot.config), amount: formatCash(language, event.constructionRefund + event.mortgageIncome) });
-    case "building_sold":
-    case "mortgaged":
-    case "redeemed": {
+    case "liquidated": return formatMessage(messages(language).debt.liquidated, { actor: playerName(language, event.actor, snapshot.config) });
+    case "building_sold": {
       const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId)!;
       return formatMessage(copy[event.kind], { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile),
-        amount: formatCash(language, event.kind === "building_sold" ? event.refund : event.principal),
-        fee: formatCash(language, event.kind === "redeemed" ? event.fee : 0) });
+        amount: formatCash(language, event.refund) });
     }
     case "rolled": return (event.result.controlledBy ? formatMessage(messages(language).items.controlled, { total: event.result.steps }) + " " : "") + rollStatus(language, event.result.playerId, event.result, snapshot) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: event.result.startBonus }) : "");
     case "purchased":

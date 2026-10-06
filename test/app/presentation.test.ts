@@ -71,7 +71,7 @@ async function trace(seed: number, mode: "normal" | "fast" | "reduced" | "skip")
       const actor = game.snapshot.decision.actorId;
       if (session.handoverActor) expect(session.confirmHandover(actor)).toBe(true);
       const commands = legalCommands(game.snapshot, actor);
-      const command = commands.find(candidate => candidate.kind === "roll" || candidate.kind === "buy" || candidate.kind === "auction_pass" || candidate.kind === "discard_item" || candidate.kind === "bankrupt") ?? commands[0]!;
+      const command = commands.find(candidate => candidate.kind === "roll" || candidate.kind === "buy" || candidate.kind === "discard_item" || candidate.kind === "bankrupt") ?? commands[0]!;
       let complete = false;
       const work = session.dispatch(command).then(() => { complete = true; });
       for (let frame = 0; frame < 200 && !complete; frame += 1) {
@@ -103,17 +103,17 @@ it("fast playback and repeated skip/pause cannot dismiss a real debt decision or
   } finally { session.dispose(); }
 });
 
-it("fast playback keeps actual auction choices open without manufacturing a bid or dropping the actor handover", async () => {
+it("fast playback keeps a trade response open without accepting it or dropping the actor handover", async () => {
   const config = createMatchConfig(940); const game = new Game({ ...config, players: config.players.map(player => ({ ...player, controller: "human" })) });
-  expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 }).ok).toBe(true);
   const session = new GameSession(game); session.setPresentationSpeed("fast");
   session.bind({ sync() {}, stop() {}, async present(_events, _signal, settle) { expect(settle()).toBe(0); } });
   try {
-    expect(session.confirmHandover("p1")).toBe(true); await session.dispatch({ kind: "skip", actor: "p1", expectedRevision: game.snapshot.revision });
-    const auction = game.snapshot; expect(auction.decision.kind).toBe("awaiting_auction"); expect(session.handoverActor).toBe("p2");
+    expect(session.confirmHandover("p1")).toBe(true); await session.dispatch({ kind: "trade_propose", actor: "p1", expectedRevision: game.snapshot.revision,
+      terms: { recipientId: "p2", givePropertyIds: [], receivePropertyIds: [], cash: { payerId: "p1", amount: 10 } } });
+    const trade = game.snapshot; expect(trade.decision.kind).toBe("awaiting_trade"); expect(session.handoverActor).toBe("p2");
     session.skipPresentation(); session.pause(); await session.resume();
     expect(session.confirmHandover("p2")).toBe(true); session.skipPresentation();
-    expect(game.snapshot).toBe(auction); expect(session.getSnapshot().notice).toBeNull(); expect(session.getSnapshot().displayed.decision).toBe(auction.decision);
+    expect(game.snapshot).toBe(trade); expect(session.getSnapshot().notice).toBeNull(); expect(session.getSnapshot().displayed.decision).toBe(trade.decision);
   } finally { session.dispose(); }
 });
 

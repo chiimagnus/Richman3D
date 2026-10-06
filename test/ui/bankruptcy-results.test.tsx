@@ -18,6 +18,7 @@ it.each(["en", "zh-CN"] as const)("%s projects the real winner, eliminated obser
   app.setPreferences({ ...app.getSnapshot().preferences, language });
   const game = builtRentDebtMatch(2);
   expect(renderToStaticMarkup(<ResultsScreen app={app} snapshot={game.snapshot} onHistory={() => {}} />)).toBe("");
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const snapshot = game.snapshot;
   if (snapshot.decision.kind !== "game_over") throw new Error("Expected terminal snapshot");
@@ -28,8 +29,8 @@ it.each(["en", "zh-CN"] as const)("%s projects the real winner, eliminated obser
   expect(html).toContain(copy.setup.last_survivor);
   expect(html).toContain(formatMessage(copy.results.yourResult, { rank: 2, assets: formatCash(language, 0) }));
   expect(html.indexOf(playerName(language, "p2", snapshot.config))).toBeLessThan(html.indexOf(playerName(language, "p1", snapshot.config)));
-  for (const field of ["constructionSoldCost", "constructionRefunds", "mortgageIncome", "mortgagePrincipalReleased", "debtWrittenOff", "rentLost"] as const) expect(html).toContain(copy.results.statistics[field]);
-  expect(html).toContain(formatCash(language, 246));
+  for (const field of ["constructionSoldCost", "constructionRefunds", "debtWrittenOff", "rentLost"] as const) expect(html).toContain(copy.results.statistics[field]);
+  expect(html).toContain(formatCash(language, 406));
   const restored = readSave(makeSave(snapshot, propertyMatchId)).snapshot;
   expect(renderToStaticMarkup(<ResultsScreen app={app} snapshot={restored} onHistory={() => {}} />)).toBe(html);
   expect(game.snapshot).toBe(snapshot);

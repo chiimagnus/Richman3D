@@ -32,7 +32,7 @@ it("persists one real construction, rejects repeated captured revisions and publ
   session.dispose();
 });
 
-it("persists sale, loan principal and fees through the shared session without duplicate notices or stale operation rewrites", async () => {
+it("persists balanced building sales through the shared session without duplicate notices or stale operation rewrites", async () => {
   const game = propertyMatch();
   const initialCash = game.snapshot.players[0]!.cash;
   for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "upgrade", propertyId: id, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
@@ -41,7 +41,7 @@ it("persists sale, loan principal and fees through the shared session without du
   const session = new GameSession(game, propertyMatchId, { store, expected: null, source: "local" });
   await session.initializeSave();
   session.bind({ sync() {}, stop() {}, async present() {} });
-  for (const [id, kind] of [["neon-avenue", "sell_building"], ["harbor-walk", "sell_building"], ["neon-avenue", "mortgage"], ["neon-avenue", "redeem"]] as const) {
+  for (const [id, kind] of [["neon-avenue", "sell_building"], ["harbor-walk", "sell_building"]] as const) {
     const before = game.snapshot;
     const command = assetManagementView(session.getSnapshot())!.properties[id]![kind].command!;
     await session.dispatch(command);
@@ -53,6 +53,6 @@ it("persists sale, loan principal and fees through the shared session without du
     await session.dispatch(command);
     expect(game.snapshot).toBe(after);
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: initialCash - 89, statistics: { constructionRefunds: 80, mortgageIncome: 90, mortgagePrincipalRepaid: 90, mortgageFeesPaid: 9 } });
+  expect(game.snapshot.players[0]).toMatchObject({ cash: initialCash - 80, statistics: { constructionRefunds: 80 } });
   session.dispose();
 });

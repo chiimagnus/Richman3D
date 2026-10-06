@@ -9,7 +9,7 @@ import { messages, formatCash } from "../../src/i18n";
 import { debtMatch, rentDebtMatch } from "../fixtures/debt-match";
 
 it.each(["en", "zh-CN"] as const)("%s renders one non-closable debt surface and only legal liquidation operations", (language) => {
-  const game = debtMatch();
+  const game = debtMatch(100, 1);
   const session = new GameSession(game);
   session.bind({ sync() {}, stop() {}, async present() {} });
   const before = game.snapshot;
@@ -24,16 +24,16 @@ it.each(["en", "zh-CN"] as const)("%s renders one non-closable debt surface and 
   expect(html).not.toContain(copy.debt.bankrupt);
   expect(html).not.toContain(copy.assets.close);
   expect(html).toContain('name="debt-property"');
-  expect(html.match(/<option/g)).toHaveLength(4);
+  expect(html.match(/<option/g)).toHaveLength(2);
   expect(html).not.toContain(copy.liquidity.choices.upgrade);
-  expect(html).not.toContain(copy.liquidity.choices.redeem);
+  expect(html).not.toMatch(/mortgage|redeem|抵押|赎回/i);
   expect(JSON.stringify(model)).not.toMatch(/random|draws|statistics|history/);
-  expect(model.management!.properties["neon-avenue"]!.mortgage).toMatchObject({ proceeds: 90, payment: 120, remainingCash: 0, command: { expectedRevision: before.revision } });
+  expect(model.management!.properties["neon-avenue"]!.sell_building).toMatchObject({ proceeds: 45, payment: 120, remainingCash: 25, command: { expectedRevision: before.revision } });
   const options = model.management!.properties["neon-avenue"]!;
-  const mortgage = renderToStaticMarkup(<PropertyOperations options={options} propertyId="neon-avenue" language={language} onCommand={onCommand} kinds={["mortgage"]} />);
-  expect(mortgage).toContain(copy.debt.autoPayment);
-  expect(mortgage).toContain(formatCash(language, 120));
-  expect(mortgage).toContain(formatCash(language, 0));
+  const sale = renderToStaticMarkup(<PropertyOperations options={options} propertyId="neon-avenue" language={language} onCommand={onCommand} kinds={["sell_building"]} />);
+  expect(sale).toContain(copy.debt.autoPayment);
+  expect(sale).toContain(formatCash(language, 120));
+  expect(sale).toContain(formatCash(language, 25));
   for (const blocked of [{ ...view, mode: "paused" as const }, { ...view, save: { kind: "saving" as const } }, { ...view, presenting: true }, { ...view, viewPlayerId: null }]) {
     const blockedModel = debtView(blocked)!;
     expect(blockedModel.bankruptcy).toBeNull();
@@ -45,7 +45,7 @@ it.each(["en", "zh-CN"] as const)("%s renders one non-closable debt surface and 
 });
 
 it.each(["en", "zh-CN"] as const)("%s offers a single explicit bankruptcy action only for actual insolvency", (language) => {
-  const game = rentDebtMatch(30, true);
+  const game = rentDebtMatch(30);
   const session = new GameSession(game);
   session.bind({ sync() {}, stop() {}, async present() {} });
   const model = debtView(session.getSnapshot())!;

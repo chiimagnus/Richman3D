@@ -218,8 +218,8 @@ export class GameSession {
           botDecision: botAction ? { actorId: command.actor, revision: result.snapshot.revision, difficulty: playerConfig(before.config, command.actor).difficulty, reason: botAction.reason } : null });
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
-        const event = result.events.find((entry) => entry.kind === "paid" || entry.kind === "auction_ended") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
-        const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_auction" && result.snapshot.decision.kind !== "awaiting_trade" && result.snapshot.decision.kind !== "awaiting_discard" && !("actor" in event && ["purchased", "upgraded", "building_sold", "mortgaged", "redeemed", "item_used"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available");
+        const event = result.events.find((entry) => entry.kind === "paid") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
+        const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_trade" && result.snapshot.decision.kind !== "awaiting_discard" && !("actor" in event && ["purchased", "upgraded", "building_sold", "item_used"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available");
         let settled = false;
         const rolled = result.events.find((event) => event.kind === "rolled");
         const settleDice = () => {

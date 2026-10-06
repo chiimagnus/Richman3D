@@ -13,17 +13,15 @@ export type RuleSet = {
   readonly groupRentPercent: number;
   readonly constructionCostPercent: number;
   readonly constructionSalePercent: number;
-  readonly mortgagePercent: number;
-  readonly mortgageRedemptionPercent: number;
   readonly taxDiscountPercent: number;
   readonly constructionDiscountPercent: number;
   readonly chanceCards: readonly CardDefinition[];
 };
 
 export const QUICK_RULES: RuleSet = {
-  version: "city-v12-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
+  version: "city-v13-quick", startingCash: 1500, passStartBonus: 200, roundLimit: 20,
   rentMultipliers: [1, 2, 4, 7], groupRentPercent: 150,
-  constructionCostPercent: 50, constructionSalePercent: 50, mortgagePercent: 50, mortgageRedemptionPercent: 10,
+  constructionCostPercent: 50, constructionSalePercent: 50,
   taxDiscountPercent: 50, constructionDiscountPercent: 80,
   chanceCards: [
     { kind: "cash", id: "innovation-bonus", amount: 120 }, { kind: "cash", id: "maintenance-cost", amount: -90 },
@@ -35,7 +33,7 @@ export const QUICK_RULES: RuleSet = {
     { kind: "item", id: "tax-discount" }, { kind: "item", id: "construction-discount" }, { kind: "item", id: "swap-positions" },
   ],
 };
-export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v12-standard", roundLimit: 40 };
+export const STANDARD_RULES: RuleSet = { ...QUICK_RULES, version: "city-v13-standard", roundLimit: 40 };
 
 export function rulesFor(version: string): RuleSet {
   if (version === QUICK_RULES.version) return QUICK_RULES;
@@ -51,5 +49,5 @@ export function validateRules(rules: RuleSet): void {
         : card.kind !== "move" || !["advance-three", "retreat-three", "return-start"].includes(card.id) ||
           card.direction !== (card.id === "advance-three" ? "forward" : card.id === "retreat-three" ? "backward" : "teleport") || card.steps !== (card.id === "return-start" ? 1 : 3))) throw new Error("机会规则无效");
   if (rules.rentMultipliers.length !== 4 || rules.rentMultipliers.some((value) => !Number.isSafeInteger(value) || value < 1) || !Number.isSafeInteger(rules.groupRentPercent) || rules.groupRentPercent < 100 ||
-      [rules.constructionCostPercent, rules.constructionSalePercent, rules.mortgagePercent, rules.mortgageRedemptionPercent, rules.taxDiscountPercent, rules.constructionDiscountPercent].some((value) => !Number.isSafeInteger(value) || value < 0 || value > 100)) throw new Error("地产规则无效");
+      [rules.constructionCostPercent, rules.constructionSalePercent, rules.taxDiscountPercent, rules.constructionDiscountPercent].some((value) => !Number.isSafeInteger(value) || value < 0 || value > 100)) throw new Error("地产规则无效");
 }

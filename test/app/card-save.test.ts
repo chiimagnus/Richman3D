@@ -37,13 +37,13 @@ it("saves an unpaid entity before interrupted presentation, restores it and retr
   resumed.confirmHandover("p1");
   const save = vi.spyOn(store, "save").mockRejectedValueOnce(new SaveError("unavailable"));
   try {
-    const command = { kind: "mortgage" as const, actor: "p1" as const, propertyId: "river-market", expectedRevision: restored.snapshot.revision };
+    const command = { kind: "bankrupt" as const, actor: "p1" as const, expectedRevision: restored.snapshot.revision };
     await resumed.dispatch(command);
     const paid = restored.snapshot;
     expect(paid.revision).toBe(pending.record.revision + 1);
     expect(paid.deck.pending).toBeNull();
     expect(paid.deck.discardPile).toEqual(["maintenance-cost:2"]);
-    expect(paid.players[0]).toMatchObject({ cash: 40, statistics: { chanceExpense: 90 } });
+    expect(paid.players[0]).toMatchObject({ cash: 0, bankrupt: true, statistics: { chanceExpense: 30, debtWrittenOff: 60 } });
     expect(paid.random).toEqual(pending.snapshot.random);
     expect(resumed.getSnapshot().save.kind).toBe("unsaved");
     expect((await store.read())!.record).toEqual(pending.record);
@@ -77,7 +77,7 @@ it("the real computer session settles and saves a pending cash card before handi
     });
     expect(game.snapshot.revision).toBe(before.revision + 1);
     expect(game.snapshot.deck.discardPile).toEqual([before.deck.pending]);
-    expect(game.snapshot.players[0]).toMatchObject({ cash: 40, statistics: { chanceExpense: 90 } });
+    expect(game.snapshot.players[0]).toMatchObject({ cash: 0, bankrupt: true, statistics: { chanceExpense: 30, debtWrittenOff: 60 } });
     expect(game.snapshot.random).toEqual(before.random);
     expect(session.handoverActor).toBe("p2");
     expect((await store.read())!.snapshot).toEqual(game.snapshot);

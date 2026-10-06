@@ -26,7 +26,7 @@ export class BoardView {
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
   private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly tileLabels = new Map<number, THREE.Mesh>();
-  private readonly propertyFlags = new Map<string, { group: THREE.Group; mortgage: THREE.Group }>();
+  private readonly propertyFlags = new Map<string, THREE.Group>();
   private readonly tileDetails = new Map<number, string>();
   private readonly propertyBuildings = new Map<string, { level: number; ownerId: PlayerId; object: THREE.Group }>();
   private snapshot: GameSnapshot | null = null;
@@ -69,9 +69,7 @@ export class BoardView {
 
       this.updateLabel(tile, index);
       this.syncBuilding(tile.id, index, snapshot);
-      const flags = this.propertyFlags.get(tile.id)!;
-      flags.group.visible = completeGroup(snapshot, tile);
-      flags.mortgage.visible = snapshot.properties[tile.id]!.mortgagePrincipal > 0;
+      this.propertyFlags.get(tile.id)!.visible = completeGroup(snapshot, tile);
       const ownerId = snapshot.properties[tile.id]!.ownerId;
       const existing = this.ownerMarkers.get(tile.id);
 
@@ -230,20 +228,9 @@ export class BoardView {
           band.position.set(0, 0.23, depth);
           group.add(band);
         }
-        const mortgage = new THREE.Group();
-        mortgage.name = `mortgage-pattern-${tile.id}`;
-        const mortgageMaterial = new THREE.MeshBasicMaterial({ color: 0xffc66e });
-        for (const horizontal of [-0.72, -0.24, 0.24, 0.72]) {
-          const stripe = new THREE.Mesh(geometry, mortgageMaterial);
-          stripe.scale.set(0.12, 0.025, 0.58);
-          stripe.rotation.y = Math.PI / 4;
-          stripe.position.set(horizontal, 0.23, 1.5);
-          mortgage.add(stripe);
-        }
         group.visible = false;
-        mortgage.visible = false;
-        tileGroup.add(group, mortgage);
-        this.propertyFlags.set(tile.id, { group, mortgage });
+        tileGroup.add(group);
+        this.propertyFlags.set(tile.id, group);
       }
 
     });
@@ -483,7 +470,6 @@ export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, 
     case "tax":
       return `-${tile.amount}`;
     case "property":
-      if (snapshot && snapshot.properties[tile.id]!.mortgagePrincipal > 0) return formatMessage(copy.mortgagedDetail, { principal: snapshot.properties[tile.id]!.mortgagePrincipal, rent: rentFor(snapshot, tile.id) });
       return formatMessage(copy.propertyDetail, {
         price: tile.price,
         rent: snapshot ? rentFor(snapshot, tile.id) : tile.rent,

@@ -80,7 +80,7 @@ it("rejecting consumes the opportunity without changing assets, and the next ord
   for (let count = 0; game.snapshot.turnPlayerId === "p1" && count < 10; count += 1) {
     const actor = game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId;
     const commands = legalCommands(game.snapshot, actor);
-    const command = commands.find((entry) => entry.kind === "roll" || entry.kind === "buy" || entry.kind === "auction_pass")!;
+    const command = commands.find((entry) => entry.kind === "roll" || entry.kind === "buy")!;
     expect(game.apply(command).ok).toBe(true);
   }
   expect(game.snapshot.tradeUsed).toBe(false);
@@ -132,13 +132,13 @@ it.each([
   expect(game.snapshot).toBe(before);
 });
 
-it.each(["upgrade", "mortgage"] as const)("checks the entire color group, not only the selected empty property (%s)", (kind) => {
+it("checks the entire color group, not only the selected empty property", () => {
   const game = propertyMatch();
-  expect(game.apply({ kind, actor: "p1", expectedRevision: game.snapshot.revision, propertyId: kind === "upgrade" ? "harbor-walk" : "neon-avenue" }).ok).toBe(true);
+  expect(game.apply({ kind: "upgrade", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: "harbor-walk" }).ok).toBe(true);
   const before = game.snapshot;
   expect(game.apply({ kind: "trade_propose", actor: "p1", expectedRevision: before.revision, terms }).ok).toBe(false);
   expect(game.snapshot).toBe(before);
-  expect(tradeOption(before, "p1", terms).reason).toBe(kind === "upgrade" ? "group_has_buildings" : "mortgaged");
+  expect(tradeOption(before, "p1", terms).reason).toBe("group_has_buildings");
 });
 
 it("only the recipient can respond to the immutable, matching proposal, without a submitted cancel route", () => {
@@ -196,6 +196,7 @@ it("allows an equal-value land-and-cash exchange with no bank money or duplicate
 
 it("never proposes to an eliminated recipient or accepts a proposal after cash or ownership has changed", () => {
   const game = builtRentDebtMatch();
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   const before = game.snapshot;
   const offer: TradeTerms = { recipientId: "p1", givePropertyIds: [], receivePropertyIds: [], cash: { payerId: before.turnPlayerId, amount: 10 } };
@@ -245,12 +246,14 @@ it("does not migrate or mutate the previous unpublished rule format", () => {
 });
 
 it("retains the used opportunity and restores when bounded history clips the opening proposal or its response", () => {
-  const game = propertyMatch();
+  const state = makeSave(propertyMatch().snapshot, propertyMatchId).state;
+  const game = Game.restore({ ...state, players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 5000,
+    statistics: { ...player.statistics, chanceIncome: player.statistics.chanceIncome + 5000 - player.cash } } : player) });
   const initialCash = game.snapshot.players[0]!.cash;
-  submit(game);
+  submit(game, { recipientId: "p2", givePropertyIds: [], receivePropertyIds: [], cash: { payerId: "p2", amount: 180 } });
   respond(game, "trade_accept");
   for (let count = 0; count < 100; count += 1) {
-    expect(game.apply({ kind: count % 2 === 0 ? "mortgage" : "redeem", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: "harbor-walk" }).ok).toBe(true);
+    expect(game.apply({ kind: count % 4 < 2 ? "upgrade" : "sell_building", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: count % 2 === 0 ? "harbor-walk" : "neon-avenue" }).ok).toBe(true);
     const restored = Game.restore(makeSave(game.snapshot, propertyMatchId).state);
     expect(restored.snapshot).toEqual(game.snapshot);
     expect(canProposeTrade(restored.snapshot, "p1")).toBe(false);
@@ -258,7 +261,7 @@ it("retains the used opportunity and restores when bounded history clips the ope
   }
   expect(game.snapshot.history).toHaveLength(100);
   expect(game.snapshot.history.some(({ event }) => event.kind.startsWith("trade"))).toBe(false);
-  expect(game.snapshot.players[0]!.cash).toBe(initialCash + 180 - 350);
+  expect(game.snapshot.players[0]!.cash).toBe(initialCash + 180 - 2000);
   expect(game.snapshot.tradeUsed).toBe(true);
 });
 

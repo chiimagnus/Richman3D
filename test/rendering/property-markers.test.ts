@@ -40,32 +40,28 @@ it("keeps selection distinct from ownership and projects the actual next-path di
   } finally { board.dispose(); }
 });
 
-it("projects actual group completion, mortgage pattern and redemption without a second economic state or rebuilding static flags", () => {
+it("projects actual group completion after building upgrades and sales without a second economic state or rebuilding static flags", () => {
   stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene();
   const before = game.snapshot;
   const board = new BoardView(scene, "en", before.map, before.config, before.rules);
   try {
     board.syncOwnership(before);
     const groups = ["harbor-walk", "neon-avenue"].map((id) => scene.getObjectByName(`complete-group-${id}`)!);
-    const mortgage = scene.getObjectByName("mortgage-pattern-neon-avenue")!;
     const marker = scene.getObjectByName("owner-marker-neon-avenue")!;
     const texture = badge(marker).material.map!;
     const resources = new Set<THREE.BufferGeometry | THREE.Material>();
-    [...groups, mortgage].forEach((group) => group.traverse((object) => {
+    groups.forEach((group) => group.traverse((object) => {
       if (object instanceof THREE.Mesh) { resources.add(object.geometry); resources.add(object.material as THREE.Material); }
     }));
     const disposals = [...resources].map((resource) => vi.spyOn(resource, "dispose"));
     expect(groups.every((group) => group.visible)).toBe(true);
     expect(groups.every((group) => group.children.length === 2)).toBe(true);
-    expect(mortgage.visible).toBe(false);
-    for (const kind of ["mortgage", "redeem"] as const) {
+    for (const kind of ["upgrade", "sell_building"] as const) {
       expect(game.apply({ kind, actor: "p1", propertyId: "neon-avenue", expectedRevision: game.snapshot.revision }).ok).toBe(true);
       const saved = makeSave(game.snapshot, propertyMatchId);
       board.syncOwnership(game.snapshot);
-      expect(mortgage.visible).toBe(kind === "mortgage");
-      expect(mortgage.children).toHaveLength(4);
-      expect(groups.every((group) => group.visible)).toBe(kind === "redeem");
-      expect(publicProperty(game.snapshot, "harbor-walk").groupComplete).toBe(kind === "redeem");
+      expect(groups.every((group) => group.visible)).toBe(true);
+      expect(publicProperty(game.snapshot, "harbor-walk").groupComplete).toBe(true);
       expect(badge(marker).material.map).toBe(texture);
       expect(makeSave(game.snapshot, propertyMatchId).state).toEqual(saved.state);
     }
@@ -83,7 +79,7 @@ it("identifies all four actual owners by seat number independently of their colo
   try {
     for (let step = 0; step < 300 && seen.size < 4 && game.snapshot.decision.kind !== "game_over"; step += 1) {
       const actions = legalCommands(game.snapshot, game.snapshot.decision.actorId);
-      const command = actions.find((action) => action.kind === "buy") ?? actions.find((action) => action.kind === "roll") ?? actions.find((action) => action.kind === "auction_pass") ?? actions[0]!;
+      const command = actions.find((action) => action.kind === "buy") ?? actions.find((action) => action.kind === "roll") ?? actions[0]!;
       expect(game.apply(command).ok).toBe(true);
       board.syncOwnership(game.snapshot);
       for (const [id, property] of Object.entries(game.snapshot.properties)) {

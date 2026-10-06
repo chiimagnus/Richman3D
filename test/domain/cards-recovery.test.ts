@@ -22,7 +22,7 @@ function checkpoint(config: MatchConfig, revision: number): Game {
   while (game.snapshot.revision < revision) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") throw new Error("Match ended before checkpoint");
-    const kind = snapshot.decision.kind === "awaiting_purchase" ? "skip" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass"
+    const kind = snapshot.decision.kind === "awaiting_purchase" ? "skip"
       : snapshot.decision.kind === "awaiting_discard" ? "discard_item" : snapshot.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
     execute(game, legalCommands(snapshot, snapshot.decision.actorId).find((command) => command.kind === kind)!);
   }
@@ -52,7 +52,7 @@ function withFine(game: Game): Game {
 }
 
 it.each(["human", "bot"] as const)("cleans pending, active and private hands once after a %s bankruptcy with complete history", (controller) => {
-  const original = checkpoint(createMatchConfig(10), 44);
+  const original = checkpoint(createMatchConfig(10), 28);
   const state = makeSave(original.snapshot, propertyMatchId).state;
   let game = withFine(Game.restore({ ...state, config: { ...state.config, players: state.config.players.map((player) => ({ ...player, controller: player.id === "p1" ? controller : "human" })) } }));
   const command = legalCommands(game.snapshot, "p1").find((command) => command.kind === "use_item" && cardType(command.instanceId) === "rent-waiver")!;
@@ -81,7 +81,7 @@ it.each(["human", "bot"] as const)("cleans pending, active and private hands onc
 });
 
 it("restores all ten held entities across four players plus an active item and pending debt, without clearing survivors", () => {
-  let game = withFine(checkpoint({ ...createMatchConfig(1, 4), rulesVersion: STANDARD_RULES.version }, 410));
+  let game = withFine(checkpoint({ ...createMatchConfig(1, 4), rulesVersion: STANDARD_RULES.version }, 166));
   const before = game.snapshot;
   expect(before.turnPlayerId).toBe("p3");
   expect(before.players.map((player) => player.hand.length)).toEqual([1, 3, 3, 3]);
@@ -106,7 +106,7 @@ it("restores all ten held entities across four players plus an active item and p
   recover(game.snapshot);
 });
 
-it.each(["buy", "auction"] as const)("keeps an unused effect through a purchase decision and expires it only after %s completes", (choice) => {
+it.each(["buy", "skip"] as const)("keeps an unused effect through a purchase decision and expires it only after %s completes", (choice) => {
   let game = itemLandingCheckpoint("construction-discount", 5);
   execute(game, legalCommands(game.snapshot, "p1").find((command) => command.kind === "use_item")!);
   const instanceId = game.snapshot.activeItem!.instanceId;
@@ -114,16 +114,7 @@ it.each(["buy", "auction"] as const)("keeps an unused effect through a purchase 
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
   expect(game.snapshot.activeItem?.instanceId).toBe(instanceId);
   game = recover(game.snapshot);
-  execute(game, { kind: choice === "buy" ? "buy" : "skip", actor: "p1", expectedRevision: game.snapshot.revision });
-  if (choice === "auction") {
-    for (const actor of ["p2", "p1"] as const) {
-      expect(game.snapshot.activeItem?.instanceId).toBe(instanceId);
-      game = recover(game.snapshot);
-      execute(game, legalCommands(game.snapshot, actor).find((command) => command.kind === "auction_bid")!);
-    }
-    game = recover(game.snapshot);
-    execute(game, { kind: "auction_pass", actor: "p2", expectedRevision: game.snapshot.revision });
-  }
+  execute(game, { kind: choice, actor: "p1", expectedRevision: game.snapshot.revision });
   expect(game.snapshot.turnPlayerId).toBe("p2");
   expect(game.snapshot.activeItem).toBeNull();
   expect(game.snapshot.itemUsed).toBe(false);
@@ -180,11 +171,11 @@ it("rejects a four-card decision claiming an item was already used this turn, ev
 });
 
 it("expires the last ordinary turn's unused effect before round-limit settlement and returns every remaining hand", () => {
-  let game = checkpoint({ ...createMatchConfig(1, 4), rulesVersion: STANDARD_RULES.version }, 410);
+  let game = checkpoint({ ...createMatchConfig(1, 4), rulesVersion: STANDARD_RULES.version }, 166);
   while (!(game.snapshot.completedRounds === STANDARD_RULES.roundLimit - 1 && game.snapshot.turnPlayerId === game.snapshot.turnOrder.at(-1) && game.snapshot.decision.kind === "awaiting_roll")) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") throw new Error("Ended before last ordinary turn");
-    const kind = snapshot.decision.kind === "awaiting_purchase" ? "skip" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : "roll";
+    const kind = snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll";
     execute(game, legalCommands(snapshot, snapshot.decision.actorId).find((command) => command.kind === kind)!);
   }
   const actor = game.snapshot.turnPlayerId;
@@ -198,7 +189,7 @@ it("expires the last ordinary turn's unused effect before round-limit settlement
   for (;;) {
     const snapshot = game.snapshot;
     if (snapshot.decision.kind === "game_over") break;
-    const kind = snapshot.decision.kind === "awaiting_purchase" ? "skip" : snapshot.decision.kind === "awaiting_auction" ? "auction_pass" : "roll";
+    const kind = snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll";
     const result = execute(game, legalCommands(snapshot, snapshot.decision.actorId).find((command) => command.kind === kind)!);
     expect(result.events.filter((event) => event.kind === "turn")).toEqual([]);
     ended += result.events.filter((event) => event.kind === "ended").length;
@@ -213,7 +204,7 @@ it("expires the last ordinary turn's unused effect before round-limit settlement
 });
 
 it("recycles only discarded entities while ten items stay in their actual owners' hands, including the last draw and final-round cleanup", () => {
-  let game = checkpoint({ ...createMatchConfig(1, 4), rulesVersion: STANDARD_RULES.version }, 410);
+  let game = checkpoint({ ...createMatchConfig(1, 4), rulesVersion: STANDARD_RULES.version }, 166);
   const held = game.snapshot.players.flatMap((player) => player.hand);
   expect(held).toHaveLength(10);
   let recycled = 0;
@@ -227,7 +218,7 @@ it("recycles only discarded entities while ten items stay in their actual owners
     }
     const before = game.snapshot;
     if (before.decision.kind === "game_over") break;
-    const kind = before.decision.kind === "awaiting_purchase" ? "skip" : before.decision.kind === "awaiting_auction" ? "auction_pass"
+    const kind = before.decision.kind === "awaiting_purchase" ? "skip"
       : before.decision.kind === "awaiting_discard" ? "discard_item" : before.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
     const result = execute(game, legalCommands(before, before.decision.actorId).find((command) => command.kind === kind)!);
     const drew = result.events.some((event) => event.kind === "rolled" && ["chance", "movement_card", "item_received"].includes(event.result.landing.kind));

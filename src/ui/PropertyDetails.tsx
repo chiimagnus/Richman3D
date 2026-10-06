@@ -14,7 +14,6 @@ export function PropertyDetails({ property, players, language }: { property: Ret
     {property.ownerId && <>
       <dt>{copy.level}</dt><dd>{property.level}</dd>
       <dt>{copy.groupBonus}</dt><dd>{property.groupComplete ? copy.groupActive : copy.groupInactive}</dd>
-      <dt>{copy.mortgagePrincipal}</dt><dd>{formatCash(language, property.mortgagePrincipal)}</dd>
       <dt>{copy.liquidation}</dt><dd>{formatCash(language, property.liquidationValue)}</dd>
     </>}
   </dl>;

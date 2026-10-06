@@ -1,5 +1,5 @@
 {
-  "ai": {"choose":"Computer {number} difficulty","difficulties":{"easy":"Easy","normal":"Normal","hard":"Hard"},"action":"{actor} · {difficulty}: {reason}","reasons":{"roll":"Continue the turn","use_item":"Use an item with a current benefit","keep_valuable":"Keep the more useful items","reserve_cash":"Keep cash for upcoming costs","buy_property":"Buy within the cash budget","complete_group":"Complete a color group","auction_value":"Bid within the property and cash budget","upgrade_income":"Improve expected rent","redeem_income":"Restore rental income","debt_rescue":"Raise enough cash with less loss","insolvent":"Settle the unaffordable debt","fair_trade":"Accept useful value and groups","unfair_trade":"Reject an unfavorable or risky trade"}},
+  "ai": {"choose":"Computer {number} difficulty","difficulties":{"easy":"Easy","normal":"Normal","hard":"Hard"},"action":"{actor} · {difficulty}: {reason}","reasons":{"roll":"Continue the turn","use_item":"Use an item with a current benefit","keep_valuable":"Keep the more useful items","reserve_cash":"Keep cash for upcoming costs","buy_property":"Buy within the cash budget","complete_group":"Complete a color group","upgrade_income":"Improve expected rent","debt_rescue":"Raise enough cash with less loss","insolvent":"Settle the unaffordable debt","fair_trade":"Accept useful value and groups","unfair_trade":"Reject an unfavorable or risky trade"}},
   "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. Saved data has not been erased." },
   "players": {
     "p1": "Player One",
@@ -15,7 +15,7 @@
     "rollKey": "Space",
     "buy": "Buy",
     "buyWithPrice": "Buy · {price}",
-    "skip": "Send to auction"
+    "skip": "Don't buy"
   },
   "settings": {
     "title": "Settings",
@@ -49,8 +49,6 @@
     "purchased": "{actor} paid {amount} to buy “{propertyName}”.",
     "upgraded": "{actor} paid {amount} to build level {level} on “{propertyName}”.",
     "building_sold": "{actor} sold one building level on “{propertyName}” for {amount}.",
-    "mortgaged": "{actor} mortgaged “{propertyName}” for {amount}. It no longer collects rent.",
-    "redeemed": "{actor} repaid {amount} plus a {fee} fee to redeem “{propertyName}”.",
     "skipped": "{actor} declined direct purchase of “{propertyName}”.",
     "botActing": "{actor} is taking a turn…",
     "yourTurn": "{actor}'s turn.",
@@ -76,7 +74,6 @@
     "startDetail": "+{amount} / lap",
     "chanceDetail": "Random event",
     "propertyDetail": "Price {price} · Rent {rent}",
-    "mortgagedDetail": "Mortgaged ¥{principal} · Rent {rent}",
     "tiles": {
       "start": "Central Start",
       "harbor-walk": "Harbor Walk",
@@ -135,7 +132,7 @@
   "results": {
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
-    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "tradeCashReceived": "Trade cash received", "tradeCashPaid": "Trade cash paid", "tradeBookValueReceived": "Book value of land received in trades", "tradeBookValueGiven": "Book value of land given in trades", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "mortgageIncome": "Mortgage cash received", "mortgagePrincipalRepaid": "Mortgage principal repaid", "mortgageFeesPaid": "Mortgage redemption fees", "mortgagePrincipalReleased": "Mortgage principal released on liquidation", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
+    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "tradeCashReceived": "Trade cash received", "tradeCashPaid": "Trade cash paid", "tradeBookValueReceived": "Book value of land received in trades", "tradeBookValueGiven": "Book value of land given in trades", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
   "storage": {
@@ -169,24 +166,22 @@
     "groupBonus": "Color-group bonus", "groupActive": "Active", "groupInactive": "Inactive",
     "title": "Public assets", "open": "View {player}'s public assets", "player": "Inspect seat", "seat": "Seat {number} · {player}",
     "cash": "Cash", "value": "Property book value", "net": "Net assets", "rent": "Current rent", "owner": "Owner", "bank": "Bank",
-    "liquidation": "Asset liquidation proceeds", "level": "Building level", "mortgagePrincipal": "Outstanding mortgage principal",
-    "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect board", "tile": "Board space", "tileOption": "{number} · {tile}", "close": "Close asset view",
+    "liquidation": "Cash from selling buildings", "level": "Building level", "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect board", "tile": "Board space", "tileOption": "{number} · {tile}", "close": "Close asset view",
     "bankrupt": "Eliminated; properties returned to the bank.", "publicOnly": "Public assets only; no private cards or future random results."
   },
   "history": { "title": "Action history", "count": "Keeping the latest {limit} events; {count} currently stored.", "empty": "No actions yet.", "revision": "Action {revision}", "back": "Close history" },
   "construction": {
     "title": "Build one level", "rentChange": "Rent: {current} → {next}", "cost": "Construction cost", "remaining": "Cash after construction", "upgrade": "Build · {cost}",
     "unavailable": "Wait until the current action is saved and presented.",
-    "reasons": { "not_owner": "Only the owner may build.", "not_turn": "Build before rolling on your own turn.", "incomplete_group": "Own every property in this color group first.", "mortgaged": "Redeem all mortgages in this group first.", "max_level": "Maximum building level reached.", "unbalanced": "Build on a lower-level property in this group first.", "insufficient_cash": "Not enough cash for construction." }
+    "reasons": { "not_owner": "Only the owner may build.", "not_turn": "Build before rolling on your own turn.", "incomplete_group": "Own every property in this color group first.", "max_level": "Maximum building level reached.", "unbalanced": "Build on a lower-level property in this group first.", "insufficient_cash": "Not enough cash for construction." }
   },
   "liquidity": {
-    "title": "Property operation", "operation": "Choose operation", "cost": "Payment including fee", "proceeds": "Cash received", "remaining": "Cash after operation", "loss": "Net asset loss", "mortgageEffect": "Mortgaging also removes this group's rent bonus.",
-    "choices": { "upgrade": "Build one level", "sell_building": "Sell one building level", "mortgage": "Mortgage property", "redeem": "Redeem mortgage" },
-    "actions": { "sell_building": "Sell · {amount}", "mortgage": "Mortgage · {amount}", "redeem": "Redeem · {amount}" },
-    "reasons": { "not_owner": "Only the owner may manage this property.", "not_turn": "Manage property before rolling on your own turn.", "insufficient_cash": "Not enough cash for this payment.", "no_building": "No building level to sell.", "unbalanced_sale": "Sell a higher-level building in this group first.", "group_has_buildings": "Sell every building in this group before mortgaging.", "already_mortgaged": "This property is already mortgaged.", "no_mortgage_value": "This property's mortgage value is zero.", "not_mortgaged": "This property is not mortgaged." }
+    "title": "Property operation", "operation": "Choose operation", "proceeds": "Cash received", "remaining": "Cash after operation", "loss": "Net asset loss", "choices": { "upgrade": "Build one level", "sell_building": "Sell one building level" },
+    "actions": { "sell_building": "Sell · {amount}" },
+    "reasons": { "not_owner": "Only the owner may manage this property.", "not_turn": "Manage property before rolling on your own turn.", "no_building": "No building level to sell.", "unbalanced_sale": "Sell a higher-level building in this group first." }
   },
   "debt": {
-    "title": "Settle fixed debt", "pending": "The fixed debt must be resolved before play continues.", "obligation": "{actor} owes {creditor} {amount}.", "shortfall": "Cash shortfall", "automatic": "Sell buildings or mortgage property. The first action that raises enough cash pays this fixed debt automatically; no extra payment confirmation is required.", "autoPayment": "Automatic debt payment", "insolvent": "Even cash plus all liquidation proceeds cannot cover the debt. Liquidation pays the available amount, writes off the rest, returns every property to the bank and eliminates this seat.", "solvent": "Bankruptcy is not available while your assets can cover the debt.", "bankrupt": "Confirm liquidation and elimination", "rentSource": "Fixed rent on {propertyName}.", "taxSource": "Fixed board fee.", "paid": "{actor} paid {creditor} {amount}.", "writtenOff": "Unpaid {writtenOff} was written off.", "liquidated": "{actor} liquidated assets for {amount} and was eliminated."
+    "title": "Sell buildings to pay", "pending": "Not enough cash. Sell buildings before continuing.", "obligation": "{actor} owes {creditor} {amount}.", "shortfall": "Cash shortfall", "automatic": "You must sell buildings first. Payment is automatic as soon as you have enough cash.", "autoPayment": "Automatic payment", "insolvent": "No buildings remain to sell and cash is still short. Your remaining cash is paid, properties return to the bank and you leave this match.", "solvent": "You still have buildings to sell. Sell first; payment is automatic once you have enough cash.", "bankrupt": "Confirm bankruptcy and leave match", "rentSource": "Fixed rent on {propertyName}.", "taxSource": "Fixed board fee.", "paid": "{actor} paid {creditor} {amount}.", "writtenOff": "Unpaid {writtenOff} was written off.", "liquidated": "{actor} went bankrupt; properties returned to the bank."
   },
   "trade": {
     "title": "Trade proposal",
@@ -198,7 +193,7 @@
     "cashDirection": "Cash direction",
     "noCash": "No cash transfer",
     "cashAmount": "Cash amount",
-    "limit": "Up to {limit} properties per side. Transferred land must be unmortgaged, with no buildings anywhere in its color group.",
+    "limit": "Up to {limit} properties per side, with no buildings anywhere in the affected color groups.",
     "submit": "Submit proposal",
     "cancel": "Cancel draft",
     "accept": "Accept trade",
@@ -226,15 +221,9 @@
       "invalid_terms": "Choose non-duplicate land or enter a positive whole cash amount.",
       "not_owner": "Ownership changed; this trade is no longer valid.",
       "group_has_buildings": "Sell every building in the affected color groups first.",
-      "mortgaged": "Mortgaged land cannot be traded.",
-      "insufficient_cash": "The payer does not have enough cash.",
+        "insufficient_cash": "The payer does not have enough cash.",
       "amount_overflow": "The resulting amount or statistics exceed the safe range."
     }
-  },
-  "auction": {
-    "title": "Property auction", "pending": "The property auction must finish before the next turn.", "bidder": "{actor} is bidding for {property}.",
-    "highest": "Highest bid", "highestValue": "{actor} · {amount}", "noBid": "No bids yet", "minimum": "Minimum next bid", "noLegalBid": "No higher bid is possible", "remaining": "Cash if you win at this bid", "amount": "Bid amount", "range": "Whole-number bids in multiples of {step}, within your cash balance.", "bid": "Submit bid", "pass": "Pass for this auction", "passEffect": "Passing is final for this auction. The last highest bidder pays their bid; if everyone passes, the property stays with the bank.",
-    "auction_started": "Auction for {property} started with {actor}.", "auction_bid": "{actor} bid {amount} for {property}.", "auction_passed": "{actor} passed on {property}.", "sold": "{actor} won {property} for {amount}.", "all_passed": "Everyone passed; {property} remains with the bank.", "no_bidders": "No eligible bidder; {property} remains with the bank."
   },
   "runtime": {
     "title": "Richman 3D",

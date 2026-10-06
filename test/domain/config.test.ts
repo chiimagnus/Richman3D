@@ -53,7 +53,7 @@ it("RuleSet amounts reach actual cash, structured results and both locale projec
     expect(tileDetail(chance.snapshot.map.tiles[0]!, language, chance.snapshot.rules)).toContain("333");
   }
   const lap = new Game(createMatchConfig(17981), rules);
-  for (const kind of ["roll", "skip", "auction_pass", "auction_pass", "roll", "roll"] as const) {
+  for (const kind of ["roll", "skip", "roll", "roll"] as const) {
     const result = lap.apply({ kind, actor: lap.snapshot.decision.kind === "game_over" ? lap.snapshot.turnPlayerId : lap.snapshot.decision.actorId, expectedRevision: lap.snapshot.revision });
     expect(result.ok).toBe(true);
     if (kind === "roll" && result.ok && result.events.some((event) => event.kind === "rolled" && event.result.passedStart)) {

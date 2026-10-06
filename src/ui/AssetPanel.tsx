@@ -38,7 +38,7 @@ export function AssetPanel({ assets, initialPlayer, language, management, onComm
   </section>;
 }
 
-export function PropertyOperations({ options, propertyId, language, onCommand, kinds = ["upgrade", "sell_building", "mortgage", "redeem"] }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void; kinds?: readonly (keyof NonNullable<ReturnType<typeof assetManagementView>>["properties"][string])[] }) {
+export function PropertyOperations({ options, propertyId, language, onCommand, kinds = ["upgrade", "sell_building"] }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void; kinds?: readonly (keyof NonNullable<ReturnType<typeof assetManagementView>>["properties"][string])[] }) {
   const [kind, setKind] = useState<keyof typeof options>(kinds[0]!);
   const option = options[kind];
   const build = messages(language).construction;
@@ -52,17 +52,16 @@ export function PropertyOperations({ options, propertyId, language, onCommand, k
     </select></label>
     {preview && <p>{formatMessage(build.rentChange, { current: formatCash(language, option.currentRent), next: formatCash(language, option.nextRent!) })}</p>}
     {preview && <dl className={styles.values}>
-      <dt>{kind === "upgrade" ? build.cost : kind === "redeem" ? copy.cost : copy.proceeds}</dt><dd>{formatCash(language, kind === "upgrade" || kind === "redeem" ? option.cost : option.proceeds)}</dd>
+      <dt>{kind === "upgrade" ? build.cost : copy.proceeds}</dt><dd>{formatCash(language, kind === "upgrade" ? option.cost : option.proceeds)}</dd>
       <dt>{copy.remaining}</dt><dd>{formatCash(language, option.remainingCash)}</dd>
       {option.payment > 0 && <><dt>{messages(language).debt.autoPayment}</dt><dd>{formatCash(language, option.payment)}</dd></>}
       {option.loss > 0 && <><dt>{copy.loss}</dt><dd>{formatCash(language, option.loss)}</dd></>}
     </dl>}
-    {kind === "mortgage" && preview && <p>{copy.mortgageEffect}</p>}
     <button className={styles.primary} aria-describedby={`property-reason-${propertyId}`} disabled={!option.command} onClick={(event) => {
       if (!option.command) return;
       event.currentTarget.closest("details")?.querySelector("summary")?.focus({ preventScroll: true });
       onCommand(option.command);
-    }}>{kind === "upgrade" ? formatMessage(build.upgrade, { cost: formatCash(language, option.cost) }) : formatMessage(copy.actions[kind], { amount: formatCash(language, kind === "redeem" ? option.cost : option.proceeds) })}</button>
+    }}>{kind === "upgrade" ? formatMessage(build.upgrade, { cost: formatCash(language, option.cost) }) : formatMessage(copy.actions[kind], { amount: formatCash(language, option.proceeds) })}</button>
     <p id={`property-reason-${propertyId}`}>{reason}</p>
   </section>;
 }

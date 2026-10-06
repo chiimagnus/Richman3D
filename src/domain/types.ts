@@ -39,10 +39,6 @@ export type FinancialStats = {
   readonly constructionSpent: number;
   readonly constructionRefunds: number;
   readonly constructionSoldCost: number;
-  readonly mortgageIncome: number;
-  readonly mortgagePrincipalRepaid: number;
-  readonly mortgageFeesPaid: number;
-  readonly mortgagePrincipalReleased: number;
   readonly debtWrittenOff: number;
   readonly rentLost: number;
 };
@@ -69,7 +65,6 @@ export type PlayerState = {
 export type PropertyState = {
   readonly ownerId: PlayerId | null;
   readonly level: 0 | 1 | 2 | 3;
-  readonly mortgagePrincipal: number;
   readonly constructionCosts: readonly number[];
 };
 
@@ -78,20 +73,8 @@ export type Decision =
   | { readonly kind: "awaiting_discard"; readonly actorId: PlayerId; readonly continuation: "finish_turn" }
   | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
   | { readonly kind: "awaiting_debt"; readonly actorId: PlayerId; readonly debt: PendingDebt }
-  | AuctionDecision
   | { readonly kind: "awaiting_trade"; readonly actorId: PlayerId; readonly proposal: TradeProposal }
   | { readonly kind: "game_over"; readonly result: MatchResult };
-
-export type AuctionDecision = {
-  readonly kind: "awaiting_auction";
-  readonly actorId: PlayerId;
-  readonly propertyId: string;
-  readonly landingPlayerId: PlayerId;
-  readonly highestBid: number;
-  readonly highestBidderId: PlayerId | null;
-  readonly withdrawnIds: readonly PlayerId[];
-  readonly continuation: "finish_turn";
-};
 
 export type RandomState = {
   readonly version: "xorshift32-v1";
@@ -168,12 +151,12 @@ export type CardMovementResult = Movement & {
 export type Command = {
   readonly actor: PlayerId;
   readonly expectedRevision: number;
-} & ({ readonly kind: "roll" | "buy" | "skip" | "bankrupt" | "auction_pass" } | { readonly kind: "auction_bid"; readonly amount: number }
+} & ({ readonly kind: "roll" | "buy" | "skip" | "bankrupt" }
   | { readonly kind: "trade_propose"; readonly terms: TradeTerms }
   | { readonly kind: "trade_accept" | "trade_reject"; readonly proposalRevision: number }
   | { readonly kind: "discard_item"; readonly instanceId: CardInstanceId }
   | { readonly kind: "use_item"; readonly instanceId: CardInstanceId; readonly total: number | null; readonly targetId: PlayerId | null }
-  | { readonly kind: "upgrade" | "sell_building" | "mortgage" | "redeem"; readonly propertyId: string });
+  | { readonly kind: "upgrade" | "sell_building"; readonly propertyId: string });
 
 export type GameEvent =
   | { readonly kind: "item_used"; readonly actor: PlayerId; readonly instanceId: CardInstanceId; readonly total: number | null; readonly targetId: PlayerId | null }
@@ -185,15 +168,9 @@ export type GameEvent =
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
   | { readonly kind: "upgraded"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 1 | 2 | 3; readonly cost: number }
   | { readonly kind: "building_sold"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 0 | 1 | 2; readonly cost: number; readonly refund: number }
-  | { readonly kind: "mortgaged"; readonly actor: PlayerId; readonly propertyId: string; readonly principal: number }
-  | { readonly kind: "redeemed"; readonly actor: PlayerId; readonly propertyId: string; readonly principal: number; readonly fee: number }
   | { readonly kind: "skipped"; readonly actor: PlayerId; readonly propertyId: string }
-  | { readonly kind: "auction_started"; readonly actor: PlayerId; readonly propertyId: string }
-  | { readonly kind: "auction_bid"; readonly actor: PlayerId; readonly propertyId: string; readonly amount: number }
-  | { readonly kind: "auction_passed"; readonly actor: PlayerId; readonly propertyId: string }
-  | { readonly kind: "auction_ended"; readonly propertyId: string; readonly winnerId: PlayerId | null; readonly price: number; readonly reason: "sold" | "all_passed" | "no_bidders" }
   | { readonly kind: "paid"; readonly actor: PlayerId; readonly debt: PendingDebt; readonly amount: number; readonly writtenOff: number }
-  | { readonly kind: "liquidated"; readonly actor: PlayerId; readonly constructionCost: number; readonly constructionRefund: number; readonly mortgageIncome: number; readonly principalReleased: number }
+  | { readonly kind: "liquidated"; readonly actor: PlayerId }
   | { readonly kind: "turn"; readonly actor: PlayerId }
   | { readonly kind: "ended"; readonly result: MatchResult };
 

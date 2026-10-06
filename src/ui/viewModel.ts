@@ -3,8 +3,8 @@ import { legalCommands, pendingProperty, currentTile, playerAssets } from "../do
 import { formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import { playerConfig } from "../domain/config";
 import type { Language } from "../i18n/language";
-import { canDeclareBankruptcy, liquidityOption, rentFor, upgradeOption } from "../domain/economy";
-import { canProposeTrade, minimumBid } from "../domain/market";
+import { canDeclareBankruptcy, saleOption, rentFor, upgradeOption } from "../domain/economy";
+import { canProposeTrade } from "../domain/market";
 
 function availableCommands(view: GameView) {
   const snapshot = view.displayed;
@@ -19,14 +19,14 @@ export function assetManagementView(view: GameView) {
   if (actor === null || playerConfig(snapshot.config, actor).controller !== "human") return null;
   const commands = availableCommands(view);
   return { actor, properties: Object.fromEntries(snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).map((tile) => {
-    const commandFor = (kind: "upgrade" | "sell_building" | "mortgage" | "redeem") => commands.find((candidate) => candidate.kind === kind && "propertyId" in candidate && candidate.propertyId === tile.id) ?? null;
-    const liquidity = (kind: "sell_building" | "mortgage" | "redeem") => {
-      const { nextProperty: _next, originalCost: _original, ...option } = liquidityOption(snapshot, actor, tile.id, kind);
+    const commandFor = (kind: "upgrade" | "sell_building") => commands.find((candidate) => candidate.kind === kind && "propertyId" in candidate && candidate.propertyId === tile.id) ?? null;
+    const sale = () => {
+      const { nextProperty: _next, originalCost: _original, ...option } = saleOption(snapshot, actor, tile.id);
       const payment = snapshot.decision.kind === "awaiting_debt" && snapshot.decision.actorId === actor && option.reason === null && option.remainingCash >= snapshot.decision.debt.amount ? snapshot.decision.debt.amount : 0;
-      return { ...option, remainingCash: option.remainingCash - payment, payment, command: commandFor(kind) };
+      return { ...option, remainingCash: option.remainingCash - payment, payment, command: commandFor("sell_building") };
     };
     return [tile.id, { upgrade: { ...upgradeOption(snapshot, actor, tile.id), proceeds: 0, loss: 0, payment: 0, command: commandFor("upgrade") },
-      sell_building: liquidity("sell_building"), mortgage: liquidity("mortgage"), redeem: liquidity("redeem") }];
+      sell_building: sale() }];
   })) };
 }
 
@@ -38,14 +38,6 @@ export function debtView(view: GameView) {
   return { actor, debt, assets, shortfall: debt.amount - assets.cash, management: assetManagementView(view),
     insolvent: canDeclareBankruptcy(snapshot, actor),
     bankruptcy: availableCommands(view).find((command) => command.kind === "bankrupt") ?? null };
-}
-
-export function auctionView(view: GameView) {
-  const snapshot = view.displayed;
-  if (snapshot.decision.kind !== "awaiting_auction") return null;
-  const auction = snapshot.decision;
-  return { auction, minimum: minimumBid(snapshot, auction), cash: snapshot.players.find((player) => player.id === auction.actorId)!.cash,
-    commands: availableCommands(view) };
 }
 
 export function tradeView(view: GameView) {
@@ -71,7 +63,6 @@ export function actionView(view: GameView, language: Language) {
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
     : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending
-    : snapshot.decision.kind === "awaiting_auction" ? messages(language).auction.pending
     : snapshot.decision.kind === "awaiting_trade" ? messages(language).trade.pending
     : snapshot.decision.kind === "awaiting_discard" ? messages(language).items.pending
     : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });

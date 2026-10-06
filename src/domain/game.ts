@@ -6,10 +6,10 @@ import { initialTurnOrder, nextTurn } from "./turns";
 import { RuleRandom } from "./random";
 import { legalCommands, matchResult, pendingProperty } from "./selectors";
 import { restoreSnapshot, restoreTradeTerms } from "./restore";
-import { constructionRefund, discountedCost, initialProperties, liquidityOption, mortgageValue, netAssets, obligation, propertyTile, rentFor, upgradeOption } from "./economy";
+import { discountedCost, initialProperties, saleOption, netAssets, obligation, propertyTile, rentFor, upgradeOption } from "./economy";
 import type { ApplyResult, Command, Decision, FinancialStats, GameEvent, GameSnapshot, LandingResult, MatchConfig, PendingDebt, PlayerId } from "./types";
 import { HISTORY_LIMIT } from "./types";
-import { advanceAuction, canBid, canProposeTrade, startAuction, tradeOption } from "./market";
+import { canProposeTrade, tradeOption } from "./market";
 import { cardInstances, cardType, CONTROLLED_TOTALS, discardCard, discardItem, drawCard, HAND_LIMIT, initialDeck } from "./cards";
 import { movement } from "./movement";
 
@@ -48,8 +48,7 @@ export class Game {
       players: config.players.map((player) => ({ id: player.id, cash: rules.startingCash, position: 0, bankrupt: false, hand: [],
         statistics: { startBonus: 0, rentReceived: 0, rentPaid: 0, taxesPaid: 0, chanceIncome: 0, chanceExpense: 0, purchases: 0, purchaseBookValue: 0,
           tradeCashReceived: 0, tradeCashPaid: 0, tradeBookValueReceived: 0, tradeBookValueGiven: 0, constructionSpent: 0,
-          constructionRefunds: 0, constructionSoldCost: 0, mortgageIncome: 0, mortgagePrincipalRepaid: 0, mortgageFeesPaid: 0,
-          mortgagePrincipalReleased: 0, debtWrittenOff: 0, rentLost: 0 },
+          constructionRefunds: 0, constructionSoldCost: 0, debtWrittenOff: 0, rentLost: 0 },
       })),
       turnPlayerId: turnOrder[0]!,
       decision: { kind: "awaiting_roll", actorId: turnOrder[0]! },
@@ -75,14 +74,13 @@ export class Game {
 
   apply(command: Command): ApplyResult {
     if (!command || !this.state.config.players.some((player) => player.id === command.actor) ||
-        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "mortgage", "redeem", "auction_bid", "auction_pass", "trade_propose", "trade_accept", "trade_reject", "use_item", "discard_item"].includes(command.kind) ||
-        ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
-        command.kind === "auction_bid" && (!Number.isSafeInteger(command.amount) || command.amount < 0) ||
+        !["roll", "buy", "skip", "bankrupt", "upgrade", "sell_building", "trade_propose", "trade_accept", "trade_reject", "use_item", "discard_item"].includes(command.kind) ||
+        ["upgrade", "sell_building"].includes(command.kind) && (!("propertyId" in command) || typeof command.propertyId !== "string") ||
         (command.kind === "trade_accept" || command.kind === "trade_reject") && (!Number.isSafeInteger(command.proposalRevision) || command.proposalRevision < 1) ||
         !Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
       return { ok: false, reason: "invalid_command" };
     }
-    const keys = ["actor", "kind", "expectedRevision", ...(command.kind === "use_item" ? ["instanceId", "total", "targetId"] : command.kind === "discard_item" ? ["instanceId"] : command.kind === "trade_propose" ? ["terms"] : command.kind === "trade_accept" || command.kind === "trade_reject" ? ["proposalRevision"] : command.kind === "auction_bid" ? ["amount"] : ["upgrade", "sell_building", "mortgage", "redeem"].includes(command.kind) ? ["propertyId"] : [])];
+    const keys = ["actor", "kind", "expectedRevision", ...(command.kind === "use_item" ? ["instanceId", "total", "targetId"] : command.kind === "discard_item" ? ["instanceId"] : command.kind === "trade_propose" ? ["terms"] : command.kind === "trade_accept" || command.kind === "trade_reject" ? ["proposalRevision"] : ["upgrade", "sell_building"].includes(command.kind) ? ["propertyId"] : [])];
     if (Object.keys(command).length !== keys.length || keys.some((key) => !Object.hasOwn(command, key))) return { ok: false, reason: "invalid_command" };
     const before = this.state;
     if ((command.kind === "use_item" || command.kind === "discard_item") && !cardInstances(before.rules).includes(command.instanceId) || command.kind === "use_item" &&
@@ -111,17 +109,6 @@ export class Game {
         if (!activeItem) throw new Error("没有已启用道具");
         deck = discardItem(deck, activeItem.instanceId);
         activeItem = null;
-      };
-      const settleAuction = (auction: { propertyId: string; highestBid: number; highestBidderId: PlayerId | null }, reason: "sold" | "all_passed" | "no_bidders") => {
-        events.push({ kind: "auction_ended", propertyId: auction.propertyId, winnerId: auction.highestBidderId, price: auction.highestBid, reason });
-        if (auction.highestBidderId !== null) {
-          const winner = players.find((candidate) => candidate.id === auction.highestBidderId)!;
-          winner.cash = cashAfterChange(winner.cash, -auction.highestBid);
-          properties[auction.propertyId] = { ...properties[auction.propertyId]!, ownerId: winner.id };
-          events.push({ kind: "purchased", actor: winner.id, propertyId: auction.propertyId, price: auction.highestBid });
-        }
-        decision = { kind: "awaiting_roll", actorId: before.turnPlayerId };
-        finishTurn = true;
       };
       const pay = (debt: PendingDebt, amount: number) => {
         player.cash = cashAfterChange(player.cash, -amount);
@@ -170,15 +157,6 @@ export class Game {
         }
         decision = { kind: "awaiting_roll", actorId: proposal.proposerId };
         events.push({ kind: command.kind === "trade_accept" ? "trade_accepted" : "trade_rejected", proposal });
-      } else if (command.kind === "auction_bid" || command.kind === "auction_pass") {
-        if (before.decision.kind !== "awaiting_auction") throw new Error("没有拍卖");
-        const auction = before.decision;
-        if (command.kind === "auction_bid" && !canBid(before, auction, player.id, command.amount)) return { ok: false, reason: "illegal_action" };
-        const { auction: next, actorId } = advanceAuction(before, auction, command.kind === "auction_bid" ? command.amount : null);
-        events.push(command.kind === "auction_bid" ? { kind: "auction_bid", actor: player.id, propertyId: auction.propertyId, amount: command.amount }
-          : { kind: "auction_passed", actor: player.id, propertyId: auction.propertyId });
-        if (actorId === null) settleAuction(next, next.highestBidderId === null ? "all_passed" : "sold");
-        else decision = { ...next, actorId };
       } else if (command.kind === "roll") {
         const controlled = activeItem && cardType(activeItem.instanceId) === "controlled-dice" ? activeItem : null;
         const left = controlled ? Math.max(1, controlled.total! - 6) : random.integer(6) + 1;
@@ -259,24 +237,11 @@ export class Game {
         }
       } else if (command.kind === "bankrupt") {
         if (before.decision.kind !== "awaiting_debt") throw new Error("没有待处理债务");
-        let construction = 0;
-        let refund = 0;
-        let mortgage = 0;
-        let released = 0;
         for (const tile of before.map.tiles) {
           if (tile.type !== "property" || properties[tile.id]!.ownerId !== player.id) continue;
-          const property = properties[tile.id]!;
-          for (const cost of property.constructionCosts) {
-            construction = cashAfterChange(construction, cost);
-            refund = cashAfterChange(refund, constructionRefund(cost, before.rules));
-          }
-          const income = property.mortgagePrincipal === 0 ? mortgageValue(tile, before.rules) : 0;
-          mortgage = cashAfterChange(mortgage, income);
-          released = cashAfterChange(released, property.mortgagePrincipal || income);
-          properties[tile.id] = { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] };
+          properties[tile.id] = { ownerId: null, level: 0, constructionCosts: [] };
         }
-        player.cash = cashAfterChange(cashAfterChange(player.cash, refund), mortgage);
-        events.push({ kind: "liquidated", actor: player.id, constructionCost: construction, constructionRefund: refund, mortgageIncome: mortgage, principalReleased: released });
+        events.push({ kind: "liquidated", actor: player.id });
         pay(before.decision.debt, player.cash);
         player.bankrupt = true;
         for (const instanceId of player.hand) deck = discardItem(deck, instanceId);
@@ -291,14 +256,11 @@ export class Game {
         player.cash = cashAfterChange(player.cash, -cost);
         properties[tile.id] = { ...property, level, constructionCosts: [...property.constructionCosts, cost] };
         events.push({ kind: "upgraded", actor: player.id, propertyId: tile.id, level, cost });
-      } else if ("propertyId" in command) {
-        const option = liquidityOption(before, player.id, command.propertyId, command.kind);
-        const property = properties[command.propertyId]!;
-        player.cash = cashAfterChange(player.cash, option.proceeds - option.cost);
+      } else if (command.kind === "sell_building") {
+        const option = saleOption(before, player.id, command.propertyId);
+        player.cash = cashAfterChange(player.cash, option.proceeds);
         properties[command.propertyId] = option.nextProperty;
-        if (command.kind === "sell_building") events.push({ kind: "building_sold", actor: player.id, propertyId: command.propertyId, level: option.nextProperty.level as 0 | 1 | 2, cost: option.originalCost, refund: option.proceeds });
-        else if (command.kind === "mortgage") events.push({ kind: "mortgaged", actor: player.id, propertyId: command.propertyId, principal: option.proceeds });
-        else events.push({ kind: "redeemed", actor: player.id, propertyId: command.propertyId, principal: property.mortgagePrincipal, fee: option.loss });
+        events.push({ kind: "building_sold", actor: player.id, propertyId: command.propertyId, level: option.nextProperty.level as 0 | 1 | 2, cost: option.originalCost, refund: option.proceeds });
         if (before.decision.kind === "awaiting_debt") {
           if (player.cash >= before.decision.debt.amount) { pay(before.decision.debt, before.decision.debt.amount); finishTurn = true; }
           else decision = before.decision;
@@ -312,9 +274,6 @@ export class Game {
           events.push({ kind: "purchased", actor: player.id, propertyId: property.id, price: property.price });
         } else {
           events.push({ kind: "skipped", actor: player.id, propertyId: property.id });
-          const auction = startAuction(before, property.id);
-          if (auction) { decision = auction; finishTurn = false; events.push({ kind: "auction_started", actor: auction.actorId, propertyId: property.id }); }
-          else settleAuction({ propertyId: property.id, highestBid: 0, highestBidderId: null }, "no_bidders");
         }
       }
 
@@ -332,17 +291,6 @@ export class Game {
         if (event.kind === "building_sold") {
           record(event.actor, "constructionSoldCost", event.cost);
           record(event.actor, "constructionRefunds", event.refund);
-        }
-        if (event.kind === "mortgaged") record(event.actor, "mortgageIncome", event.principal);
-        if (event.kind === "redeemed") {
-          record(event.actor, "mortgagePrincipalRepaid", event.principal);
-          record(event.actor, "mortgageFeesPaid", event.fee);
-        }
-        if (event.kind === "liquidated") {
-          record(event.actor, "constructionSoldCost", event.constructionCost);
-          record(event.actor, "constructionRefunds", event.constructionRefund);
-          record(event.actor, "mortgageIncome", event.mortgageIncome);
-          record(event.actor, "mortgagePrincipalReleased", event.principalReleased);
         }
         if (event.kind === "paid") {
           const source = event.debt.source;

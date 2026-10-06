@@ -15,8 +15,8 @@ import seeds from "../fixtures/balance-seeds.json";
 
 const output = "test-results/balance";
 const commandLimit = 5000;
-const receipts: readonly (keyof FinancialStats)[] = ["startBonus", "rentReceived", "chanceIncome", "tradeCashReceived", "constructionRefunds", "mortgageIncome"];
-const expenses: readonly (keyof FinancialStats)[] = ["rentPaid", "taxesPaid", "chanceExpense", "tradeCashPaid", "purchases", "constructionSpent", "mortgagePrincipalRepaid", "mortgageFeesPaid"];
+const receipts: readonly (keyof FinancialStats)[] = ["startBonus", "rentReceived", "chanceIncome", "tradeCashReceived", "constructionRefunds"];
+const expenses: readonly (keyof FinancialStats)[] = ["rentPaid", "taxesPaid", "chanceExpense", "tradeCashPaid", "purchases", "constructionSpent"];
 
 function assertState(snapshot: GameSnapshot, instances: readonly string[]): void {
   let rentBalance = 0;
