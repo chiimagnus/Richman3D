@@ -1,11 +1,19 @@
 import { isLanguage, type Language } from "../i18n/language";
+import type { CameraView } from "../rendering/CameraRig";
 
 export type LookSensitivity = "low" | "standard" | "high";
+export const PRESENTATION_RATES = { normal: 1, fast: 2 } as const;
+export type PresentationSpeed = keyof typeof PRESENTATION_RATES;
 
 export type GamePreferences = {
   readonly soundEnabled: boolean;
   readonly lookSensitivity: LookSensitivity;
   readonly language: Language;
+  readonly cameraView: CameraView | null;
+  readonly presentationSpeed: PresentationSpeed;
+  readonly headBobEnabled: boolean;
+  readonly effectsVolume: number;
+  readonly musicVolume: number;
 };
 
 type PreferencesStorage = Pick<Storage, "getItem" | "setItem">;
@@ -16,6 +24,11 @@ export const DEFAULT_PREFERENCES: GamePreferences = {
   soundEnabled: true,
   lookSensitivity: "standard",
   language: "zh-CN",
+  cameraView: null,
+  presentationSpeed: "normal",
+  headBobEnabled: true,
+  effectsVolume: 1,
+  musicVolume: 0.12,
 };
 
 export function loadPreferences(
@@ -43,6 +56,11 @@ export function loadPreferences(
       language: isLanguage(value.language)
         ? value.language
         : DEFAULT_PREFERENCES.language,
+      cameraView: value.cameraView === "overview" || value.cameraView === "first_person" ? value.cameraView : null,
+      presentationSpeed: value.presentationSpeed === "fast" ? "fast" : "normal",
+      headBobEnabled: typeof value.headBobEnabled === "boolean" ? value.headBobEnabled : DEFAULT_PREFERENCES.headBobEnabled,
+      effectsVolume: validVolume(value.effectsVolume) ? value.effectsVolume : DEFAULT_PREFERENCES.effectsVolume,
+      musicVolume: validVolume(value.musicVolume) ? value.musicVolume : DEFAULT_PREFERENCES.musicVolume,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };
@@ -76,6 +94,8 @@ export function lookSensitivityScale(
 function isLookSensitivity(value: unknown): value is LookSensitivity {
   return value === "low" || value === "standard" || value === "high";
 }
+
+function validVolume(value: unknown): value is number { return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1; }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

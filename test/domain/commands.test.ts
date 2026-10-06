@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Game } from "../../src/domain/game";
 import { RuleRandom } from "../../src/domain/random";
 import { legalCommands } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import type { Command } from "../../src/domain/types";
 
 afterEach(() => vi.restoreAllMocks());
@@ -29,7 +29,7 @@ describe("atomic commands", () => {
   });
 
   it("does not consume candidate RNG or position when chance calculation fails", () => {
-    const game = new Game(createMatchConfig(768));
+    const game = new Game(createMatchConfig(21));
     const before = game.snapshot;
     const original = RuleRandom.prototype.integer;
     vi.spyOn(RuleRandom.prototype, "integer").mockImplementation(function (this: RuleRandom, bound) {
@@ -42,14 +42,14 @@ describe("atomic commands", () => {
     vi.restoreAllMocks();
     expect(game.apply(command).ok).toBe(true);
     expect(game.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(1620);
-    expect(game.snapshot.players.find((player) => player.id === command.actor)?.position).toBe(2);
-    expect(game.snapshot.random.draws).toBe(before.random.draws + 3);
+    expect(game.snapshot.players.find((player) => player.id === command.actor)?.position).toBe(7);
+    expect(game.snapshot.random.draws).toBe(before.random.draws + 2 + QUICK_RULES.chanceCards.length * 2 - 1);
   });
 
   it("rolls back pass-start money, landing and RNG on integer overflow", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER });
     for (const kind of ["roll", "skip", "roll"] as const) {
-      expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+      expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
     expect(game.apply(legalCommands(before, "p1")[0]!).ok).toBe(false);
@@ -69,10 +69,30 @@ describe("atomic commands", () => {
     expect(game.snapshot).toBe(committed);
   });
 
+  it.each([2, 3, 4])("declining a purchase with %s seats advances once without spending cash or RNG", (seats) => {
+    const game = new Game(createMatchConfig(940, seats));
+    const actor = game.snapshot.turnPlayerId;
+    expect(game.apply({ kind: "roll", actor, expectedRevision: 0 }).ok).toBe(true);
+    const before = game.snapshot;
+    if (before.decision.kind !== "awaiting_purchase") throw new Error("Expected purchase");
+    const command = { kind: "skip" as const, actor, expectedRevision: before.revision };
+    const result = game.apply(command);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.events.map((event) => event.kind)).toEqual(["skipped", "turn"]);
+    expect(game.snapshot.properties).toEqual(before.properties);
+    expect(game.snapshot.players).toEqual(before.players);
+    expect(game.snapshot.random).toEqual(before.random);
+    expect(game.snapshot.turnPlayerId).not.toBe(actor);
+    const committed = game.snapshot;
+    expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
+    expect(game.snapshot).toBe(committed);
+  });
+
   it("rejects a transient pass-start overflow even when tax would bring final cash back in range", () => {
     const game = new Game(createMatchConfig(17981), { ...QUICK_RULES, startingCash: Number.MAX_SAFE_INTEGER - 198 });
     for (const kind of ["roll", "skip", "roll"] as const) {
-      expect(game.apply({ kind, actor: game.snapshot.turnPlayerId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+      expect(game.apply({ kind, actor: game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
     }
     const before = game.snapshot;
     const listener = vi.fn();
@@ -86,8 +106,9 @@ describe("atomic commands", () => {
     const game = new Game(createMatchConfig(940), { ...QUICK_RULES, startingCash: 200 });
     expect(game.apply(legalCommands(game.snapshot, "p1")[0]!).ok).toBe(true);
     expect(game.apply(legalCommands(game.snapshot, "p1").find((action) => action.kind === "skip")!).ok).toBe(true);
-    expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
-    const command = chooseBotCommand(game.snapshot)!;
+    expect((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)?.kind).toBe("roll");
+    expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
+    const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!;
     expect(command.kind).toBe("skip");
     expect(game.apply(command).ok).toBe(true);
     expect(game.snapshot.turnPlayerId).toBe("p1");

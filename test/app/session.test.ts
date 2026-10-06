@@ -54,7 +54,7 @@ describe("session lifecycle and visible order", () => {
     const feedback = session.getSnapshot();
     expect(feedback.presenting).toBe(true);
     expect(feedback.displayed.players[0]?.cash).toBe(1420);
-    expect(feedback.notice?.event.kind).toBe("rolled");
+    expect(feedback.notice?.event).toMatchObject({ kind: "paid", amount: 80, writtenOff: 0, debt: { source: { kind: "tax" } } });
     expect(game.snapshot.revision).toBe(1);
     expect(presenting).toHaveBeenCalledTimes(1);
     expect(session.claimAnnouncement(feedback.notice!.id)).toBe(true);

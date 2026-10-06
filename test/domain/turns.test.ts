@@ -12,7 +12,7 @@ it.each([20, 40])("waits for the last actual purchase at %s complete rounds, the
   const game = new Game(createMatchConfig(940), rules, map);
   while (game.snapshot.completedRounds < roundLimit - 1 || game.snapshot.turnPlayerId === "p1") {
     const snapshot = game.snapshot;
-    expect(game.apply({ kind: snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll", actor: snapshot.turnPlayerId, expectedRevision: snapshot.revision }).ok).toBe(true);
+    expect(game.apply({ kind: snapshot.decision.kind === "awaiting_purchase" ? "skip" : "roll", actor: snapshot.decision.kind === "game_over" ? snapshot.turnPlayerId : snapshot.decision.actorId, expectedRevision: snapshot.revision }).ok).toBe(true);
   }
   expect(game.apply({ kind: "roll", actor: "p2", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
@@ -43,6 +43,7 @@ it.each([20, 40])("retains a true tie after %s actual rounds, without seat-order
 it("last survivor wins and fixed slots skip eliminated seats", () => {
   const game = new Game(createMatchConfig(6), { ...QUICK_RULES, startingCash: 50 });
   game.apply({ kind: "roll", actor: "p1", expectedRevision: 0 });
+  expect(game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: 1 }).ok).toBe(true);
   expect(game.snapshot.decision).toMatchObject({ result: { reason: "last_survivor", winnerIds: ["p2"] } });
   const snapshot = game.snapshot;
   expect(matchResult(snapshot, "last_survivor").winnerIds).toEqual(["p2"]);

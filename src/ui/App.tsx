@@ -19,12 +19,16 @@ import { SavePanel } from "./SavePanel";
 import { TransferPanel } from "./TransferPanel";
 import { HandoverScreen } from "./HandoverScreen";
 import { AssetPanel } from "./AssetPanel";
+import { DebtPanel } from "./DebtPanel";
+import { TradeDraft, TradePanel } from "./TradePanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { HandPanel } from "./HandPanel";
 import { eventText } from "./eventText";
 import { PanelHost } from "./PanelHost";
 import { downloadSave } from "../storage/transfer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
+import { assetManagementView, debtView, handCommands, tradeView } from "./viewModel";
 import styles from "./App.module.css";
 
 const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: module.SceneHost })));
@@ -44,29 +48,36 @@ export function App({ app }: { app: GameApp }) {
 }
 
 function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
-  const [panel, setPanel] = useState<"pause" | "transfer" | "history" | { kind: "assets"; playerId: PlayerId } | null>(null);
-  const [cameraView, setCameraView] = useState<CameraView>(() => window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
+  const [panel, setPanel] = useState<"pause" | "transfer" | "history" | "trade_draft" | "hand" | { kind: "assets"; playerId: PlayerId } | null>(null);
+  const cameraView = preferences.cameraView ?? "first_person";
+  const setCameraView = (cameraView: CameraView) => app.setPreferences({ ...preferences, cameraView });
+  const [inspectedTileId, setInspectedTileId] = useState<string | null>(null);
   const [matchOptionsOpen, setMatchOptionsOpen] = useState(false);
   const scene = useRef<SceneControls>(null);
   const lastPanel = useRef(panel);
   useEffect(() => {
     if (lastPanel.current === "transfer" && panel !== "transfer") document.querySelector<HTMLButtonElement>("#transfer-open")?.focus();
     if (lastPanel.current === "history" && (panel === "pause" || panel === null)) document.querySelector<HTMLButtonElement>("#history-open")?.focus();
+    if (lastPanel.current === "trade_draft" && typeof panel === "object" && panel) document.querySelector<HTMLButtonElement>("#trade-open")?.focus({ preventScroll: true });
     lastPanel.current = panel;
   }, [panel]);
   const view = useGameView(session);
+  useEffect(() => { if (view.viewPlayerId === null) setInspectedTileId(null); }, [view.viewPlayerId]);
   const copy = messages(preferences.language);
   const ended = view.displayed.decision.kind === "game_over" && !view.presenting;
   const handover = session.handoverActor;
   const saveProblem = view.save.kind === "conflict" || view.save.kind === "unsaved" && !view.save.acknowledged;
   const requested = typeof panel === "object" && panel ? panel.kind : panel;
-  const inspecting = requested === "assets" || requested === "history";
+  const inspecting = requested === "assets" || requested === "history" || requested === "trade_draft" || requested === "hand";
   const inlineAssets = requested === "assets" && !view.presenting && view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId;
   let surface: string | null = requested;
   if (view.error === "presentation_failed") surface = "fault";
   else if (saveProblem) surface = panel === "transfer" ? "transfer" : "save";
   else if (ended) surface = requested === "history" ? "history" : "results";
-  else if (view.mode === "paused" && requested === "assets") surface = "pause";
+  else if (view.displayed.decision.kind === "awaiting_debt" && !view.presenting && view.mode === "running") surface = handover ? "handover" : "debt";
+  else if (view.displayed.decision.kind === "awaiting_trade" && !view.presenting && view.mode === "running") surface = handover ? "handover" : "trade";
+  else if (view.displayed.decision.kind === "awaiting_discard" && !view.presenting && view.mode === "running") surface = handover ? "handover" : "discard";
+  else if (view.mode === "paused" && (requested === "assets" || requested === "trade_draft" || requested === "hand")) surface = "pause";
   else if (handover && view.mode === "running" && inspecting) surface = "handover";
   else if (inlineAssets) surface = "inline_assets";
   else if (!requested) surface = view.mode === "paused" ? "pause" : handover ? "handover" : null;
@@ -77,7 +88,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
     if (playerId) document.querySelector<HTMLButtonElement>(`#assets-open-${playerId}`)?.focus({ preventScroll: true });
   };
   const assets = view.displayed.players.map((player) => playerAssets(view.displayed, player.id));
-  const assetPanel = typeof panel === "object" && panel ? <AssetPanel key={panel.playerId} assets={assets} initialPlayer={panel.playerId} language={preferences.language} onClose={closeAssets} /> : null;
+  const assetPanel = typeof panel === "object" && panel ? <AssetPanel key={panel.playerId} assets={assets} initialPlayer={panel.playerId} language={preferences.language} management={assetManagementView(view)} onCommand={(command) => { void session.dispatch(command); }} onClose={closeAssets} onTrade={tradeView(view).canPropose ? () => setPanel("trade_draft") : undefined} /> : null;
   const pause = () => { session.pause(); setPanel("pause"); };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -94,7 +105,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
         const command = actor !== null && actor === view.viewPlayerId && playerConfig(view.displayed.config, actor).controller === "human" ? legalCommands(view.displayed, actor).find((action) => action.kind === kind) : null;
         if (command) { event.preventDefault(); void session.dispatch(command); }
       } else if (event.code === "KeyM") app.setPreferences({ ...preferences, soundEnabled: !preferences.soundEnabled });
-      else if (event.code === "KeyV" && view.viewPlayerId !== null) { event.preventDefault(); setCameraView((current) => current === "overview" ? "first_person" : "overview"); }
+      else if (event.code === "KeyV" && view.viewPlayerId !== null) { event.preventDefault(); setCameraView(cameraView === "overview" ? "first_person" : "overview"); }
       else if (event.code === "KeyL" && view.viewPlayerId !== null) { event.preventDefault(); flushSync(() => setCameraView("first_person")); scene.current?.lookAround(); }
     };
     window.addEventListener("keydown", keydown);
@@ -108,16 +119,21 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   };
   return <main className={styles.game}>
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
-      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost ref={scene} app={app} session={session} preferences={preferences} cameraView={cameraView} interactive={!surface} /></Suspense>
+      <Suspense fallback={<p role="status">{copy.navigation.loading}</p>}><SceneHost ref={scene} app={app} session={session} preferences={preferences} cameraView={cameraView} interactive={!surface} selectedTileId={view.viewPlayerId === null ? null : inspectedTileId} onInspect={setInspectedTileId} /></Suspense>
     </ErrorBoundary>
-    {!ended && <div className={styles.tools}><button aria-keyshortcuts="Escape" onClick={pause}>{copy.settings.title}<kbd aria-hidden="true">Esc</kbd></button></div>}
+    {!ended && <div className={styles.tools}>
+      <button aria-keyshortcuts="Escape" onClick={pause}>{copy.settings.title}<kbd aria-hidden="true">Esc</kbd></button>
+      {view.viewPlayerId !== null && <button aria-keyshortcuts="V" disabled={!!surface} onClick={() => setCameraView(cameraView === "overview" ? "first_person" : "overview")}>{cameraView === "first_person" ? copy.setup.overview : copy.setup.firstPerson}<kbd aria-hidden="true">V</kbd></button>}
+      {cameraView === "overview" && view.viewPlayerId !== null && <button disabled={!!surface} onClick={() => scene.current?.centerCurrent()}>{copy.settings.recenter}</button>}
+    </div>}
     <ErrorBoundary onError={() => session.failPresentation()} fallback={null}>
-      {!ended && handover === null && surface !== "fault" && <><Hud session={session} language={preferences.language} onAssets={(playerId) => { if (document.pointerLockElement) document.exitPointerLock(); setPanel({ kind: "assets", playerId }); }} assetPanel={surface === "inline_assets" ? assetPanel : null} /><FeedbackLayer session={session} language={preferences.language} /></>}
+      {!ended && handover === null && surface !== "fault" && <><Hud session={session} language={preferences.language} onAssets={(playerId) => { if (document.pointerLockElement) document.exitPointerLock(); setPanel({ kind: "assets", playerId }); }} onHand={view.viewPlayerId !== null && !view.displayed.players.find((player) => player.id === view.viewPlayerId)!.bankrupt ? () => { if (document.pointerLockElement) document.exitPointerLock(); setPanel("hand"); } : undefined} inspectedTileId={inspectedTileId} onInspect={setInspectedTileId} assetPanel={surface === "inline_assets" ? assetPanel : null} /><FeedbackLayer session={session} language={preferences.language} /></>}
     </ErrorBoundary>
+    {(surface === "hand" || surface === "discard") && view.viewPlayerId !== null && <HandPanel key={view.displayed.revision} snapshot={view.displayed} actor={view.viewPlayerId} commands={handCommands(view)} language={preferences.language} onCommand={(command) => { setPanel(null); void session.dispatch(command); }} onClose={() => { if (surface === "discard") pause(); else { setPanel(null); document.querySelector<HTMLButtonElement>("#hand-open")?.focus({ preventScroll: true }); } }} />}
     {surface === "fault" ? <PanelHost title={copy.runtime.presentation_failed}>
       <p>{copy.storage.exportWarning}</p><button onClick={() => downloadSave(session.exportRecord())}>{copy.storage.export}</button>
       {view.save.kind === "unsaved" || view.save.kind === "conflict" ? <><p>{copy.storage.discardWarning}</p><button onClick={() => app.leave(true)}>{copy.storage.discard}</button></> : <button onClick={() => app.leave()}>{copy.runtime.leave}</button>}
-    </PanelHost> : surface === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("pause")} /> : surface === "save" ? <SavePanel app={app} session={session} onTransfer={() => setPanel("transfer")} /> : surface === "results" ? <ResultsScreen app={app} snapshot={view.displayed} onHistory={() => setPanel("history")} /> : surface === "pause" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} cameraView={cameraView} onCameraChange={setCameraView} {...(view.viewPlayerId !== null ? { onLookAround: lookAround } : {})}>
+    </PanelHost> : surface === "debt" ? <DebtPanel model={debtView(view)!} snapshot={view.displayed} language={preferences.language} onCommand={(command) => { void session.dispatch(command); }} onPause={pause} /> : surface === "trade" ? <TradePanel snapshot={view.displayed} language={preferences.language} commands={tradeView(view).commands} onCommand={(command) => { void session.dispatch(command); }} onPause={pause} /> : surface === "trade_draft" ? <TradeDraft key={view.displayed.revision} snapshot={view.displayed} language={preferences.language} enabled={tradeView(view).canPropose} onCommand={(command) => { setPanel(null); void session.dispatch(command); }} onClose={() => setPanel({ kind: "assets", playerId: view.displayed.turnPlayerId })} /> : surface === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("pause")} /> : surface === "save" ? <SavePanel app={app} session={session} onTransfer={() => setPanel("transfer")} /> : surface === "results" ? <ResultsScreen app={app} snapshot={view.displayed} onHistory={() => setPanel("history")} /> : surface === "pause" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} cameraView={cameraView} onCameraChange={setCameraView} {...(view.viewPlayerId !== null ? { onLookAround: lookAround } : {})}>
       <details open={matchOptionsOpen}><summary onClick={(event) => { event.preventDefault(); setMatchOptionsOpen((open) => !open); }}>{copy.settings.match}</summary>
         <p>{formatMessage(copy.setup.turnOrder, { players: view.displayed.turnOrder.map((id) => playerName(preferences.language, id, view.displayed.config)).join(copy.setup.nameSeparator) })}</p>
         <button id="history-open" onClick={() => setPanel("history")}>{copy.history.title}</button>

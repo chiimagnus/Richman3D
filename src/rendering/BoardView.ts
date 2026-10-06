@@ -6,9 +6,11 @@ import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../doma
 import { playerConfig } from "../domain/config";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
-import { boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
+import { boardBounds, boardDirection, boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
-import { rentFor } from "../domain/economy";
+import { completeGroup, rentFor } from "../domain/economy";
+import { createNumberTexture, createPropertyBuilding } from "./PropertyBuilding";
+import type { MotionClock } from "./MotionClock";
 
 const GROUP_COLORS = {
   cyan: 0x1da9c5,
@@ -19,13 +21,14 @@ const GROUP_COLORS = {
 
 export class BoardView {
   private readonly object = new THREE.Group();
+  private readonly selection = new THREE.Group();
 
   private readonly ownerMarkers = new Map<string, THREE.Mesh>();
   private readonly tileMaterials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly tileLabels = new Map<number, THREE.Mesh>();
-  private readonly tilePulses = new Map<number, number>();
-  private readonly markerPops = new Map<THREE.Mesh, number>();
+  private readonly propertyFlags = new Map<string, THREE.Group>();
   private readonly tileDetails = new Map<number, string>();
+  private readonly propertyBuildings = new Map<string, { level: number; ownerId: PlayerId; object: THREE.Group }>();
   private snapshot: GameSnapshot | null = null;
 
   constructor(
@@ -39,6 +42,7 @@ export class BoardView {
     scene.add(this.object);
     this.buildTiles();
     this.buildCenter();
+    this.buildSelection();
   }
 
   setLanguage(language: Language): void {
@@ -50,6 +54,12 @@ export class BoardView {
     this.map.tiles.forEach((tile, index) => this.updateLabel(tile, index, true));
   }
 
+  setSelectedTile(tileId: string | null): void {
+    const index = this.map.tiles.findIndex((tile) => tile.id === tileId);
+    this.selection.visible = index >= 0;
+    if (index >= 0) this.selection.position.copy(boardPosition(this.map, index));
+  }
+
   syncOwnership(snapshot: GameSnapshot): void {
     this.snapshot = snapshot;
     for (const [index, tile] of this.map.tiles.entries()) {
@@ -58,12 +68,13 @@ export class BoardView {
       }
 
       this.updateLabel(tile, index);
+      this.syncBuilding(tile.id, index, snapshot);
+      this.propertyFlags.get(tile.id)!.visible = completeGroup(snapshot, tile);
       const ownerId = snapshot.properties[tile.id]!.ownerId;
       const existing = this.ownerMarkers.get(tile.id);
 
       if (!ownerId) {
         if (existing) {
-          this.markerPops.delete(existing);
           disposeObject(existing);
         }
         this.ownerMarkers.delete(tile.id);
@@ -74,24 +85,55 @@ export class BoardView {
         const material = existing.material;
         if (material instanceof THREE.MeshStandardMaterial) {
           material.color.set(playerConfig(this.config, ownerId).color);
+          material.emissive.set(playerConfig(this.config, ownerId).color);
+        }
+        if (existing.userData.ownerId !== ownerId) {
+          const badge = existing.getObjectByName("owner-seat") as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+          badge.material.map!.dispose();
+          badge.material.map = createNumberTexture(this.config.players.findIndex((player) => player.id === ownerId) + 1);
+          badge.material.needsUpdate = true;
+          existing.userData.ownerId = ownerId;
         }
         continue;
       }
 
       const marker = this.createOwnerMarker(ownerId);
+      marker.name = `owner-marker-${tile.id}`;
       const position = boardPosition(this.map, this.map.tiles.indexOf(tile));
       marker.position.set(
         position.x + TILE_SIZE * 0.32,
-        0.72,
+        0.48,
         position.z - TILE_SIZE * 0.32,
       );
-      if (!reducedMotion()) {
-        marker.scale.setScalar(0.01);
-        this.markerPops.set(marker, performance.now());
-      }
       this.object.add(marker);
       this.ownerMarkers.set(tile.id, marker);
     }
+  }
+
+  private syncBuilding(propertyId: string, index: number, snapshot: GameSnapshot): void {
+    const property = snapshot.properties[propertyId]!;
+    const existing = this.propertyBuildings.get(propertyId);
+    if (existing?.level === property.level && existing.ownerId === property.ownerId) return;
+    if (existing) {
+      disposeObject(existing.object);
+      this.propertyBuildings.delete(propertyId);
+    }
+    if (property.level === 0 || property.ownerId === null) return;
+    const building = createPropertyBuilding(property.level, playerConfig(this.config, property.ownerId).color);
+    building.name = `property-building-${propertyId}`;
+    const position = boardPosition(this.map, index);
+    building.position.set(position.x - TILE_SIZE * 0.35, 0.2, position.z - TILE_SIZE * 0.35);
+    this.object.add(building);
+    this.propertyBuildings.set(propertyId, { level: property.level, ownerId: property.ownerId, object: building });
+  }
+
+  growProperty(propertyId: string, clock: MotionClock, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    const building = this.propertyBuildings.get(propertyId)!.object;
+    if (reducedMotion()) return Promise.resolve(true);
+    building.scale.y = 0.2;
+    return clock.animate(280, (progress) => { building.scale.y = 0.2 + 0.8 * (1 - (1 - progress) ** 3); }, signal)
+      .finally(() => { building.scale.y = 1; });
   }
 
   private updateLabel(tile: BoardTile, index: number, force = false): void {
@@ -105,48 +147,30 @@ export class BoardView {
     this.tileDetails.set(index, detail);
   }
 
-  pulseTile(index: number, landing: LandingResult): void {
-    const material = this.tileMaterials.get(index);
-    if (!material) {
-      return;
-    }
-
-    material.emissive.setHex(pulseColor(landing));
-
-    this.tilePulses.set(index, performance.now());
+  popOwner(propertyId: string, clock: MotionClock, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    const marker = this.ownerMarkers.get(propertyId)!;
+    if (reducedMotion()) return Promise.resolve(true);
+    marker.scale.setScalar(0.01);
+    return clock.animate(300, progress => marker.scale.setScalar(Math.max(1 - (1 - progress) ** 3, 0.01)), signal)
+      .finally(() => marker.scale.setScalar(1));
   }
 
-  update(now: number): void {
-    for (const [index, startedAt] of this.tilePulses) {
-      const material = this.tileMaterials.get(index);
-      if (!material) {
-        this.tilePulses.delete(index);
-        continue;
-      }
-
-      const progress = Math.min((now - startedAt) / (reducedMotion() ? 120 : 720), 1);
-      material.emissiveIntensity = Math.sin(Math.PI * progress) * 1.25;
-
-      if (progress >= 1) {
+  pulseTile(index: number, landing: LandingResult, clock: MotionClock, signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) return Promise.resolve(false);
+    const material = this.tileMaterials.get(index);
+    if (!material) return Promise.resolve(true);
+    material.emissive.setHex(pulseColor(landing));
+    return clock.animate(reducedMotion() ? 0 : 720, progress => { material.emissiveIntensity = reducedMotion() ? 0 : Math.sin(Math.PI * progress) * 1.25; }, signal)
+      .finally(() => {
         material.emissiveIntensity = 0;
         material.emissive.setHex(0x000000);
-        this.tilePulses.delete(index);
-      }
-    }
-
-    for (const [marker, startedAt] of this.markerPops) {
-      const progress = Math.min((now - startedAt) / 300, 1);
-      const eased = 1 - (1 - progress) ** 3;
-      marker.scale.setScalar(Math.max(eased, 0.01));
-
-      if (progress >= 1) {
-        marker.scale.setScalar(1);
-        this.markerPops.delete(marker);
-      }
-    }
+      });
   }
 
   private buildTiles(): void {
+    const arrowGeometry = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0.28, 0, -0.19, -0.18, 0, 0.19, -0.18, 0], 3));
+    const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xf5fbff });
     this.map.tiles.forEach((tile, index) => {
       const position = boardPosition(this.map, index);
       const tileGroup = new THREE.Group();
@@ -185,8 +209,47 @@ export class BoardView {
       this.tileLabels.set(index, label);
       this.tileDetails.set(index, tileDetail(tile, this.language, this.rules));
       tileGroup.add(label);
+      const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+      arrow.name = `forward-${tile.id}`;
+      const direction = boardDirection(this.map, index);
+      arrow.rotation.set(-Math.PI / 2, 0, 0);
+      arrow.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-direction.x, -direction.z)));
+      arrow.position.set(1.55, 0.23, 0.3);
+      tileGroup.add(arrow);
+
+      if (tile.type === "property") {
+        const geometry = new THREE.BoxGeometry();
+        const group = new THREE.Group();
+        group.name = `complete-group-${tile.id}`;
+        const groupMaterial = new THREE.MeshBasicMaterial({ color: GROUP_COLORS[tile.group] });
+        for (const depth of [-1.65, -1.43]) {
+          const band = new THREE.Mesh(geometry, groupMaterial);
+          band.scale.set(2.95, 0.025, 0.08);
+          band.position.set(0, 0.23, depth);
+          group.add(band);
+        }
+        group.visible = false;
+        tileGroup.add(group);
+        this.propertyFlags.set(tile.id, group);
+      }
 
     });
+  }
+
+  private buildSelection(): void {
+    this.selection.name = "selected-tile";
+    this.selection.visible = false;
+    const geometry = new THREE.BoxGeometry(0.5, 0.035, 0.1);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const horizontal of [-1, 1]) for (const depth of [-1, 1]) {
+      const across = new THREE.Mesh(geometry, material);
+      across.position.set(horizontal * 1.45, 0.26, depth * 1.75);
+      const along = new THREE.Mesh(geometry, material);
+      along.rotation.y = Math.PI / 2;
+      along.position.set(horizontal * 1.75, 0.26, depth * 1.45);
+      this.selection.add(across, along);
+    }
+    this.object.add(this.selection);
   }
 
   dispose(): void {
@@ -194,14 +257,23 @@ export class BoardView {
     this.ownerMarkers.clear();
     this.tileMaterials.clear();
     this.tileLabels.clear();
-    this.tilePulses.clear();
-    this.markerPops.clear();
+    this.propertyFlags.clear();
     this.tileDetails.clear();
+    this.propertyBuildings.clear();
     this.snapshot = null;
   }
 
   private buildCenter(): void {
     const centerSize = TILE_SPACING * 4.15;
+    const bounds = boardBounds(this.map);
+    const size = bounds.getSize(new THREE.Vector3());
+    const interior = Math.min(size.x, size.z) - TILE_SIZE * 2;
+    if (interior <= 0) return;
+    const city = new THREE.Group();
+    city.name = "city-decoration";
+    city.position.copy(bounds.getCenter(new THREE.Vector3()));
+    city.scale.set(interior / centerSize, 0.14, interior / centerSize);
+    this.object.add(city);
     const plaza = new THREE.Mesh(
       new THREE.BoxGeometry(centerSize, 0.2, centerSize),
       new THREE.MeshStandardMaterial({
@@ -212,7 +284,7 @@ export class BoardView {
     );
     plaza.position.y = -0.04;
     plaza.receiveShadow = true;
-    this.object.add(plaza);
+    city.add(plaza);
 
     const buildings = [
       [-5.8, -5.4, 2.7, 6.2],
@@ -227,19 +299,18 @@ export class BoardView {
       [5.8, 4.7, 2.2, 6.1],
     ] as const;
 
+    const towerGeometry = new THREE.BoxGeometry();
+    const towerMaterials = [0x1b394b, 0x244d63].map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.28 }));
     for (const [x, z, footprint, height] of buildings) {
       const building = new THREE.Mesh(
-        new THREE.BoxGeometry(footprint, height, footprint),
-        new THREE.MeshStandardMaterial({
-          color: height > 6 ? 0x244d63 : 0x1b394b,
-          roughness: 0.5,
-          metalness: 0.28,
-        }),
+        towerGeometry,
+        towerMaterials[height > 6 ? 1 : 0],
       );
+      building.scale.set(footprint, height, footprint);
       building.position.set(x, height / 2 + 0.08, z);
       building.castShadow = true;
       building.receiveShadow = true;
-      this.object.add(building);
+      city.add(building);
     }
 
     const monument = new THREE.Mesh(
@@ -255,12 +326,12 @@ export class BoardView {
     monument.position.y = 2.3;
     monument.scale.setScalar(0.72);
     monument.castShadow = true;
-    this.object.add(monument);
+    city.add(monument);
   }
 
   private createOwnerMarker(ownerId: PlayerId): THREE.Mesh {
     const marker = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18, 0.28, 1.2, 8),
+      new THREE.CylinderGeometry(0.36, 0.4, 0.52, 8),
       new THREE.MeshStandardMaterial({
         color: playerConfig(this.config, ownerId).color,
         emissive: playerConfig(this.config, ownerId).color,
@@ -268,6 +339,16 @@ export class BoardView {
         roughness: 0.45,
       }),
     );
+    const material = new THREE.MeshBasicMaterial({ map: createNumberTexture(this.config.players.findIndex((player) => player.id === ownerId) + 1) });
+    const geometry = new THREE.PlaneGeometry(0.48, 0.48);
+    const front = new THREE.Mesh(geometry, material);
+    front.name = "owner-seat";
+    front.position.z = 0.405;
+    const top = new THREE.Mesh(geometry, material);
+    top.rotation.x = -Math.PI / 2;
+    top.position.y = 0.265;
+    marker.add(front, top);
+    marker.userData.ownerId = ownerId;
     marker.castShadow = true;
     return marker;
   }
@@ -280,6 +361,10 @@ function pulseColor(landing: LandingResult): number {
       return 0xff5f6d;
     case "chance":
       return landing.amount >= 0 ? 0x62e2aa : 0xb58cff;
+    case "movement_card":
+    case "item_received":
+    case "rent_waived":
+    case "chance_ignored": return 0xb58cff;
     case "property_available":
       return 0xffc66e;
     case "property_owned":
@@ -311,7 +396,7 @@ function tileColor(tile: BoardTile): number {
 
 function createTileLabel(tile: BoardTile, language: Language, rules: RuleSet): THREE.Mesh {
   return new THREE.Mesh(
-    new THREE.PlaneGeometry(3.1, 1.55),
+    new THREE.PlaneGeometry(3.1, 2.325),
     new THREE.MeshBasicMaterial({
       map: createTileLabelTexture(tile, language, rules),
       transparent: true,
@@ -328,7 +413,7 @@ function createTileLabelTexture(
 ): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
-  canvas.height = 256;
+  canvas.height = 384;
   const context = canvas.getContext("2d");
 
   if (!context) {
@@ -337,23 +422,41 @@ function createTileLabelTexture(
 
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "rgba(6, 17, 27, 0.82)";
-  roundedRect(context, 24, 24, 464, 208, 28);
+  roundedRect(context, 24, 24, 464, 336, 28);
   context.fill();
 
   context.fillStyle = "#f5fbff";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.font = "700 48px system-ui, sans-serif";
-  context.fillText(tileName(language, tile), 256, 105, 420);
+  const detailTop = drawWrappedText(context, tileName(language, tile), language, 80, 56) + 12;
 
   context.fillStyle = "rgba(224, 241, 249, 0.72)";
   context.font = "600 28px system-ui, sans-serif";
-  context.fillText(detail, 256, 166, 420);
+  drawWrappedText(context, detail, language, detailTop, 38);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
+}
+
+function drawWrappedText(context: CanvasRenderingContext2D, text: string, language: Language, top: number, lineHeight: number): number {
+  const words = new Intl.Segmenter(language, { granularity: "word" });
+  const graphemes = new Intl.Segmenter(language, { granularity: "grapheme" });
+  const segments = [...words.segment(text)].flatMap(({ segment }) => context.measureText(segment).width > 420
+    ? [...graphemes.segment(segment)].map((entry) => entry.segment) : [segment]);
+  let line = "";
+  let baseline = top;
+  for (const segment of segments) {
+    if (line.trim() && context.measureText(line + segment).width > 420) {
+      context.fillText(line.trim(), 256, baseline);
+      baseline += lineHeight;
+      line = segment.trimStart();
+    } else line += segment;
+  }
+  if (line.trim()) context.fillText(line.trim(), 256, baseline);
+  return baseline + lineHeight;
 }
 
 export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, snapshot: GameSnapshot | null = null): string {

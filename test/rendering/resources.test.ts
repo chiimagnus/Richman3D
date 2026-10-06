@@ -1,18 +1,73 @@
 import { afterEach, expect, it, vi } from "vitest";
 import * as THREE from "three";
-import { BoardView } from "../../src/rendering/BoardView";
+import { BoardView, tileDetail } from "../../src/rendering/BoardView";
 import { Game } from "../../src/domain/game";
 import { disposeObject } from "../../src/rendering/disposeObject";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { CITY } from "../../src/domain/maps/city";
 import { createMatchConfig } from "../../src/domain/config";
-import { formatMessage, messages } from "../../src/i18n";
+import { formatMessage, messages, tileName } from "../../src/i18n";
+import { stubCanvas } from "../fixtures/canvas";
+import { boardBounds, TILE_SIZE } from "../../src/rendering/boardGeometry";
 
 afterEach(() => vi.unstubAllGlobals());
 
+it("keeps city decoration below the first-person eye, inside the board interior and centered on translated coordinates", () => {
+  stubCanvas();
+  for (const offset of Array.from({ length: 20 }, (_, index) => index * 5)) {
+    const map = { ...CITY, path: CITY.path.map((point) => ({ x: point.x + offset, z: point.z - offset })) };
+    const scene = new THREE.Scene(); const board = new BoardView(scene, "en", map, createMatchConfig(), QUICK_RULES);
+    try {
+      const city = scene.getObjectByName("city-decoration")!;
+      expect(city).toBeDefined();
+      const bounds = new THREE.Box3().setFromObject(city);
+      const boardBox = boardBounds(map);
+      expect(bounds.max.y).toBeLessThan(1.1);
+      expect(bounds.min.x).toBeGreaterThanOrEqual(boardBox.min.x + TILE_SIZE - 1e-6);
+      expect(bounds.max.x).toBeLessThanOrEqual(boardBox.max.x - TILE_SIZE + 1e-6);
+      expect(bounds.min.z).toBeGreaterThanOrEqual(boardBox.min.z + TILE_SIZE - 1e-6);
+      expect(bounds.max.z).toBeLessThanOrEqual(boardBox.max.z - TILE_SIZE + 1e-6);
+      expect(bounds.getCenter(new THREE.Vector3()).x).toBeCloseTo(offset);
+      expect(bounds.getCenter(new THREE.Vector3()).z).toBeCloseTo(-offset);
+      const geometries = new Set<THREE.BufferGeometry>(); const materials = new Set<THREE.Material>();
+      city.traverse((object) => {
+        if (object instanceof THREE.Mesh) { geometries.add(object.geometry); materials.add(object.material as THREE.Material); }
+      });
+      expect(geometries.size).toBe(3);
+      expect(materials.size).toBe(4);
+      const disposals = [...geometries, ...materials].map((resource) => vi.spyOn(resource, "dispose"));
+      board.setLanguage("zh-CN"); board.syncOwnership(new Game(createMatchConfig(), QUICK_RULES, map).snapshot);
+      expect(scene.getObjectByName("city-decoration")).toBe(city);
+      disposals.forEach((disposed) => expect(disposed).not.toHaveBeenCalled());
+      board.dispose();
+      disposals.forEach((disposed) => expect(disposed).toHaveBeenCalledTimes(1));
+    } finally { board.dispose(); }
+  }
+});
+
+it.each(["en", "zh-CN"] as const)("%s wraps complete names and large valid amounts without compressing fonts or truncating digits", (language) => {
+  const canvases = stubCanvas();
+  const map = { ...CITY, tiles: CITY.tiles.map((tile) => tile.type === "property" ? { ...tile, price: Number.MAX_SAFE_INTEGER, rent: Number.MAX_SAFE_INTEGER } : tile) };
+  const scene = new THREE.Scene(); const board = new BoardView(scene, language, map, createMatchConfig(), QUICK_RULES);
+  try {
+    expect(canvases).toHaveLength(map.tiles.length);
+    for (const [index, canvas] of canvases.entries()) {
+      const name = canvas.draws.filter((draw) => draw.font.startsWith("700"));
+      const detail = canvas.draws.filter((draw) => draw.font.startsWith("600"));
+      expect(name.map((draw) => draw.text).join(" ").replace(/\s/g, "")).toBe(tileName(language, map.tiles[index]!).replace(/\s/g, ""));
+      expect(detail.map((draw) => draw.text).join(" ").replace(/\s/g, "")).toBe(tileDetail(map.tiles[index]!, language, QUICK_RULES).replace(/\s/g, ""));
+      for (const draw of canvas.draws) {
+        expect(draw.arguments).toHaveLength(3); expect(draw.width).toBeLessThanOrEqual(420);
+        expect(draw.arguments[2]).toBeLessThan(canvas.height - 24);
+      }
+    }
+    if (language === "en") expect(canvases[14]!.draws.filter((draw) => draw.font.startsWith("700")).length).toBeGreaterThan(1);
+  } finally { board.dispose(); }
+});
+
 it("BoardView renders injected coordinates, ownership color and RuleSet label amounts in both languages", () => {
   const fillText = vi.fn();
-  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillText }) }) });
+  stubCanvas(fillText);
   const config = createMatchConfig();
   const map = { ...CITY, path: CITY.path.map((point) => ({ x: point.x + 50, z: point.z - 25 })) };
   const rules = { ...QUICK_RULES, passStartBonus: 333 };
@@ -32,10 +87,7 @@ it("BoardView renders injected coordinates, ownership color and RuleSet label am
 });
 
 it("removed ownership markers are disposed before rebuilding, not just detached", () => {
-  vi.stubGlobal("document", { createElement: () => ({
-    width: 512, height: 256,
-    getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillText() {} }),
-  }) });
+  stubCanvas();
   const scene = new THREE.Scene();
   const snapshot = new Game().snapshot;
   const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
@@ -71,7 +123,7 @@ it("disposes each shared resource exactly once within its owner", () => {
 
 it("updates actual group rents and localized labels without reallocating unchanged textures", () => {
   const fillText = vi.fn();
-  vi.stubGlobal("document", { createElement: () => ({ getContext: () => ({ clearRect() {}, beginPath() {}, roundRect() {}, closePath() {}, fill() {}, fillText }) }) });
+  stubCanvas(fillText);
   const snapshot = new Game(createMatchConfig(940)).snapshot;
   const owned = { ...snapshot, properties: { ...snapshot.properties,
     "harbor-walk": { ...snapshot.properties["harbor-walk"]!, ownerId: "p1" as const },
@@ -89,8 +141,8 @@ it("updates actual group rents and localized labels without reallocating unchang
     board.setLanguage("zh-CN");
     expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 180, rent: 48 }));
     fillText.mockClear();
-    board.syncOwnership({ ...owned, properties: { ...owned.properties, "harbor-walk": { ...owned.properties["harbor-walk"]!, mortgagePrincipal: 70 } } });
+    board.syncOwnership({ ...owned, properties: { ...owned.properties, "harbor-walk": { ...owned.properties["harbor-walk"]!, ownerId: null } } });
     expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 180, rent: 32 }));
-    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 140, rent: 0 }));
+    expect(fillText.mock.calls.map((call) => call[0])).toContain(formatMessage(messages("zh-CN").board.propertyDetail, { price: 140, rent: 24 }));
   } finally { board.dispose(); }
 });

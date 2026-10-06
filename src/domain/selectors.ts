@@ -1,7 +1,9 @@
 import { tileAt, type PropertyTile } from "./board";
 import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
-import { liquidationValue, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor } from "./economy";
+import { canDeclareBankruptcy, completeGroup, liquidationValue, saleOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
+import { tradeOption } from "./market";
+import { itemCommands } from "./cards";
 
 export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
@@ -19,7 +21,23 @@ export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.t
 export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Command[] {
   if (snapshot.decision.kind === "game_over" || actor !== snapshot.decision.actorId || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
   const base = { actor, expectedRevision: snapshot.revision };
-  if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }];
+  if (snapshot.decision.kind === "awaiting_discard") return snapshot.players.find((player) => player.id === actor)!.hand.map((instanceId) => ({ ...base, kind: "discard_item", instanceId }));
+  if (snapshot.decision.kind === "awaiting_trade") {
+    const proposal = snapshot.decision.proposal;
+    const response = { ...base, proposalRevision: proposal.revision };
+    return [...(tradeOption(snapshot, proposal.proposerId, proposal).reason === null ? [{ ...response, kind: "trade_accept" as const }] : []), { ...response, kind: "trade_reject" }];
+  }
+  if (snapshot.decision.kind === "awaiting_debt") return [
+    ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).flatMap((tile) =>
+      saleOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "sell_building" as const, propertyId: tile.id }] : []),
+    ...(canDeclareBankruptcy(snapshot, actor) ? [{ ...base, kind: "bankrupt" as const }] : []),
+  ];
+  if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }, ...itemCommands(snapshot, actor),
+    ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).flatMap((tile) => [
+      ...(upgradeOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "upgrade" as const, propertyId: tile.id }] : []),
+      ...(saleOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "sell_building" as const, propertyId: tile.id }] : []),
+    ]),
+  ];
   const property = pendingProperty(snapshot);
   const player = snapshot.players.find((candidate) => candidate.id === actor);
   if (!property || !player || property.id !== currentTile(snapshot, actor).id || snapshot.properties[property.id]!.ownerId !== null) return [];
@@ -33,8 +51,8 @@ export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group },
-    ...property, constructionCosts: [...property.constructionCosts], rent: rentFor(snapshot, tile.id),
-    bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(tile, property, snapshot.rules) };
+    ...property, constructionCosts: [...property.constructionCosts], rent: rentFor(snapshot, tile.id), groupComplete: completeGroup(snapshot, tile),
+    bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(property, snapshot.rules) };
 }
 
 export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
@@ -42,7 +60,7 @@ export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
   if (!player) throw new Error("玩家不存在");
   const config = playerConfig(snapshot.config, id);
   return {
-    player: { id: config.id, controller: config.controller, name: config.name, defaultNameKey: config.defaultNameKey, color: config.color },
+    player: { id: config.id, controller: config.controller, difficulty: config.difficulty, name: config.name, defaultNameKey: config.defaultNameKey, color: config.color },
     cash: player.cash, propertyValue: propertyValue(snapshot, id), netAssets: netAssets(snapshot, id), liquidationValue: liquidationValue(snapshot, id), bankrupt: player.bankrupt,
     properties: snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === id).map((tile) => publicProperty(snapshot, tile.id)),
   };

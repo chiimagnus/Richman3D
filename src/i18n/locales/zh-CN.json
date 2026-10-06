@@ -1,4 +1,5 @@
 {
+  "ai": {"choose":"电脑{number}难度","difficulties":{"easy":"简单","normal":"普通","hard":"困难"},"action":"{actor} · {difficulty}：{reason}","reasons":{"roll":"继续当前回合","use_item":"使用当前有收益的道具","keep_valuable":"保留更有用的道具","reserve_cash":"保留现金应付后续费用","buy_property":"按现金预算购地","complete_group":"补齐同色地产","upgrade_income":"提高预期租金","debt_rescue":"用较小损失筹足资金","insolvent":"结清无法全额偿付的债务","fair_trade":"接受有利的价值与组合","unfair_trade":"拒绝亏损或风险过高的交易"}},
   "navigation": { "loading": "正在载入对局…", "retry": "重新加载菜单", "loadFailed": "对局加载失败，重新加载菜单可重试下载，已有存档没有被删除。" },
   "players": {
     "p1": "玩家一",
@@ -14,14 +15,24 @@
     "rollKey": "空格",
     "buy": "购买",
     "buyWithPrice": "购买 · {price}",
-    "skip": "跳过"
+    "skip": "不买"
   },
   "settings": {
     "title": "设置",
     "returnToGame": "完成",
     "sound": "声音",
+    "effectsVolume": "音效音量",
+    "musicVolume": "环境音乐音量",
+    "audioLocked": "浏览器尚未允许播放时，可点击此按钮启用声音。",
+    "audioBlocked": "声音未能启动，可再次点击启用；对局与存档不受影响。",
+    "enableAudio": "启用声音",
+    "presentationSpeed": "动画速度",
+    "normalSpeed": "正常",
+    "fastSpeed": "快速",
+    "headBob": "第一人称上下晃动",
     "view": "视角 · V",
     "lookAround": "鼠标环视 · L",
+    "recenter": "回到当前玩家",
     "match": "对局",
     "sensitivity": "鼠标灵敏度",
     "low": "低",
@@ -36,22 +47,30 @@
   "status": {
     "insufficientFunds": "资金不足，无法购买这块地产。",
     "purchased": "{actor}支付{amount}购买了「{propertyName}」。",
-    "skipped": "{actor}跳过了「{propertyName}」。",
+    "upgraded": "{actor}支付{amount}将「{propertyName}」建至{level}级。",
+    "building_sold": "{actor}出售「{propertyName}」一级建筑，收到{amount}。",
+    "skipped": "{actor}放弃直接购买「{propertyName}」。",
     "botActing": "{actor}行动中…",
     "yourTurn": "轮到{actor}了。",
     "winner": "{playerName}获胜。",
     "rollPropertyAvailable": "{actor}移动 {steps} 格，抵达可购买的「{propertyName}」。",
-    "rollRent": "{actor}移动 {steps} 格，为「{propertyName}」向{owner}支付租金 {amount}。",
-    "rollTax": "{actor}移动 {steps} 格，支付费用 {amount}。",
+    "rollRent": "{actor}移动 {steps} 格，「{propertyName}」应付{owner}固定租金 {amount}。",
+    "rollTax": "{actor}移动 {steps} 格，应付固定费用 {amount}。",
     "rollChance": "{actor}移动 {steps} 格：{message}",
     "rollOwned": "{actor}移动 {steps} 格，回到自己的「{propertyName}」。",
-    "rollStart": "{actor}移动 {steps} 格，回到起点。"
+    "rollStart": "{actor}移动 {steps} 格，回到起点。",
+    "cardMoved": "{actor}：{message}抵达「{destination}」。本次移动不连抽机会卡。",
+    "cardBonus": "本次从起点领取{amount}一次。",
+    "chanceIgnored": "本次移动不连抽机会卡。"
   },
   "feedback": {
-    "diceActor": "{actor}掷骰",
+    "diceSettled": "{actor}掷出{first}和{second}，合计{total}。",
+    "controlledDiceSettled": "{actor}的遥控骰子落定为{first}和{second}，合计{total}。",
     "restart": "再来一局"
   },
   "board": {
+    "startReward": "起点奖励",
+    "fixedFee": "应付费用",
     "startDetail": "+{amount} / 圈",
     "chanceDetail": "随机事件",
     "propertyDetail": "售价 {price} · 租金 {rent}",
@@ -78,11 +97,23 @@
       "chance-5": "机会"
     }
   },
+  "items": {
+    "pending": "请选择一张道具弃置。", "newItem": "新获得", "title": "我的道具", "open": "道具（{count}）", "empty": "当前没有道具。", "select": "选择一张道具", "use": "使用这张道具", "confirm": "确认使用", "cancel": "返回手牌", "close": "关闭", "discard": "弃置这张道具", "discardTitle": "保留{limit}张道具", "discardReason": "你获得了第{next}张道具。请选择一张弃置，也可以弃掉刚获得的卡。选择后结束本回合。", "total": "选择骰子总点数", "target": "交换位置的玩家", "beforeRoll": "只能在本人回合掷骰前使用道具。", "used": "本回合已经使用过一张道具。", "busy": "请先完成动画或保存，再使用道具。", "active": "本回合已启用：{card}", "received": "{actor}获得一张道具。", "discarded": "{actor}弃置一张道具。", "activated": "{actor}使用了{card}。", "controlled": "已选择总点数：{total}，不再随机掷骰。", "swapped": "与{target}交换位置；不结算落点，也不领取起点奖励。", "waived": "{actor}在{property}免付给{owner}的租金，地主不收钱。",
+    "names": { "rent-waiver": "免租券", "controlled-dice": "遥控骰子", "tax-discount": "费用减免", "construction-discount": "建设优惠", "swap-positions": "位置交换" }
+  },
   "chanceCards": {
     "innovation-bonus": "城市创新奖金 +{amount}",
     "maintenance-cost": "临时维修支出 {amount}",
     "community-event": "社区活动收益 +{amount}",
-    "traffic-fine": "交通违章罚款 {amount}"
+    "traffic-fine": "交通违章罚款 {amount}",
+    "advance-three": "前进{steps}格，经过起点领取{amount}。",
+    "retreat-three": "后退{steps}格，经过起点不领奖。",
+    "return-start": "传送回起点，仅领取{amount}一次。",
+    "rent-waiver": "免除本回合移动链的第一次应付租金，不免税收和罚款；回合结束失效。",
+    "controlled-dice": "选择下一次掷骰总点数（{min}–{max}），骰子由所选点数确定，不再随机掷出另一组结果。",
+    "tax-discount": "本回合第一次税收格费用仅付{percent}%，向上取整；不免租金和机会罚款，回合结束失效。",
+    "construction-discount": "本回合下一次合法升级仅付{percent}%，向上取整；出售退款与资产按实际造价计算，回合结束失效。",
+    "swap-positions": "与另一名存活玩家交换位置，不结算落点、不领取起点奖励，随后正常掷骰。"
   },
   "setup": {
     "title": "新对局",
@@ -101,7 +132,7 @@
   "results": {
     "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
     "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
-    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出" },
+    "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "purchaseBookValue": "购入土地账面价值", "tradeCashReceived": "交易现金收入", "tradeCashPaid": "交易现金支出", "tradeBookValueReceived": "交易转入土地账面价值", "tradeBookValueGiven": "交易转出土地账面价值", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "debtWrittenOff": "无法偿还的债务", "rentLost": "无法收回的租金" },
     "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
   },
   "storage": {
@@ -132,19 +163,74 @@
     "invalid": "存档损坏或版本不受支持，原数据没有被删除。"
   },
   "assets": {
+    "groupBonus": "同色组加成", "groupActive": "生效", "groupInactive": "未生效",
     "title": "公开资产", "open": "查看{player}的公开资产", "player": "查看席位", "seat": "席位{number} · {player}",
     "cash": "现金", "value": "地产账面价值", "net": "净资产", "rent": "当前租金", "owner": "归属", "bank": "银行",
-    "liquidation": "资产可清算收入", "level": "建筑等级", "mortgagePrincipal": "未偿抵押本金",
-    "price": "购买价格", "properties": "拥有的地产", "empty": "没有地产。", "details": "查看地产详情", "close": "关闭资产查看",
+    "liquidation": "卖房可得现金", "level": "建筑等级", "price": "购买价格", "properties": "拥有的地产", "empty": "没有地产。", "details": "查看地块", "tile": "棋盘地块", "tileOption": "{number} · {tile}", "close": "关闭资产查看",
     "bankrupt": "已淘汰，地产已归还银行。", "publicOnly": "仅展示公开资产，不包含手牌或未来随机结果。"
   },
   "history": { "title": "行动历史", "count": "保留最近{limit}条事件，当前{count}条。", "empty": "尚无行动。", "revision": "行动{revision}", "back": "关闭历史" },
+  "construction": {
+    "title": "建设一级", "rentChange": "租金：{current} → {next}", "cost": "建设费用", "remaining": "建设后现金", "upgrade": "建设 · {cost}",
+    "unavailable": "等待当前行动保存并展示完成。",
+    "reasons": { "not_owner": "只有所有者可以建设。", "not_turn": "仅可在自己的回合掷骰前建设。", "incomplete_group": "请先拥有同色组的全部地产。", "max_level": "已达到最高建筑等级。", "unbalanced": "请先建设组内等级较低的地产。", "insufficient_cash": "现金不足以支付建设费用。" }
+  },
+  "liquidity": {
+    "title": "地产经营", "operation": "选择操作", "proceeds": "收到现金", "remaining": "操作后现金", "loss": "净资产损失", "choices": { "upgrade": "建设一级", "sell_building": "出售一级建筑" },
+    "actions": { "sell_building": "出售 · {amount}" },
+    "reasons": { "not_owner": "只有所有者可以经营该地产。", "not_turn": "仅可在自己的回合掷骰前经营地产。", "no_building": "没有可出售的建筑。", "unbalanced_sale": "请先出售组内等级较高的建筑。" }
+  },
+  "debt": {
+    "title": "卖房补足付款", "pending": "现金不够，请先卖房补足付款。", "obligation": "{actor}需向{creditor}支付{amount}。", "shortfall": "现金缺口", "automatic": "必须先出售建筑。筹够钱后会自动支付，不需要再次确认。", "autoPayment": "自动付款", "insolvent": "已经没有房子可卖，现金仍不够。剩余现金用于付款，地产归还银行，你将退出本局。", "solvent": "还有房子可卖，请先卖房；筹够钱就会自动付款。", "bankrupt": "确认破产，退出本局", "rentSource": "{propertyName}的固定租金。", "taxSource": "棋盘固定费用。", "paid": "{actor}已向{creditor}支付{amount}。", "writtenOff": "未付{writtenOff}已冲销。", "liquidated": "{actor}已破产，地产归还银行。"
+  },
+  "trade": {
+    "title": "交易提案",
+    "open": "提出交易",
+    "recipient": "接收者",
+    "give": "转出地产",
+    "receive": "转入地产",
+    "none": "无",
+    "cashDirection": "现金方向",
+    "noCash": "不转移现金",
+    "cashAmount": "现金金额",
+    "limit": "每方最多 {limit} 处地产，仅可交易所在组无建筑的地产。",
+    "submit": "提交提案",
+    "cancel": "取消草稿",
+    "accept": "接受交易",
+    "reject": "拒绝交易",
+    "effect": "提交会消耗本回合唯一一次提案机会；之后仅由接收者接受或拒绝。",
+    "pending": "等待交易响应",
+    "respond": "{recipient}，请响应 {proposer} 的提案。",
+    "cashBefore": "当前现金",
+    "cashAfter": "成交后现金",
+    "groupsBefore": "现有完整组",
+    "groupsAfter": "成交后完整组",
+    "cashTransfer": "{payer} 向 {receiver} 支付 {amount}",
+    "trade_proposed": "{proposer} 向 {recipient} 提出交易。{terms}",
+    "trade_accepted": "{recipient} 接受 {proposer} 的交易。{terms}",
+    "trade_rejected": "{recipient} 拒绝 {proposer} 的交易，资产不变。{terms}",
+    "terms": "{proposer} 转出：{given}；转入：{received}。{cash}",
+    "groups": {
+      "cyan": "青色组",
+      "amber": "琥珀组",
+      "violet": "紫色组",
+      "emerald": "翡翠组"
+    },
+    "reasons": {
+      "players_invalid": "双方须为不同的存活玩家。",
+      "invalid_terms": "请选择不重复的地产，或输入正整数现金。",
+      "not_owner": "产权已经变化，无法交易。",
+      "group_has_buildings": "请先售完相关同色组的全部建筑。",
+        "insufficient_cash": "付款方现金不足。",
+      "amount_overflow": "成交后的金额或统计超出安全范围。"
+    }
+  },
   "runtime": {
     "title": "Richman 3D",
     "start": "开始游戏",
     "leave": "主菜单",
     "paused": "已暂停，已结算的行动已保留。",
-    "presenting": "{actor}正在移动…",
+    "presenting": "正在展示{actor}的操作结果…",
     "settling": "{actor}的行动结果",
     "purchaseDecision": "是否以 ¥{price} 购买「{propertyName}」？租金 ¥{rent}。",
     "skipAnimation": "跳过动画",

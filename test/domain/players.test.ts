@@ -1,13 +1,13 @@
 import { expect, it } from "vitest";
 import { createMatchConfig, observerId, SEAT_COLORS, SEAT_IDS } from "../../src/domain/config";
 import { Game } from "../../src/domain/game";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 
 it.each([2, 3, 4])("preserves %s configured seats and controller authority through every real saved decision", (size) => {
   const config = { ...createMatchConfig(940), players: SEAT_IDS.slice(0, size).map((id, index) => ({
-    id, defaultNameKey: id, controller: index === size - 1 ? "human" as const : "bot" as const,
+    id, defaultNameKey: id, controller: index === size - 1 ? "human" as const : "bot" as const, difficulty: "normal" as const,
     name: index === size - 1 ? "<b>城市</b>" : null, color: SEAT_COLORS[index]!,
   })) };
   const game = new Game(config);
@@ -25,10 +25,11 @@ it.each([2, 3, 4])("preserves %s configured seats and controller authority throu
       return;
     }
     seen.add(snapshot.turnPlayerId);
-    for (const player of config.players.filter((player) => player.id !== snapshot.turnPlayerId)) {
+    const actor = snapshot.decision.actorId;
+    for (const player of config.players.filter((player) => player.id !== actor)) {
       expect(legalCommands(snapshot, player.id)).toEqual([]);
     }
-    const command = chooseBotCommand(snapshot) ?? legalCommands(snapshot, snapshot.turnPlayerId).at(-1)!;
+    const command = (chooseBotAction(observeBot(snapshot), "normal")?.command ?? null) ?? legalCommands(snapshot, snapshot.decision.actorId).at(-1)!;
     expect(command).toBeDefined();
     const result = game.apply(command);
     expect(result.ok).toBe(true);

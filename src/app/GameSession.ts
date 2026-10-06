@@ -1,10 +1,11 @@
 import { Game } from "../domain/game";
-import { chooseBotCommand } from "../domain/bot";
+import { chooseBotAction, observeBot, type BotAction, type BotReason } from "../domain/bot";
 import { observerId, playerConfig } from "../domain/config";
-import type { Command, GameEvent, GameSnapshot, PlayerId } from "../domain/types";
+import type { BotDifficulty, Command, GameEvent, GameSnapshot, PlayerId, RollResult } from "../domain/types";
 import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
+import { PRESENTATION_RATES, type PresentationSpeed } from "../settings/preferences";
 
 export type SaveView = { readonly kind: "disabled" | "saving" } | { readonly kind: "saved"; readonly savedAt: number }
   | { readonly kind: "unsaved"; readonly acknowledged: boolean; readonly error: SaveError["kind"] } | { readonly kind: "conflict" };
@@ -16,6 +17,9 @@ export type GameView = {
   readonly presenting: boolean;
   readonly attached: boolean;
   readonly events: readonly GameEvent[];
+  readonly presentationEvent: GameEvent | null;
+  readonly settledRoll: { readonly revision: number; readonly result: RollResult } | null;
+  readonly botDecision: { readonly actorId: PlayerId; readonly revision: number; readonly difficulty: BotDifficulty; readonly reason: BotReason } | null;
   readonly error: "presentation_failed" | "command_rejected" | null;
   readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
   readonly save: SaveView;
@@ -28,18 +32,21 @@ export class GameSession {
   private port: PresentationPort | null = null;
   private work: Promise<void> | null = null;
   private announcedNoticeId = 0;
+  private announcedDiceRevision = 0;
   private view: GameView;
   private saving: Promise<boolean> | null = null;
   private expected: SaveIdentity | null;
   private allowUnsaved = false;
+  private presentationSpeed: PresentationSpeed = "normal";
 
   constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
     this.expected = persistence?.expected ?? null;
-    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
+    this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, settledRoll: null, botDecision: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
   }
 
   getSnapshot = (): GameView => this.view;
+  setPresentationSpeed(speed: PresentationSpeed): void { this.presentationSpeed = speed; }
 
   get handoverActor(): PlayerId | null {
     const { decision, config } = this.view.displayed;
@@ -105,12 +112,17 @@ export class GameSession {
         if (this.view.attached || this.view.mode === "disposed" || this.view.error) { unsubscribe(); resolve(); }
       });
     });
-    const command = chooseBotCommand(this.game.snapshot);
-    if (command) await this.enqueue(command);
+    const action = chooseBotAction(observeBot(this.game.snapshot));
+    if (action) await this.enqueue(action.command, action);
   }
   claimAnnouncement(id: number): boolean {
     if (id <= this.announcedNoticeId || this.view.notice?.id !== id || this.view.notice.expiresAt <= Date.now()) return false;
     this.announcedNoticeId = id;
+    return true;
+  }
+  claimDiceAnnouncement(revision: number): boolean {
+    if (revision <= this.announcedDiceRevision || this.view.settledRoll?.revision !== revision) return false;
+    this.announcedDiceRevision = revision;
     return true;
   }
   subscribe = (listener: () => void): (() => void) => {
@@ -144,15 +156,15 @@ export class GameSession {
     return true;
   }
 
-  private enqueue(command: Command): Promise<void> {
+  private enqueue(command: Command, botAction: BotAction | null = null): Promise<void> {
     if (this.work || this.view.presenting || this.view.save.kind === "saving" || !this.port || this.view.mode !== "running") return Promise.resolve();
-    this.work = Promise.resolve().then(() => this.run(command)).finally(() => { this.work = null; });
+    this.work = Promise.resolve().then(() => this.run(command, botAction)).finally(() => { this.work = null; });
     return this.work;
   }
 
   pause(): void {
     if (this.view.mode === "disposed") return;
-    this.publish({ mode: "paused", displayed: this.game.snapshot, viewPlayerId: this.nextViewPlayer() });
+    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, notice: null, viewPlayerId: this.nextViewPlayer() });
     this.queue.cancel();
     try {
       this.port?.stop();
@@ -165,8 +177,8 @@ export class GameSession {
     await this.work;
     if (this.view.mode !== "paused" || !this.port || this.view.error === "presentation_failed") return;
     this.publish({ mode: "running", error: null });
-    const command = chooseBotCommand(this.game.snapshot);
-    if (command) await this.enqueue(command);
+    const action = chooseBotAction(observeBot(this.game.snapshot));
+    if (action) await this.enqueue(action.command, action);
   }
 
   skipPresentation(): void {
@@ -178,20 +190,21 @@ export class GameSession {
     if (this.view.mode === "disposed") return;
     this.queue.cancel();
     try { this.port?.stop(); } catch { }
-    this.publish({ mode: "paused", displayed: this.game.snapshot, error: "presentation_failed" });
+    this.publish({ mode: "paused", displayed: this.game.snapshot, presentationEvent: null, notice: null, error: "presentation_failed" });
   }
 
   dispose(): void {
     if (this.view.mode === "disposed") return;
-    this.publish({ mode: "disposed", displayed: this.game.snapshot, attached: false, presenting: false });
+    this.publish({ mode: "disposed", displayed: this.game.snapshot, presentationEvent: null, attached: false, presenting: false });
     this.queue.cancel();
     this.port?.stop();
     this.port = null;
     this.listeners.clear();
   }
 
-  private async run(first: Command): Promise<void> {
+  private async run(first: Command, firstBotAction: BotAction | null): Promise<void> {
     let command: Command | null = first;
+    let botAction = firstBotAction;
     try {
       while (command && this.port && this.view.mode === "running") {
         const before = this.game.snapshot;
@@ -201,31 +214,40 @@ export class GameSession {
           return;
         }
         const port = this.port;
-        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presenting: true, error: null });
+        this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, settledRoll: null, presenting: true, error: null,
+          botDecision: botAction ? { actorId: command.actor, revision: result.snapshot.revision, difficulty: playerConfig(before.config, command.actor).difficulty, reason: botAction.reason } : null });
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
-        const event = result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
-        const meaningful = event && !(event.kind === "purchased" && playerConfig(before.config, event.actor).controller === "human") && !(event.kind === "rolled" && event.result.landing.kind === "property_available");
+        const event = result.events.find((entry) => entry.kind === "paid") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
+        const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_trade" && result.snapshot.decision.kind !== "awaiting_discard" && !("actor" in event && ["purchased", "upgraded", "building_sold", "item_used"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available");
         let settled = false;
+        const rolled = result.events.find((event) => event.kind === "rolled");
+        const settleDice = () => {
+          if (rolled?.kind === "rolled" && this.view.mode === "running" && this.port === port && this.view.settledRoll?.revision !== result.snapshot.revision) {
+            this.publish({ settledRoll: { revision: result.snapshot.revision, result: rolled.result } });
+          }
+        };
         const settle = () => {
-          if (settled || this.getSnapshot().mode === "disposed" || this.port !== port) return 0;
+          if (settled || this.getSnapshot().mode !== "running" || this.port !== port) return 0;
           settled = true;
+          settleDice();
           const duration = meaningful ? 1750 : 0;
-          this.publish({ displayed: result.snapshot, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration } : null });
+          this.publish({ displayed: result.snapshot, presentationEvent: null, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration / PRESENTATION_RATES[this.presentationSpeed] } : null });
           return duration;
         };
-        const finished = await this.queue.run(port, result.events, settle);
+        const finished = await this.queue.run(port, result.events, settle, (event) => this.publish({ presentationEvent: event }), settleDice);
         if (this.getSnapshot().mode === "disposed") return;
         settle();
         this.publish({ displayed: this.game.snapshot, presenting: false, viewPlayerId: this.nextViewPlayer() });
         if (!finished || this.port !== port || this.view.mode !== "running") return;
         port.sync(this.game.snapshot);
-        command = chooseBotCommand(this.game.snapshot);
+        botAction = chooseBotAction(observeBot(this.game.snapshot));
+        command = botAction?.command ?? null;
       }
     } catch {
       if (this.view.mode !== "disposed") this.failPresentation();
     } finally {
-      if (this.view.mode !== "disposed") this.publish({ presenting: false, displayed: this.game.snapshot, viewPlayerId: this.nextViewPlayer() });
+      if (this.view.mode !== "disposed") this.publish({ presenting: false, displayed: this.game.snapshot, presentationEvent: null, viewPlayerId: this.nextViewPlayer() });
     }
   }
 

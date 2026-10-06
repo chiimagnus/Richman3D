@@ -3,7 +3,7 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { CITY } from "../../src/domain/maps/city";
 import { QUICK_RULES } from "../../src/domain/rules";
-import { constructionCost, liquidationValue, mortgageValue, netAssets, propertyTile, propertyValue, rentAmount, rentFor } from "../../src/domain/economy";
+import { constructionCost, liquidationValue, netAssets, propertyTile, propertyValue, rentAmount, rentFor } from "../../src/domain/economy";
 import { legalCommands, playerAssets, publicProperty } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import type { GameSnapshot, PropertyState } from "../../src/domain/types";
@@ -16,7 +16,7 @@ function completeCityGroup(): Game {
   const state = makeSave(game.snapshot, matchId).state;
   return Game.restore({ ...state,
     properties: { ...state.properties, "harbor-walk": { ...state.properties["harbor-walk"]!, ownerId: "p1" } },
-    players: state.players.map((player) => player.id === "p1" ? { ...player, cash: player.cash - 140, statistics: { ...player.statistics, purchases: player.statistics.purchases + 140 } } : player),
+    players: state.players.map((player) => player.id === "p1" ? { ...player, cash: player.cash - 140, statistics: { ...player.statistics, purchases: player.statistics.purchases + 140, purchaseBookValue: player.statistics.purchaseBookValue + 140 } } : player),
   });
 }
 
@@ -27,41 +27,24 @@ function withLevels(snapshot: GameSnapshot, level: PropertyState["level"]): Game
   })) };
 }
 
-it.each([0, 1, 2, 3] as const)("computes level %s rents with one complete/unmortgaged group factor", (level) => {
+it.each([0, 1, 2, 3] as const)("computes level %s rents with one complete group factor", (level) => {
   const full = withLevels(completeCityGroup().snapshot, level);
   expect(rentFor(full, "neon-avenue")).toBe([48, 96, 192, 336][level]);
   const partial = { ...full, properties: { ...full.properties, "harbor-walk": { ...full.properties["harbor-walk"]!, ownerId: null } } };
   expect(rentFor(partial, "neon-avenue")).toBe([32, 64, 128, 224][level]);
-  const mortgaged = { ...full, properties: { ...full.properties, "harbor-walk": { ...full.properties["harbor-walk"]!, mortgagePrincipal: 70 } } };
-  expect(rentFor(mortgaged, "neon-avenue")).toBe([32, 64, 128, 224][level]);
-  expect(rentFor(mortgaged, "harbor-walk")).toBe(0);
+
 });
 
 it("rounds rent only once, construction upward and each actual-cost sale downward, without floating-point overflow", () => {
   const tile = { ...propertyTile(CITY, "neon-avenue"), price: 141, rent: 1 };
-  expect(rentAmount(tile, { level: 1, mortgagePrincipal: 0 }, QUICK_RULES, true)).toBe(3);
+  expect(rentAmount(tile, { level: 1 }, QUICK_RULES, true)).toBe(3);
   expect(constructionCost(tile, QUICK_RULES)).toBe(71);
-  expect(mortgageValue(tile, QUICK_RULES)).toBe(70);
   const maximum = { ...tile, price: Number.MAX_SAFE_INTEGER };
   expect(constructionCost(maximum, QUICK_RULES)).toBe(4503599627370496);
-  expect(mortgageValue(maximum, QUICK_RULES)).toBe(4503599627370495);
   const snapshot = withLevels(completeCityGroup().snapshot, 2);
   const discounted = { ...snapshot, properties: { ...snapshot.properties, "neon-avenue": { ...snapshot.properties["neon-avenue"]!, constructionCosts: [71, 71] } } };
   expect(propertyValue(discounted, "p1")).toBe(320 + 140 + 142);
-  expect(liquidationValue(discounted, "p1")).toBe(160 + 70 + 70);
-});
-
-it("distinguishes liquidation from book assets, and adding mortgage cash cannot inflate net assets", () => {
-  const before = completeCityGroup().snapshot;
-  expect(propertyValue(before, "p1")).toBe(320);
-  expect(liquidationValue(before, "p1")).toBe(160);
-  const borrowed = { ...before,
-    properties: { ...before.properties, "neon-avenue": { ...before.properties["neon-avenue"]!, mortgagePrincipal: 90 } },
-    players: before.players.map((player) => player.id === "p1" ? { ...player, cash: player.cash + 90 } : player),
-  };
-  expect(propertyValue(borrowed, "p1")).toBe(230);
-  expect(liquidationValue(borrowed, "p1")).toBe(70);
-  expect(netAssets(borrowed, "p1")).toBe(netAssets(before, "p1"));
+  expect(liquidationValue(discounted, "p1")).toBe(70 + 70);
 });
 
 it("charges a real opponent the projected group rent, preserves the transfer and restores historical rent after losing the group", () => {
@@ -73,16 +56,16 @@ it("charges a real opponent the projected group rent, preserves the transfer and
   if (!result.ok) throw new Error(result.reason);
   expect(result.events[0]).toMatchObject({ result: { landing: { kind: "rent", amount: 48 } } });
   expect(game.snapshot.players.map((player) => player.cash)).toEqual([1228, 1452]);
-  expect(playerAssets(game.snapshot, "p1")).toMatchObject({ cash: 1228, propertyValue: 320, netAssets: 1548, liquidationValue: 160 });
+  expect(playerAssets(game.snapshot, "p1")).toMatchObject({ cash: 1228, propertyValue: 320, netAssets: 1548, liquidationValue: 0 });
   const record = makeSave(game.snapshot, matchId);
   expect(Game.restore(readSave(record).record.state).snapshot).toEqual(game.snapshot);
   const lost = { ...record.state,
-    properties: { ...record.state.properties, "harbor-walk": { ownerId: null, level: 0, mortgagePrincipal: 0, constructionCosts: [] } },
-    players: record.state.players.map((player) => player.id === "p1" ? { ...player, statistics: { ...player.statistics, purchases: 180, taxesPaid: 140 } } : player),
+    properties: { ...record.state.properties, "harbor-walk": { ownerId: null, level: 0, constructionCosts: [] } },
+    players: record.state.players.map((player) => player.id === "p1" ? { ...player, statistics: { ...player.statistics, purchases: 180, purchaseBookValue: 180, taxesPaid: 140 } } : player),
   };
   const restored = Game.restore(lost);
   expect(rentFor(restored.snapshot, "neon-avenue")).toBe(32);
-  expect(restored.snapshot.history.at(-2)?.event).toMatchObject({ result: { landing: { amount: 48 } } });
+  expect([...restored.snapshot.history].reverse().find((entry) => entry.event.kind === "rolled")?.event).toMatchObject({ result: { landing: { amount: 48 } } });
 });
 
 it("rolls back state, money and candidate RNG when real group rent overflows", () => {

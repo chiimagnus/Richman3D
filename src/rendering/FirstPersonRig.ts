@@ -10,6 +10,7 @@ const EYE_HEIGHT = 1.72;
 
 export class FirstPersonRig {
   private readonly controls: PointerLockControls;
+  private headBobEnabled = true;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -22,8 +23,9 @@ export class FirstPersonRig {
 
   setPosition(index: number): void {
     const position = boardPosition(this.map, index);
+    const moved = this.camera.position.x !== position.x || this.camera.position.z !== position.z;
     this.camera.position.set(position.x, EYE_HEIGHT, position.z);
-    this.faceBoardDirection(index);
+    if (moved && !this.controls.isLocked) this.faceBoardDirection(index);
   }
 
   async moveAlong(
@@ -44,7 +46,7 @@ export class FirstPersonRig {
       points,
       (position, frame) => {
         this.camera.position.copy(position);
-        this.camera.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.08;
+        if (this.headBobEnabled) this.camera.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.08;
 
         if (!this.controls.isLocked) {
           movement.copy(position).sub(previous);
@@ -71,6 +73,8 @@ export class FirstPersonRig {
   setPointerSpeed(pointerSpeed: number): void {
     this.controls.pointerSpeed = pointerSpeed;
   }
+
+  setHeadBobEnabled(enabled: boolean): void { this.headBobEnabled = enabled; }
 
   setEnabled(enabled: boolean): void { this.controls.enabled = enabled; if (!enabled) this.unlock(); }
 

@@ -4,7 +4,7 @@ import { Game } from "../../src/domain/game";
 import { nextTurn, initialTurnOrder } from "../../src/domain/turns";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { CITY } from "../../src/domain/maps/city";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 
@@ -48,7 +48,7 @@ it.each([3, 4])("waits for the %s-seat final purchase before ending, then ranks 
   const tail = game.snapshot.turnOrder.at(-1)!;
   for (let count = 0; count < 20; count += 1) {
     if (game.snapshot.turnPlayerId === tail && game.snapshot.decision.kind === "awaiting_purchase") break;
-    expect(game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!).ok).toBe(true);
+    expect(game.apply(legalCommands(game.snapshot, game.snapshot.decision.kind === "game_over" ? game.snapshot.turnPlayerId : game.snapshot.decision.actorId).at(-1)!).ok).toBe(true);
   }
   expect(game.snapshot.turnPlayerId).toBe(tail);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
@@ -65,6 +65,8 @@ it("eliminates only the debtor, keeps multiple opponents playing and ends only w
   for (let index = 0; index < 3; index += 1) {
     expect(game.snapshot.turnPlayerId).toBe(order[index]);
     expect(game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId)[0]!).ok).toBe(true);
+    expect(game.snapshot.decision.kind).toBe("awaiting_debt");
+    expect(game.apply(legalCommands(game.snapshot, game.snapshot.turnPlayerId).find((command) => command.kind === "bankrupt")!).ok).toBe(true);
     expect(game.snapshot.players.filter((player) => !player.bankrupt)).toHaveLength(3 - index);
     if (index < 2) expect(game.snapshot.decision.kind).toBe("awaiting_roll");
   }
@@ -75,7 +77,7 @@ it("runs four internal computer seats through the same commands without adding a
   const base = createMatchConfig(940, 4);
   const game = new Game({ ...base, players: base.players.map((player) => ({ ...player, controller: "bot" })) });
   for (let count = 0; count < 400 && game.snapshot.decision.kind !== "game_over"; count += 1) {
-    const command = chooseBotCommand(game.snapshot);
+    const command = (chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null);
     expect(command).not.toBeNull();
     expect(game.apply(command!).ok).toBe(true);
   }
@@ -86,11 +88,14 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
   const game = new Game(createMatchConfig(36, 3));
   for (const kind of ["roll", "buy"] as const) expect(game.apply(legalCommands(game.snapshot, "p1").find((command) => command.kind === kind)!).ok).toBe(true);
   const record = makeSave(game.snapshot, "00000000-0000-4000-8000-000000000004");
-  const restored = Game.restore({ ...record.state, turnPlayerId: "p1", decision: { kind: "awaiting_roll", actorId: "p1" }, players: record.state.players.map((player) => player.id === "p1" ? {
+  const management = Game.restore({ ...record.state, turnPlayerId: "p1", decision: { kind: "awaiting_roll", actorId: "p1" } });
+  const checkpoint = makeSave(management.snapshot, record.matchId);
+  const restored = Game.restore({ ...checkpoint.state, players: checkpoint.state.players.map((player) => player.id === "p1" ? {
     ...player, cash: 0, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash },
   } : player) });
   expect(restored.apply(legalCommands(restored.snapshot, "p1")[0]!).ok).toBe(true);
-  expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: -50, statistics: { purchases: 200 } });
+  expect(restored.apply(legalCommands(restored.snapshot, "p1").find((command) => command.kind === "bankrupt")!).ok).toBe(true);
+  expect(restored.snapshot.players[0]).toMatchObject({ bankrupt: true, cash: 0, statistics: { purchases: 200, debtWrittenOff: 90 } });
   expect(Object.values(restored.snapshot.properties).map((property) => property.ownerId)).not.toContain("p1");
   const invalid = makeSave(restored.snapshot, record.matchId);
   const ghostEstate = { ...invalid.state, properties: { ...invalid.state.properties, "river-market": { ...invalid.state.properties["river-market"]!, ownerId: "p1" as const } } };
@@ -101,7 +106,7 @@ it("a real elimination from a validated low-cash checkpoint stops future rent an
     expect(readSave(makeSave(restored.snapshot, record.matchId)).snapshot).toEqual(restored.snapshot);
     expect(restored.snapshot.players[0]).toEqual(eliminated);
     if (restored.snapshot.decision.kind === "game_over") return;
-    expect(restored.apply(chooseBotCommand(restored.snapshot)!).ok).toBe(true);
+    expect(restored.apply((chooseBotAction(observeBot(restored.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
   }
   throw new Error("Surviving computers did not terminate");
 });

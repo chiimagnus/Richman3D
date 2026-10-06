@@ -6,6 +6,7 @@ export function PanelHost({ title, onClose, action, children }: { title: string;
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const element = dialog.current!;
+    if (document.pointerLockElement) document.exitPointerLock();
     element.showModal();
     return () => {
       element.close();

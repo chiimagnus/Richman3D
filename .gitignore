@@ -3,4 +3,5 @@ dist/
 .DS_Store
 *.local
 coverage/
+test-results/balance/
 .codegraph/

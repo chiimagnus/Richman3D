@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { createMatchConfig, normalizeName, observerId, SEAT_COLORS, SEAT_IDS } from "../../src/domain/config";
 import { Game } from "../../src/domain/game";
 import { QUICK_RULES } from "../../src/domain/rules";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { legalCommands } from "../../src/domain/selectors";
 import { chanceCardText, formatMessage, messages, playerName } from "../../src/i18n";
 import { tileDetail } from "../../src/rendering/BoardView";
@@ -12,14 +12,14 @@ it("separates stable identity, controller, names and observation; snapshots do n
   const players = config.players.map((player, index) => ({ ...player, name: index === 0 ? "<b>城市</b>" : null, controller: index === 0 ? "bot" as const : "human" as const }));
   const game = new Game({ ...config, players });
   expect(observerId(game.snapshot.config)).toBe("p2");
-  expect(chooseBotCommand(game.snapshot)?.actor).toBe("p1");
+  expect((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)?.actor).toBe("p1");
   expect(playerName("en", "p1", game.snapshot.config)).toBe("<b>城市</b>");
   expect(playerName("zh-CN", "p2", game.snapshot.config)).toBe("城市玩家");
   players[0]!.name = "changed";
   expect(playerName("zh-CN", "p1", game.snapshot.config)).toBe("<b>城市</b>");
-  expect(game.apply(chooseBotCommand(game.snapshot)!).ok).toBe(true);
+  expect(game.apply((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)!).ok).toBe(true);
   expect(game.snapshot.decision.kind).toBe("awaiting_purchase");
-  expect(chooseBotCommand(game.snapshot)?.kind).toBe("buy");
+  expect((chooseBotAction(observeBot(game.snapshot), "normal")?.command ?? null)?.kind).toBe("buy");
 });
 
 it("uses grapheme length, whitespace defaults and text names", () => {
@@ -32,7 +32,7 @@ it("uses grapheme length, whitespace defaults and text names", () => {
 it("constructs stable 2–4 seat contracts without exposing unimplemented product choices", () => {
   for (const size of [2, 3, 4]) {
     const base = createMatchConfig();
-    const players = SEAT_IDS.slice(0, size).map((id, index) => ({ id, defaultNameKey: id, controller: index === 0 ? "human" as const : "bot" as const, name: null, color: SEAT_COLORS[index]! }));
+    const players = SEAT_IDS.slice(0, size).map((id, index) => ({ id, defaultNameKey: id, controller: index === 0 ? "human" as const : "bot" as const, difficulty: "normal" as const, name: null, color: SEAT_COLORS[index]! }));
     expect(new Game({ ...base, players }).snapshot.players.map((player) => player.id)).toEqual(SEAT_IDS.slice(0, size));
   }
   const config = createMatchConfig();
@@ -43,7 +43,7 @@ it("constructs stable 2–4 seat contracts without exposing unimplemented produc
 
 it("RuleSet amounts reach actual cash, structured results and both locale projections", () => {
   const rules = { ...QUICK_RULES, startingCash: 2100, passStartBonus: 333, chanceCards: QUICK_RULES.chanceCards.map((card) => ({ ...card, amount: 17 })) };
-  const chance = new Game(createMatchConfig(768), rules);
+  const chance = new Game(createMatchConfig(21), rules);
   const command = legalCommands(chance.snapshot, chance.snapshot.turnPlayerId)[0]!;
   expect(chance.apply(command).ok).toBe(true);
   expect(chance.snapshot.players.find((player) => player.id === command.actor)?.cash).toBe(2117);
@@ -54,7 +54,7 @@ it("RuleSet amounts reach actual cash, structured results and both locale projec
   }
   const lap = new Game(createMatchConfig(17981), rules);
   for (const kind of ["roll", "skip", "roll", "roll"] as const) {
-    const result = lap.apply({ kind, actor: lap.snapshot.turnPlayerId, expectedRevision: lap.snapshot.revision });
+    const result = lap.apply({ kind, actor: lap.snapshot.decision.kind === "game_over" ? lap.snapshot.turnPlayerId : lap.snapshot.decision.actorId, expectedRevision: lap.snapshot.revision });
     expect(result.ok).toBe(true);
     if (kind === "roll" && result.ok && result.events.some((event) => event.kind === "rolled" && event.result.passedStart)) {
       expect(result.events[0]).toMatchObject({ result: { startBonus: 333 } });

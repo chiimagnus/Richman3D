@@ -1,5 +1,7 @@
 # P7 — 有使用时机与反制价值的卡牌
 
+**当前规则（2026-10-06）：** P6-T4删除抵押、赎回和拍卖，保留升级与交易，缺现金必须卖建筑。已执行旧版证据仅作历史；后续验收以当前规则及todo.toml为准。
+
 **Goal：** 机会格不再只有随机加减钱；玩家可以保留道具，在掷骰前根据公开局面作选择。
 
 **Non-goals：** 不做任意脚本牌效、无限连锁、跳过回合、额外回合、道具交易、商店或付费抽卡。
@@ -14,15 +16,21 @@
 
 ### 实体牌库与抽弃牌总量守恒
 
-**文件与锚点：** `Game::resolveLanding` 的 CHANCE_CARDS 随机分支、random、types、snapshot、FeedbackLayer、i18n JSON；新增 `src/domain/cards.ts`、`test/domain/deck.test.ts`、`test/e2e/chance-deck.spec.ts`。
+**文件与锚点：** `src/domain/game.ts` 的 roll/chance 与共用 pay、`random.ts`、`types.ts`、`restore.ts`、`rules.ts`、`storage/snapshot.ts`、`ui/eventText.ts` 与 i18n JSON；新增 `src/domain/cards.ts`、`test/domain/deck.test.ts`，扩充实际会话与存档回归。不恢复已删除的 E2E 框架。
 
 **步骤：** 首先把现有四种现金事件改为每类两个实例的八张开发牌库；洗牌、抽取和弃置通过规则随机源，移除旧的每次独立随机选事件数组。实例 ID 和类型 ID 分离；牌库顺序、弃牌堆和当前待结算卡保存进快照。抽牌后先归入待结算区域，现金足够则结算后弃置，不足则债务清算结束后再弃置；不能在待债务时既在弃牌堆又仍待结算。
 
 现金牌的金额由规则定义，JSON 只含名字和带金额占位符的说明，不在两种语言里分别写死 +120 等业务数值。牌库空时洗弃牌堆，洗牌不触碰手牌；本任务尚无手牌，所以不会放入不能使用的道具。卡牌展示保留“某人抽到了什么、实际金额、资金变化”的语义事件，可切换语言重绘。
 
-**验证：** 初始八实例唯一、八次抽牌后重洗、保存再抽与不刷新一致；抽负面牌进入债务后刷新，不能再抽一次或重复扣钱；不同语言均显示规则金额。运行 `npm test -- --run test/domain/deck.test.ts test/domain/debt.test.ts` 和 chance-deck 浏览器用例。
+初始快照保存八张有序未抽实例；第一次抽牌命令中先洗再抽。只有初始满堆且弃牌/pending 为空时才需要首洗，重洗后同命令已取出一张，不增加重复的初始化标记。洗牌、抽取、经济结算和随机游标一起原子提交。现有 rolled/chance 与 paid 结构化事件增加实例引用即可拥有完整语义，不叠加重复播报事件。规则开发版本升至 city-v9；未知旧版本保全、不迁移。
+
+**验证：** 初始八实例唯一、八次抽牌后重洗、保存再抽与不刷新一致；抽负面牌进入债务后刷新，不能再抽一次或重复扣钱；不同语言均显示规则金额。运行领域/会话针对性 Vitest 以及 typecheck、全量单测、build；实际交互用已安装 Helium 后台验收，仅管理本任务页面，不激活或抢焦点。
 
 **原子提交：** `feat: 用可恢复实体牌库替代独立随机事件`。
+
+**执行证据（2026-10-04）：** city-v9 八实例已接入真实 Game.apply 的洗/抽/现金结算与共用 pay 弃牌；移除每次 independent random.integer(4) 分支。恢复拒绝未知/重复/丢失实例、pending/债务/历史不匹配及未抽卡进入弃堆，输入数组不保留别名。2/3/4 席正式 40 轮对局逐命令存档恢复与连续重洗完全一致；溢出与中途洗牌失败保持完整状态/RNG，电脑救济及破产均结束实际付款后弃置，保存失败重试不重执行。旧种子 fixture 改用真实目标地产命令序列，不加兼容规则。
+
+Helium 自有后台目标 `35854AC6D0F11FBB0AFF95299ACC1D2D`：真实导入负面牌债务，revision3/现金30/pending maintenance-cost:2，刷新及切语言完整 state 不变；展开地产并滚动抵押按钮，连续真实 DOM 点击两次仅 revision4/现金40/实付90/弃堆一个实例/RNG13保持。结清后交接 p2，刷新完整 state 不变。390px 双语债务和经营后果截图已目检无横溢，`/tmp/richman-p7-t1-{negative.richman,pending-browser,paid-browser}.json` 与 `/tmp/richman-p7-t1-debt-{390-zh,390-en,action-390-en}.png`。仅自有页解除冻结以完成异步，document.hidden 始终 true；未激活页，不把后台 DOM 点击或模拟宽度当作前台原生键盘/真机性能证据。该页与4330预览服务已关闭。typecheck、50文件428单测、build、diff-check；SceneHost 507.69kB 的既有预算警告仍属 P11，不压掉警告。
 
 ## P7-T2
 
@@ -30,11 +38,11 @@
 
 **依赖：** P7-T1。
 
-**文件与锚点：** Game.roll 的 path/奖励/resolveLanding、cards、turns、PresentationQueue、World/FirstPersonRig/PlayerView、snapshot；新增 `src/domain/movement.ts`、`test/domain/card-movement.test.ts`、`test/e2e/card-movement.spec.ts`。
+**文件与锚点：** Game.roll 的 path/奖励/resolveLanding、cards、turns、PresentationQueue、World/FirstPersonRig/PlayerView、snapshot；新增 `src/domain/movement.ts`、`test/domain/card-movement.test.ts`、`test/app/card-movement-save.test.ts`、`test/rendering/card-movement.test.ts`。遵守当前 AGENTS，不重建已移除的 E2E；真实页面仅用后台 Helium 验收。
 
 **步骤：** 原掷骰路径也接入统一移动计算，不仅给卡牌新建另一份取模算法。移动结果显式包含 direction、逐格 path、destination、是否发经过奖励、是否允许目的地机会抽牌。新增前进三格、后退三格、返回起点三种事件；已完整接入后牌库扩为七类十四实例。
 
-前进三格按正向 path 经过起点领奖；后退即使经过0也不领奖；返回起点为传送、只由卡牌支付本局规则的起点奖励一次（初始候选为200），不重复触发经过奖。所有奖励和测试从RuleSet读取；P8调参时不能留下这里的200硬编码。移动后的地产/税收/租金/债务/待购/拍卖仍走原处理链；目的地是机会格则本次不再抽卡。UI 明示“本次移动不连抽机会”，不能暗中截断。返回起点的既有 start 处理不再次发奖。
+前进三格按正向 path 经过起点领奖；后退即使经过0也不领奖；返回起点为传送、只由卡牌支付本局规则的起点奖励一次（初始候选为200），不重复触发经过奖。所有奖励和测试从RuleSet读取；P8调参时不能留下这里的200硬编码。移动后的地产/税收/租金/卖房付款/待购仍走原处理链；目的地是机会格则本次不再抽卡。UI 明示“本次移动不连抽机会”，不能暗中截断。返回起点的既有 start 处理不再次发奖。
 
 复用P1已经接入的有序事件列表，扩展移动/抽牌/付款事件，能表现原骰子移动、抽牌、追加移动和最终费用；删除只显示最后 landing 而漏掉前面事件的路径。待购/债务中保存有限 continuation 数据，不序列化函数或调用栈；全部处理完后恰好结束一个普通回合。
 
@@ -42,13 +50,17 @@
 
 **原子提交：** `feat: 统一移动语义并加入三种移动事件卡`。
 
+**执行证据（2026-10-04）：** city-v10 的七类十四实例接入正式 roll/落点/经济链，骰子与移动牌共用 movement；每条追加移动带显式 direction/path/startBonus/drawChance，反向经过0不领奖，传送只领规则奖励一次，机会落点明确不连抽。已删原独立骰子取模计算，未知 v9 原始存档保全、不迁移；待购/债务仍用既有 finish_turn，不增加恢复调用栈。事件顺序及真实双视角逐格动画有回归；暂停、跳过、迟到投影不能重执行或复活旧表现。完整对局发现历史100条截断从 card_moved 开始时付款校验误把 actor 当成空，已在共享历史支付校验根因修复；2/3/4席逐命令恢复及完整财务对账覆盖。测试旧种子因牌库/随机游标变化失去场景，改为新规则下真实达到目标产权/建筑的固定种子，交易断言以实际输入现金计算；不保存旧规则来迁就 fixture。typecheck、53文件476单测、build、diff-check通过，场景508.21kB预算警告未隐藏。
+
+Helium 自有后台页 CE4076D26D09D9A0A5E859A9EACD64FB，4332生产前缀：seed14真实掷骰6+5到11，追加反向10→9→8，截图10/11/12已目检棋子从机会退回公共服务费再河畔市集；18帧DOM采样均hidden=true/hasFocus=false，未调用activate。实际双击购买仅revision1→2、现金1500→1300，刷新/续玩与完整存档state一致。seed113真实前进牌到14保留120税债、现金30、discard一个实例，无pending；刷新与双语不改state，真实抵押110双击仅revision3→4/现金20/实付120，deck/RNG不变，刷新一致。390×844中英购买、设置、债务截图目检且scrollWidth=390；新CDP会话会重置模拟宽度，已明确重新设定后复验，不把桌面截图当窄屏证据。启动中曾有一次hidden=false读数随后自动后台暂停；正式帧和窄屏验收均hidden=true/hasFocus=false，无前台原生键盘/真机通过声明。证据 `/tmp/richman-p7-t2-{reverse-frames,purchase-browser,paid-browser,debt-browser,tax-paid-browser}.json`，`/tmp/richman-p7-t2-{purchase-390-en,settings-390-en,debt-390-en,debt-390-zh}.png`；本页与服务收尾关闭。
+
 ## P7-T3
 
 ### 五种持有道具与手牌交互
 
 **依赖：** P7-T2。
 
-**文件与锚点：** cards、Game.apply、selectors、economy、movement、snapshot、AssetPanel、HandoverScreen；新增 `src/ui/HandPanel.tsx`、`src/ui/CardTargetPanel.tsx`、`test/domain/items.test.ts`、`test/e2e/hand-items.spec.ts`。
+**文件与锚点：** cards、Game.apply、selectors、economy、movement、snapshot、Hud、PanelHost、HandoverScreen；新增 `src/ui/HandPanel.tsx`、`test/domain/items.test.ts`、`test/app/items-save.test.ts`、`test/ui/hand.test.tsx`、`test/fixtures/items.ts`。目标/点数草稿直接留在 HandPanel，同一 PanelHost，无须另建仅用一次的 CardTargetPanel；遵守当前 AGENTS，不恢复 E2E 框架。
 
 **步骤：** 一次接入五种道具处理器和对应使用 UI 后，启用最终12类24实例牌库。手牌最多三张，第四张进入弃牌选择，允许弃刚抽到的卡；选择前四张归属明确，禁止静默丢最早的一张。在P1既有bot入口补相应合法动作，基线必须能按当前用途保留三张、丢弃一张，不把可完成对局依赖到 P8。
 
@@ -62,13 +74,19 @@
 
 **原子提交：** `feat: 接通五种持有道具与限量手牌决策`。
 
+**执行证据（2026-10-04）：** city-v11 最终12类24实例；五种道具接入实际 Game.apply/合法命令/基线电脑/实际 UI，移除七类满弃堆才合法的旧恢复假设。手牌、唯一 active、使用额度、第四张选择与回合/淘汰/终局清理在同一任务接齐；没有 acquiredTurn、持久效果图或旧版本迁移。公共 rolled/item_received 与 item_discarded 不含私有实例/牌型，仅已使用牌公开；收牌详情只向当前本地所有者投影。恢复校验完整实体守恒、手牌种类/上限、效果与使用历史/点数/消耗匹配，完整历史校验牌区数量及已公开弃牌顺序；历史截断不能被误当作完整牌库周期。优惠建设复用实际 upgradeOption 成本，销售/净资产沿既有实际成本核算，半税债务保留实际固定金额。域、会话与 UI 回归涵盖2/7/12、两种减免均不减机会罚款、四种弃牌、已破产/不存在/本人目标、取消/重复/旧版本、保存失败重试不执行命令、坏效果拒绝、实际造价与退款；无新增测试框架。
+
+Helium 自有后台页 A209CA8D4E81FAB31609C8E0810D37EB，4334生产前缀：真实导入seed1/revision56手牌，取消12点草稿完整state不变；双击确认仅revision57，扣controlled-dice:2并active.total=12/RNG74保持，刷新/交接后真实按掷骰按钮，仅revision58/骰子6+6/税费120/RNG74保持，完成p2购地后revision60返回p1、额度复位。交接DOM无手牌入口或牌名。seed1/revision80第四张选择刷新、暂停/双语完整state不变；新增卡可见标记，真实双击弃新牌仅revision81/手牌3/RNG92保持，刷新不变。390×844中英手牌、点数/目标草稿、满手牌、常态HUD与设置截图实际目检，scrollWidth390；实际画面发现满手牌长提示与HUD重复，已在 actionView改为短状态，未用遮挡/缩字绕过。所有正式样本hidden=true/hasFocus=false，未激活页；不声明后台DOM点击等于前台原生键盘/真机/200%浏览器缩放验证。证据 `/tmp/richman-p7-t3-{confirmed-browser,rolled-browser,next-turn-browser,discard-browser}.json` 与 `/tmp/richman-p7-t3-{hand-390-en,draft-390-en,hand-390-zh,swap-draft-390-zh,full-390-en,full-390-zh,hud-390-zh,settings-390-zh}.png`；任务页及预览已关闭。场景508.42kB既有预算警告保持可见，留给P11，不压掉。
+
+最终验证：typecheck、56文件520单测、build 与 diff-check 通过；实现与测试原子提交，计划证据仅本地保留。
+
 ## P7-T4
 
 ### 卡牌恢复、隐私、过期与淘汰清理
 
 **依赖：** P7-T3。
 
-**文件与锚点：** cards、Game 的回合结束/破产路径、snapshot、GameStore、HandPanel、HandoverScreen、HistoryPanel；扩充 `test/domain/deck.test.ts`，新增 `test/e2e/cards-recovery.spec.ts`。
+**文件与锚点：** cards、Game 的回合结束/破产路径、snapshot、GameStore、HandPanel、HandoverScreen、HistoryPanel；新增 `test/domain/cards-recovery.test.ts`，复用 `test/domain/deck.test.ts`、`test/app/items-save.test.ts` 与 `test/ui/hand.test.tsx`。遵守当前 AGENTS，不重建 E2E 框架；真实交接/刷新证据沿用 T3 已核验的后台 Helium 页面。
 
 **步骤：** 明确每张实体卡只处于 draw/discard/hand/pending/active 五个区域之一。active只拥有本普通回合已启用但未消耗/到期的那一张道具实例；本版一回合最多一张且回合末过期，不建立无需要的四玩家持久效果图。效果元数据只引用该实例，不再在hand或discard保留第二份。效果消耗、过期或所属玩家淘汰时把实例移入discard；实体总量校验必须把active计入，不能一边说只有四区域、一边漏算生效中的牌。按人类/电脑所有路径验证回合终止、破产、读档和轮满终局都不遗失卡。新牌使用窗口由已存在的掷骰前阶段控制，回合内使用额度仅保留一个必要标记；不新增浏览器时间戳、每张牌冷却计数或重复的身份世代。
 
@@ -80,6 +98,12 @@
 
 **原子提交：** `fix: 补齐道具状态恢复与同机手牌隐私`。
 
+**执行证据（2026-10-04）：** 新增22条正式组合回归。seed10/revision44真实取得两张手牌且未购地产，启用免租后下一张maintenance-cost:1产生90罚款债务；完整历史小于100时，破产实际先结清pending，再弃破产手牌/active、终局弃存活手牌。原恢复校验在liquidated事件处过早记录手牌弃置，合法存档被拒绝；回归先红后绿，改为实际冲销付款后清理，不修改正确的规则结算、不放宽实体守恒。真人/电脑均实付30、冲销60、只清算一次且随机游标保持。截断历史下伪造“本回合已经用过道具但又持有第四张”原能读入，已在弃牌阶段的不变量校验拒绝，原始输入不改写。
+
+seed1/四席标准/revision410真实手牌分配1/3/3/3，总共十张持有实体（五种道具各两个，不伪造十二张）。p3启用建设优惠后，九张手牌+一个active+一个pending罚款卡同时恢复；破产只清p3、存活三席手牌不丢失且推进p4一次。双边交易接受/拒绝、待购及另一席完成拍卖不提前耗尽当前道具；最后一轮未用建设优惠到期、全手牌清理一次。十二类卡均有实际Game.apply抽取/恢复回归；保留十张真实手牌并定位实际骰子落机会格，连续多轮仅洗弃牌，最后一张/重洗/轮满逐命令保存恢复一致。该定位是领域测试fixture，不冒充无干预真人整局。隐私真实DOM、双语窄屏、刷新及存储失败重试沿用T3已核验证据；T4不改UI，不建立E2E或兼容旧开发版本。
+
+验证：针对cards-recovery/items/deck的79项回归通过；新增边界后cards-recovery22项、最终typecheck、57文件542项全测、build与diff-check通过。最初测试存在循环getter收窄错误，已改为捕获快照后判断终局并重新跑全部验证，不把首次typecheck失败算通过。508.42kB预算警告保留，真实设备/原生前台键盘/200%浏览器缩放仍未验证。
+
 ## 阶段结束检查
 
-完整测试、build、实际一局包含移动牌、持有牌、满手牌、债务与拍卖的组合回归。审计关注一条行动链结束一次、资金不重复结算、所有实体卡有归属。执行时创建 audit-p7；最终12类是功能内容数量，不是测试数量上限。
+完整测试、build、实际一局包含移动牌、持有牌、满手牌、卖房付款与交易的组合回归。审计关注一条行动链结束一次、资金不重复结算、所有实体卡有归属。执行时创建 audit-p7；最终12类是功能内容数量，不是测试数量上限。

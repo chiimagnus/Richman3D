@@ -1,4 +1,5 @@
 {
+  "ai": {"choose":"Computer {number} difficulty","difficulties":{"easy":"Easy","normal":"Normal","hard":"Hard"},"action":"{actor} · {difficulty}: {reason}","reasons":{"roll":"Continue the turn","use_item":"Use an item with a current benefit","keep_valuable":"Keep the more useful items","reserve_cash":"Keep cash for upcoming costs","buy_property":"Buy within the cash budget","complete_group":"Complete a color group","upgrade_income":"Improve expected rent","debt_rescue":"Raise enough cash with less loss","insolvent":"Settle the unaffordable debt","fair_trade":"Accept useful value and groups","unfair_trade":"Reject an unfavorable or risky trade"}},
   "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. Saved data has not been erased." },
   "players": {
     "p1": "Player One",
@@ -14,14 +15,24 @@
     "rollKey": "Space",
     "buy": "Buy",
     "buyWithPrice": "Buy · {price}",
-    "skip": "Skip"
+    "skip": "Don't buy"
   },
   "settings": {
     "title": "Settings",
     "returnToGame": "Done",
     "sound": "Sound",
+    "effectsVolume": "Sound effects volume",
+    "musicVolume": "Ambient music volume",
+    "audioLocked": "Enable audio with this button if the browser has not allowed playback.",
+    "audioBlocked": "Audio could not start. You can enable it again; the match and saved data are unaffected.",
+    "enableAudio": "Enable audio",
+    "presentationSpeed": "Animation speed",
+    "normalSpeed": "Normal",
+    "fastSpeed": "Fast",
+    "headBob": "First-person head bob",
     "view": "View · V",
     "lookAround": "Mouse look · L",
+    "recenter": "Follow current player",
     "match": "Match",
     "sensitivity": "Mouse Sensitivity",
     "low": "Low",
@@ -36,22 +47,30 @@
   "status": {
     "insufficientFunds": "Not enough cash to buy this property.",
     "purchased": "{actor} paid {amount} to buy “{propertyName}”.",
-    "skipped": "{actor} skipped “{propertyName}”.",
+    "upgraded": "{actor} paid {amount} to build level {level} on “{propertyName}”.",
+    "building_sold": "{actor} sold one building level on “{propertyName}” for {amount}.",
+    "skipped": "{actor} declined direct purchase of “{propertyName}”.",
     "botActing": "{actor} is taking a turn…",
     "yourTurn": "{actor}'s turn.",
     "winner": "{playerName} won.",
     "rollPropertyAvailable": "{actor} moved {steps} spaces to “{propertyName}”, available to buy.",
-    "rollRent": "{actor} moved {steps} spaces and paid {amount} rent to {owner} for “{propertyName}”.",
-    "rollTax": "{actor} moved {steps} spaces and paid ¥{amount}.",
+    "rollRent": "{actor} moved {steps} spaces; fixed rent due to {owner} for “{propertyName}”: {amount}.",
+    "rollTax": "{actor} moved {steps} spaces; fixed fee due: ¥{amount}.",
     "rollChance": "{actor} moved {steps} spaces: {message}",
     "rollOwned": "{actor} moved {steps} spaces onto their own “{propertyName}”.",
-    "rollStart": "{actor} moved {steps} spaces back to Start."
+    "rollStart": "{actor} moved {steps} spaces back to Start.",
+    "cardMoved": "{actor}: {message} Arrived at “{destination}”. No further Chance card is drawn on this move.",
+    "cardBonus": "Received {amount} from Start once.",
+    "chanceIgnored": "No further Chance card is drawn on this move."
   },
   "feedback": {
-    "diceActor": "{actor} · Dice Roll",
+    "diceSettled": "{actor} rolled {first} and {second}, total {total}.",
+    "controlledDiceSettled": "{actor}'s chosen dice settled on {first} and {second}, total {total}.",
     "restart": "Play Again"
   },
   "board": {
+    "startReward": "Start reward",
+    "fixedFee": "Fee due",
     "startDetail": "+{amount} / lap",
     "chanceDetail": "Random event",
     "propertyDetail": "Price {price} · Rent {rent}",
@@ -78,11 +97,23 @@
       "chance-5": "Chance"
     }
   },
+  "items": {
+    "pending": "Choose an item to discard.", "newItem": "new", "title": "Your items", "open": "Items ({count})", "empty": "You have no items.", "select": "Select an item", "use": "Use this item", "confirm": "Confirm use", "cancel": "Back to items", "close": "Close", "discard": "Discard this item", "discardTitle": "Keep {limit} items", "discardReason": "You received item {next}. Choose one to discard, including the new item. Your turn ends after this choice.", "total": "Chosen dice total", "target": "Swap with", "beforeRoll": "Use an item before rolling on your own turn.", "used": "You have already used an item this turn.", "busy": "Finish the current animation or save before using an item.", "active": "Active this turn: {card}", "received": "{actor} received an item.", "discarded": "{actor} discarded an item.", "activated": "{actor} used {card}.", "controlled": "Chosen dice total: {total}. No random dice are drawn.", "swapped": "Positions swapped with {target}; no landing payment or Start reward.", "waived": "{actor} owes no rent to {owner} at {property}; the landlord receives nothing.",
+    "names": { "rent-waiver": "Rent waiver", "controlled-dice": "Controlled dice", "tax-discount": "Tax discount", "construction-discount": "Construction discount", "swap-positions": "Swap positions" }
+  },
   "chanceCards": {
     "innovation-bonus": "City innovation bonus +{amount}",
     "maintenance-cost": "Emergency maintenance {amount}",
     "community-event": "Community event income +{amount}",
-    "traffic-fine": "Traffic fine {amount}"
+    "traffic-fine": "Traffic fine {amount}",
+    "advance-three": "Advance {steps} spaces; passing Start earns ¥{amount}.",
+    "retreat-three": "Move back {steps} spaces; crossing Start earns nothing.",
+    "return-start": "Teleport to Start and receive ¥{amount} once.",
+    "rent-waiver": "Waive the first rent payment in this turn’s movement chain. Does not cover taxes or fines. Expires at turn end.",
+    "controlled-dice": "Choose the next roll’s total ({min}–{max}). The dice are determined from your choice, not randomly rolled.",
+    "tax-discount": "Pay {percent}% of the first tax-space fee this turn, rounded up. Does not cover rent or Chance fines. Expires at turn end.",
+    "construction-discount": "Pay {percent}% for your next legal upgrade this turn, rounded up. Sale refunds and asset value use the actual cost. Expires at turn end.",
+    "swap-positions": "Swap positions with another surviving player. No landing effect or Start reward. Then roll normally."
   },
   "setup": {
     "title": "New match",
@@ -101,7 +132,7 @@
   "results": {
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
-    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs" },
+    "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "tradeCashReceived": "Trade cash received", "tradeCashPaid": "Trade cash paid", "tradeBookValueReceived": "Book value of land received in trades", "tradeBookValueGiven": "Book value of land given in trades", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
     "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
   },
   "storage": {
@@ -132,19 +163,74 @@
     "invalid": "The saved data is damaged or uses an unsupported version. It has not been erased."
   },
   "assets": {
+    "groupBonus": "Color-group bonus", "groupActive": "Active", "groupInactive": "Inactive",
     "title": "Public assets", "open": "View {player}'s public assets", "player": "Inspect seat", "seat": "Seat {number} · {player}",
     "cash": "Cash", "value": "Property book value", "net": "Net assets", "rent": "Current rent", "owner": "Owner", "bank": "Bank",
-    "liquidation": "Asset liquidation proceeds", "level": "Building level", "mortgagePrincipal": "Outstanding mortgage principal",
-    "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect property details", "close": "Close asset view",
+    "liquidation": "Cash from selling buildings", "level": "Building level", "price": "Purchase price", "properties": "Owned properties", "empty": "No properties.", "details": "Inspect board", "tile": "Board space", "tileOption": "{number} · {tile}", "close": "Close asset view",
     "bankrupt": "Eliminated; properties returned to the bank.", "publicOnly": "Public assets only; no private cards or future random results."
   },
   "history": { "title": "Action history", "count": "Keeping the latest {limit} events; {count} currently stored.", "empty": "No actions yet.", "revision": "Action {revision}", "back": "Close history" },
+  "construction": {
+    "title": "Build one level", "rentChange": "Rent: {current} → {next}", "cost": "Construction cost", "remaining": "Cash after construction", "upgrade": "Build · {cost}",
+    "unavailable": "Wait until the current action is saved and presented.",
+    "reasons": { "not_owner": "Only the owner may build.", "not_turn": "Build before rolling on your own turn.", "incomplete_group": "Own every property in this color group first.", "max_level": "Maximum building level reached.", "unbalanced": "Build on a lower-level property in this group first.", "insufficient_cash": "Not enough cash for construction." }
+  },
+  "liquidity": {
+    "title": "Property operation", "operation": "Choose operation", "proceeds": "Cash received", "remaining": "Cash after operation", "loss": "Net asset loss", "choices": { "upgrade": "Build one level", "sell_building": "Sell one building level" },
+    "actions": { "sell_building": "Sell · {amount}" },
+    "reasons": { "not_owner": "Only the owner may manage this property.", "not_turn": "Manage property before rolling on your own turn.", "no_building": "No building level to sell.", "unbalanced_sale": "Sell a higher-level building in this group first." }
+  },
+  "debt": {
+    "title": "Sell buildings to pay", "pending": "Not enough cash. Sell buildings before continuing.", "obligation": "{actor} owes {creditor} {amount}.", "shortfall": "Cash shortfall", "automatic": "You must sell buildings first. Payment is automatic as soon as you have enough cash.", "autoPayment": "Automatic payment", "insolvent": "No buildings remain to sell and cash is still short. Your remaining cash is paid, properties return to the bank and you leave this match.", "solvent": "You still have buildings to sell. Sell first; payment is automatic once you have enough cash.", "bankrupt": "Confirm bankruptcy and leave match", "rentSource": "Fixed rent on {propertyName}.", "taxSource": "Fixed board fee.", "paid": "{actor} paid {creditor} {amount}.", "writtenOff": "Unpaid {writtenOff} was written off.", "liquidated": "{actor} went bankrupt; properties returned to the bank."
+  },
+  "trade": {
+    "title": "Trade proposal",
+    "open": "Propose trade",
+    "recipient": "Recipient",
+    "give": "Properties given",
+    "receive": "Properties received",
+    "none": "None",
+    "cashDirection": "Cash direction",
+    "noCash": "No cash transfer",
+    "cashAmount": "Cash amount",
+    "limit": "Up to {limit} properties per side, with no buildings anywhere in the affected color groups.",
+    "submit": "Submit proposal",
+    "cancel": "Cancel draft",
+    "accept": "Accept trade",
+    "reject": "Reject trade",
+    "effect": "Submitting uses your only proposal this turn. Only the recipient can then accept or reject it.",
+    "pending": "Waiting for a trade response",
+    "respond": "{recipient}, respond to {proposer}'s proposal.",
+    "cashBefore": "Current cash",
+    "cashAfter": "Cash after trade",
+    "groupsBefore": "Current complete groups",
+    "groupsAfter": "Complete groups after trade",
+    "cashTransfer": "{payer} pays {receiver} {amount}",
+    "trade_proposed": "{proposer} proposed a trade to {recipient}. {terms}",
+    "trade_accepted": "{recipient} accepted {proposer}'s trade. {terms}",
+    "trade_rejected": "{recipient} rejected {proposer}'s trade; assets unchanged. {terms}",
+    "terms": "{proposer} gives: {given}; receives: {received}. {cash}",
+    "groups": {
+      "cyan": "Cyan group",
+      "amber": "Amber group",
+      "violet": "Violet group",
+      "emerald": "Emerald group"
+    },
+    "reasons": {
+      "players_invalid": "Choose two different living players.",
+      "invalid_terms": "Choose non-duplicate land or enter a positive whole cash amount.",
+      "not_owner": "Ownership changed; this trade is no longer valid.",
+      "group_has_buildings": "Sell every building in the affected color groups first.",
+        "insufficient_cash": "The payer does not have enough cash.",
+      "amount_overflow": "The resulting amount or statistics exceed the safe range."
+    }
+  },
   "runtime": {
     "title": "Richman 3D",
     "start": "Start Game",
     "leave": "Main Menu",
     "paused": "Paused. The completed action is preserved.",
-    "presenting": "{actor} is moving…",
+    "presenting": "Showing {actor}'s action…",
     "settling": "{actor}'s action result",
     "purchaseDecision": "Buy “{propertyName}” for ¥{price}? Rent ¥{rent}.",
     "skipAnimation": "Skip animation",

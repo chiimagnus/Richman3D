@@ -1,7 +1,29 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { Vector3 } from "three";
 import { animatePositions } from "../../src/rendering/motion";
 import { MotionClock } from "../../src/rendering/MotionClock";
+
+afterEach(() => vi.unstubAllGlobals());
+
+it("scales every shared clock job once and keeps cancellation and final progress unchanged", async () => {
+  const clock = new MotionClock();
+  const write = vi.fn();
+  clock.setPlaybackRate(2);
+  const finished = clock.animate(800, write);
+  clock.update(300); expect(write).toHaveBeenLastCalledWith(0.75);
+  clock.update(100); expect(await finished).toBe(true); expect(write).toHaveBeenLastCalledWith(1);
+  clock.setPlaybackRate(1);
+  const normal = clock.animate(800, write);
+  clock.update(400); expect(write).toHaveBeenLastCalledWith(0.5);
+  clock.cancel(); expect(await normal).toBe(false); expect(clock.activeCount).toBe(0);
+});
+
+it("reduced motion reaches the real final position without bursting every skipped footstep", async () => {
+  vi.stubGlobal("window", { matchMedia: () => ({ matches: true }) });
+  const clock = new MotionClock(); const position = new Vector3(); const onSegment = vi.fn();
+  expect(await animatePositions(clock, [new Vector3(), new Vector3(2, 0, 0), new Vector3(4, 0, 0)], value => position.copy(value), { onSegment })).toBe(true);
+  expect(position.toArray()).toEqual([4, 0, 0]); expect(onSegment).not.toHaveBeenCalled(); expect(clock.activeCount).toBe(0);
+});
 
 it("uses controlled delta, finishes at the last point and removes its job", async () => {
   const clock = new MotionClock();

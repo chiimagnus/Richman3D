@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { createMatchConfig } from "../../src/domain/config";
 import { Game } from "../../src/domain/game";
 import { legalCommands } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 
 const matchId = "00000000-0000-4000-8000-000000000001";
@@ -18,8 +18,10 @@ it.each([768, 940, 108])("restores every committed decision and RNG of a real ma
     expect(restored.snapshot).toBe(restored.snapshot);
     expect(Object.isFrozen(restored.snapshot.players[0]?.statistics)).toBe(true);
     if (game.snapshot.decision.kind === "game_over") return;
-    const command = chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!;
-    expect(restored.apply(command)).toEqual(game.apply(command));
+    const command = chooseBotAction(observeBot(game.snapshot))?.command ?? legalCommands(game.snapshot, game.snapshot.decision.actorId).at(-1)!;
+    const result = game.apply(command);
+    expect(result.ok).toBe(true);
+    expect(restored.apply(command)).toEqual(result);
     game = restored;
   }
   throw new Error("Match did not finish");
@@ -56,7 +58,7 @@ it.each([
   (raw: any) => { raw.state.turnOrder.reverse(); },
   (raw: any) => { delete raw.state.turnOrder; },
   (raw: any) => { raw.rulesVersion = raw.state.config.rulesVersion = "city-v1-quick"; },
-  (raw: any) => { raw.state.properties["city-tax"] = { ownerId: "p1", level: 0, mortgagePrincipal: 0, constructionCosts: [] }; },
+  (raw: any) => { raw.state.properties["city-tax"] = { ownerId: "p1", level: 0, constructionCosts: [] }; },
   (raw: any) => { raw.state.properties["neon-avenue"].ownerId = "p4"; },
   (raw: any) => { raw.state.properties["neon-avenue"].ownerId = "p1"; },
   (raw: any) => { raw.state.decision = { kind: "awaiting_purchase", propertyId: "neon-avenue" }; },
@@ -69,6 +71,13 @@ it.each([
   (raw: any) => { raw.state.animation = {}; },
   (raw: any) => { raw.state.players[0].externalURL = "https://example.com"; },
   (raw: any) => { raw.state.config.players[0].controller = "remote"; },
+  (raw: any) => { raw.state.config.players[0].difficulty = "expert"; },
+  (raw: any) => { delete raw.state.config.players[0].difficulty; },
+  (raw: any) => { raw.rulesVersion = raw.state.config.rulesVersion = "city-v11-quick"; },
+  (raw: any) => { raw.rulesVersion = raw.state.config.rulesVersion = "city-v12-quick"; },
+  (raw: any) => { raw.state.properties["neon-avenue"].mortgagePrincipal = 0; },
+  (raw: any) => { raw.state.players[0].statistics.mortgageIncome = 0; },
+  (raw: any) => { raw.state.decision = { kind: "awaiting_auction", actorId: "p1", propertyId: "neon-avenue" }; },
   (raw: any) => { raw.state.config.players.forEach((player: any) => { player.controller = "bot"; }); },
   (raw: any) => { raw.revision = 1; },
   (raw: any) => { raw.savedAt = Infinity; },
@@ -88,7 +97,11 @@ it("rejects an owned pending purchase and tampered final rankings", () => {
   game.apply(legalCommands(game.snapshot, "p1")[0]!);
   const pending = makeSave(game.snapshot, matchId);
   expect(() => readSave({ ...pending, state: { ...pending.state, properties: { ...pending.state.properties, "neon-avenue": { ...pending.state.properties["neon-avenue"]!, ownerId: "p2" } } } })).toThrow();
-  for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) game.apply(chooseBotCommand(game.snapshot) ?? legalCommands(game.snapshot, game.snapshot.turnPlayerId).at(-1)!);
+  for (let count = 0; game.snapshot.decision.kind !== "game_over" && count < 200; count += 1) {
+    const command = chooseBotAction(observeBot(game.snapshot))?.command ?? legalCommands(game.snapshot, game.snapshot.decision.actorId).at(-1)!;
+    expect(game.apply(command).ok).toBe(true);
+  }
+  expect(game.snapshot.decision.kind).toBe("game_over");
   const terminal = JSON.parse(JSON.stringify(makeSave(game.snapshot, matchId)));
   terminal.state.decision.result.rankings[0].netAssets += 1;
   expect(() => readSave(terminal)).toThrow();

@@ -6,7 +6,7 @@ import { GameStore } from "../../src/storage/GameStore";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { legalCommands } from "../../src/domain/selectors";
-import { chooseBotCommand } from "../../src/domain/bot";
+import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { makeSave } from "../../src/storage/snapshot";
 
 vi.mock("../../src/ui/SceneHost", () => ({ SceneHost: () => null }));
@@ -82,7 +82,7 @@ it("hidden during a committed save preserves payment, cancels presentation and r
     expect(session.getSnapshot().mode).toBe("paused");
     const expected = Game.restore(session.exportRecord().state);
     for (let count = 0; count < 4; count += 1) {
-      const command = chooseBotCommand(expected.snapshot);
+      const command = (chooseBotAction(observeBot(expected.snapshot), "normal")?.command ?? null);
       if (!command) break;
       expected.apply(command);
     }

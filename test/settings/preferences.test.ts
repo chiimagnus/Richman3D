@@ -46,6 +46,11 @@ describe("game preferences", () => {
       soundEnabled: false,
       lookSensitivity: "high",
       language: "en",
+      cameraView: null,
+      presentationSpeed: "normal",
+      headBobEnabled: true,
+      effectsVolume: 1,
+      musicVolume: 0.12,
     });
   });
 
@@ -61,6 +66,11 @@ describe("game preferences", () => {
       soundEnabled: false,
       lookSensitivity: "high",
       language: "zh-CN",
+      cameraView: null,
+      presentationSpeed: "normal",
+      headBobEnabled: true,
+      effectsVolume: 1,
+      musicVolume: 0.12,
     });
   });
 
@@ -87,6 +97,11 @@ describe("game preferences", () => {
         soundEnabled: false,
         lookSensitivity: "low",
         language: "en",
+        cameraView: "overview",
+        presentationSpeed: "fast",
+        headBobEnabled: false,
+        effectsVolume: 0,
+        musicVolume: 0.3,
       },
       storage,
     );
@@ -95,6 +110,11 @@ describe("game preferences", () => {
       soundEnabled: false,
       lookSensitivity: "low",
       language: "en",
+      cameraView: "overview",
+      presentationSpeed: "fast",
+      headBobEnabled: false,
+      effectsVolume: 0,
+      musicVolume: 0.3,
     });
   });
 
@@ -118,5 +138,26 @@ describe("game preferences", () => {
     expect(lookSensitivityScale("low")).toBe(0.7);
     expect(lookSensitivityScale("standard")).toBe(1);
     expect(lookSensitivityScale("high")).toBe(1.35);
+  });
+
+  it("persists speed and comfort independently and validates external fields", () => {
+    const preferences = { ...DEFAULT_PREFERENCES, presentationSpeed: "fast" as const, headBobEnabled: false };
+    const storage = memoryStorage();
+    savePreferences(preferences, storage);
+    expect(loadPreferences(storage)).toEqual(preferences);
+    expect(loadPreferences(memoryStorage(JSON.stringify({ ...preferences, presentationSpeed: "turbo", headBobEnabled: "yes" })))).toEqual(DEFAULT_PREFERENCES);
+  });
+
+  it.each([-1, 1.01, null, "0.5"])("rejects out-of-range or nonnumeric volume %s without erasing other preferences", value => {
+    const storage = memoryStorage(JSON.stringify({ ...DEFAULT_PREFERENCES, effectsVolume: value, musicVolume: value, soundEnabled: false }));
+    expect(loadPreferences(storage)).toEqual({ ...DEFAULT_PREFERENCES, soundEnabled: false });
+  });
+
+  it.each(["first_person", "overview"] as const)("persists the explicit %s choice without overriding other valid preferences", (cameraView) => {
+    const storage = memoryStorage();
+    const preferences = { ...DEFAULT_PREFERENCES, cameraView, soundEnabled: false, language: "en" as const };
+    savePreferences(preferences, storage);
+    expect(loadPreferences(storage)).toEqual(preferences);
+    expect(loadPreferences(memoryStorage(JSON.stringify({ ...preferences, cameraView: "free_flight" })))).toEqual({ ...preferences, cameraView: null });
   });
 });
