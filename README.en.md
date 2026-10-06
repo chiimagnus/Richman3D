@@ -8,6 +8,8 @@ A 3D Richman-style browser board game with first-person and board-overview views
 
 ![Richman 3D gameplay](public/og-image.png)
 
+Currently intended for PC desktop browsers with mouse, keyboard, and on-screen buttons. Mobile phones and tablets are not supported targets.
+
 ## Local Development
 
 ```bash

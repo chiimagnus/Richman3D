@@ -49,7 +49,7 @@ export function App({ app }: { app: GameApp }) {
 
 function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
   const [panel, setPanel] = useState<"pause" | "transfer" | "history" | "trade_draft" | "hand" | { kind: "assets"; playerId: PlayerId } | null>(null);
-  const cameraView = preferences.cameraView ?? (window.matchMedia("(pointer: coarse)").matches ? "overview" : "first_person");
+  const cameraView = preferences.cameraView ?? "first_person";
   const setCameraView = (cameraView: CameraView) => app.setPreferences({ ...preferences, cameraView });
   const [inspectedTileId, setInspectedTileId] = useState<string | null>(null);
   const [matchOptionsOpen, setMatchOptionsOpen] = useState(false);

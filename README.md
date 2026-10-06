@@ -8,6 +8,8 @@
 
 ![Richman 3D gameplay](public/og-image.png)
 
+当前仅面向 PC 桌面浏览器，使用鼠标、键盘和界面按钮操作；不提供手机或平板适配。
+
 ## 本地运行
 
 ```bash

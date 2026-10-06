@@ -33,7 +33,6 @@
     "view": "视角 · V",
     "lookAround": "鼠标环视 · L",
     "recenter": "回到当前玩家",
-    "overviewGesture": "拖动棋盘可旋转视角；双指捏合或滚轮可缩放，轻点地块查看详情。",
     "match": "对局",
     "sensitivity": "鼠标灵敏度",
     "low": "低",

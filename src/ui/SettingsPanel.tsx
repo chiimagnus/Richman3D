@@ -32,7 +32,6 @@ export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraC
     }}>
       <option value="overview">{text.setup.overview}</option><option value="first_person">{text.setup.firstPerson}</option>
     </select></label>}
-    {cameraView === "overview" && onCameraChange && <p className={styles.audioStatus}>{copy.overviewGesture}</p>}
     {onLookAround && <button className={styles.look} aria-keyshortcuts="L" onClick={onLookAround} onKeyDown={(event) => {
       if (event.code === "KeyL" && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) { event.preventDefault(); onLookAround(); }
     }}>{copy.lookAround}</button>}
