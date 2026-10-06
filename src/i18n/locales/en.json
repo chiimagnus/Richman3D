@@ -33,6 +33,7 @@
     "view": "View · V",
     "lookAround": "Mouse look · L",
     "recenter": "Follow current player",
+    "overviewGesture": "Drag the board to rotate; pinch or use the wheel to zoom. Tap a space to inspect it.",
     "match": "Match",
     "sensitivity": "Mouse Sensitivity",
     "low": "Low",
