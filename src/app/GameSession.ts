@@ -7,6 +7,7 @@ import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
 import { PRESENTATION_RATES, type PresentationSpeed } from "../settings/preferences";
 import type { DailyChallenge } from "../domain/challenges";
+import { matchAchievements, type AchievementId } from "../domain/achievements";
 
 export type SaveView = { readonly kind: "disabled" | "saving" } | { readonly kind: "saved"; readonly savedAt: number }
   | { readonly kind: "unsaved"; readonly acknowledged: boolean; readonly error: SaveError["kind"] } | { readonly kind: "conflict" };
@@ -39,6 +40,7 @@ export class GameSession {
   private expected: SaveIdentity | null;
   private allowUnsaved = false;
   private presentationSpeed: PresentationSpeed = "normal";
+  private readonly earned = new Set<AchievementId>();
 
   constructor(private readonly game: Game, readonly matchId = "local",
     private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"]; readonly challenge?: DailyChallenge | undefined }) {
@@ -48,6 +50,7 @@ export class GameSession {
 
   getSnapshot = (): GameView => this.view;
   get challenge(): DailyChallenge | null { return this.persistence?.challenge ?? null; }
+  get source(): SaveRecord["source"] { return this.persistence?.source ?? "local"; }
   setPresentationSpeed(speed: PresentationSpeed): void { this.presentationSpeed = speed; }
 
   get handoverActor(): PlayerId | null {
@@ -92,7 +95,7 @@ export class GameSession {
     this.publish({ save: { kind: "saving" } });
     this.saving = Promise.resolve().then(async () => {
       try {
-        const saved = await store.save(makeSave(snapshot, this.matchId, source), this.expected, this.persistence?.challenge);
+        const saved = await store.save(makeSave(snapshot, this.matchId, source), this.expected, { challenge: this.persistence?.challenge, earned: [...this.earned] });
         this.expected = { matchId: saved.matchId, revision: saved.revision };
         if (this.view.mode !== "disposed") this.publish({ save: { kind: "saved", savedAt: saved.savedAt } });
         return true;
@@ -216,6 +219,7 @@ export class GameSession {
           return;
         }
         const port = this.port;
+        matchAchievements(before, result.snapshot, result.events).forEach((id) => this.earned.add(id));
         this.publish({ committed: result.snapshot, displayed: before, events: result.events, presentationEvent: null, settledRoll: null, presenting: true, error: null,
           botDecision: botAction ? { actorId: command.actor, revision: result.snapshot.revision, difficulty: playerConfig(before.config, command.actor).difficulty, reason: botAction.reason } : null });
         if (this.persistence) await this.persist();

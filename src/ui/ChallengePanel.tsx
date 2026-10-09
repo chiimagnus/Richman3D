@@ -17,7 +17,7 @@ export function ChallengePanel({ app, challenge, onClose, onRecover }: { app: Ga
   const manageProfile = async (reset: boolean) => {
     setWorking(true); setError(false);
     try {
-      if (reset) { await app.store.resetChallenges(); await app.refreshProfile(); setConfirmReset(false); }
+      if (reset) { await app.store.clearRecords(); await app.refreshProfile(); setConfirmReset(false); }
       else downloadRawProfile(await app.store.readRawProfile());
     } catch { setError(true); }
     finally { setWorking(false); }
@@ -37,8 +37,8 @@ export function ChallengePanel({ app, challenge, onClose, onRecover }: { app: Ga
     {state.stored.kind === "valid" && <><p>{copy.storage.replaceWarning}</p><button onClick={() => { if (state.stored.kind === "valid") downloadSave(state.stored.record); }}>{copy.storage.export}</button></>}
     {(state.stored.kind === "error" || state.profile.kind === "error") && <><p role="alert">{copy.challenges.storageError}</p><button onClick={onRecover}>{copy.storage.transfer.title}</button><button disabled={working} onClick={() => void app.refreshProfile()}>{copy.storage.retry}</button></>}
     {state.profile.kind === "error" && <>
-      <button disabled={working} onClick={() => void manageProfile(false)}>{copy.challenges.exportRaw}</button>
-      {confirmReset ? <><p>{copy.challenges.resetWarning}</p><button disabled={working} onClick={() => void manageProfile(true)}>{copy.challenges.confirmReset}</button><button disabled={working} onClick={() => setConfirmReset(false)}>{copy.setup.cancel}</button></> : <button disabled={working} onClick={() => setConfirmReset(true)}>{copy.challenges.reset}</button>}
+      <button disabled={working} onClick={() => void manageProfile(false)}>{copy.records.exportRaw}</button>
+      {confirmReset ? <><p>{copy.records.clearWarning}</p><button disabled={working} onClick={() => void manageProfile(true)}>{copy.records.confirmClear}</button><button disabled={working} onClick={() => setConfirmReset(false)}>{copy.setup.cancel}</button></> : <button disabled={working} onClick={() => setConfirmReset(true)}>{copy.records.clear}</button>}
     </>}
     {error && <p role="alert">{copy.challenges.storageError}</p>}
     <button disabled={blocked || working || confirmReset} onClick={() => { void app.startChallenge(challenge); onClose(); }}>{state.stored.kind === "valid" ? copy.challenges.replaceStart : copy.challenges.start}</button>

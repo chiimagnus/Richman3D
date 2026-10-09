@@ -51,7 +51,8 @@ it("the terminal save refreshes the actual application score projection after tr
     }
     expect(session.getSnapshot().committed.decision.kind).toBe("game_over");
     await vi.waitFor(() => expect(app.getSnapshot().profile).toMatchObject({ kind: "ready", challenges: { active: { completed: true }, results: [{ best: { rank: expect.any(Number), netAssets: expect.any(Number) } }] } }));
-    const profile = await store.readChallenges();
-    expect(app.getSnapshot().profile).toEqual({ kind: "ready", challenges: profile });
+    expect((await store.readProfile()).records.recent).toHaveLength(1);
+    expect((await store.readProfile()).records.achievements).toEqual(expect.arrayContaining(["first-match", "first-purchase"]));
+    expect(app.getSnapshot().profile).toEqual({ kind: "ready", ...await store.readProfile() });
   } finally { app.dispose(); }
 });

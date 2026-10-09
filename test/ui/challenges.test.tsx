@@ -14,7 +14,7 @@ afterEach(() => vi.unstubAllGlobals());
 it.each(["zh-CN", "en"] as const)("%s challenge UI reads committed attempts and requires an explicit saved-game replacement without writing during render", async (language) => {
   vi.stubGlobal("document", { documentElement: { lang: "" }, addEventListener() {}, removeEventListener() {} });
   const factory = new IDBFactory(); const store = new GameStore(() => factory); const challenge = dailyChallenge("2026-10-09");
-  await store.save(makeSave(new Game(challengeConfig(challenge)).snapshot, crypto.randomUUID()), null, challenge);
+  await store.save(makeSave(new Game(challengeConfig(challenge)).snapshot, crypto.randomUUID()), null, { challenge });
   const app = new GameApp(store);
   try {
     await vi.waitFor(() => expect(app.getSnapshot().stored.kind).toBe("valid")); await app.refreshProfile();

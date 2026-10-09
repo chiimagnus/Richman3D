@@ -7,3 +7,5 @@
 .stat { display: contents; }
 .secondary { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
 .secondary label { display: grid; gap: 8px; }
+.summary { white-space: pre-wrap; overflow-wrap: anywhere; }
+.share { box-sizing: border-box; width: 100%; min-height: 14em; resize: vertical; font: inherit; }

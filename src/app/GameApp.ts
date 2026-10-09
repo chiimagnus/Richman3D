@@ -3,10 +3,9 @@ import { loadPreferences, savePreferences, type GamePreferences } from "../setti
 import type { GameSession, SaveView } from "./GameSession";
 import { createMatchConfig } from "../domain/config";
 import type { MatchConfig } from "../domain/types";
-import { GameStore } from "../storage/GameStore";
+import { GameStore, type LocalProfile } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveRecord, type StoredGame } from "../storage/snapshot";
 import { challengeConfig, type DailyChallenge } from "../domain/challenges";
-import type { ChallengeProfile } from "../storage/challenges";
 
 export type StoredView = { readonly kind: "loading" | "empty" } | { readonly kind: "valid"; readonly record: SaveRecord }
   | { readonly kind: "error"; readonly error: SaveError["kind"] };
@@ -17,7 +16,7 @@ export type AppView = {
   readonly loading: boolean;
   readonly loadFailed: boolean;
   readonly stored: StoredView;
-  readonly profile: { readonly kind: "loading" } | { readonly kind: "ready"; readonly challenges: ChallengeProfile } | { readonly kind: "error"; readonly error: SaveError["kind"] };
+  readonly profile: { readonly kind: "loading" } | ({ readonly kind: "ready" } & LocalProfile) | { readonly kind: "error"; readonly error: SaveError["kind"] };
 };
 
 export class GameApp {
@@ -94,8 +93,8 @@ export class GameApp {
   async refreshProfile(): Promise<void> {
     const request = this.request;
     try {
-      const challenges = await this.store.readChallenges();
-      if (request === this.request) this.publish({ ...this.view, profile: { kind: "ready", challenges } });
+      const profile = await this.store.readProfile();
+      if (request === this.request) this.publish({ ...this.view, profile: { kind: "ready", ...profile } });
     } catch (cause) {
       if (request === this.request) this.publish({ ...this.view, profile: { kind: "error", error: cause instanceof SaveError ? cause.kind : "unavailable" } });
     }

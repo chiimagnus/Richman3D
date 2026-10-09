@@ -49,6 +49,11 @@ function better(candidate: ChallengeScore, current: ChallengeScore): boolean {
   return candidate.netAssets > current.netAssets || candidate.netAssets === current.netAssets && (candidate.cash > current.cash || candidate.cash === current.cash && candidate.rank < current.rank);
 }
 
+function retained(results: readonly ChallengeRecord[]): ChallengeRecord[] {
+  const dates = [...new Set(results.map((entry) => entry.challenge.date))].sort().reverse().slice(0, CHALLENGE_DAYS);
+  return results.filter((entry) => dates.includes(entry.challenge.date)).sort((first, second) => second.challenge.id.localeCompare(first.challenge.id));
+}
+
 export function advanceChallenges(profile: ChallengeProfile, save: SaveRecord, requested?: DailyChallenge): ChallengeProfile {
   let active = profile.active;
   let results = [...profile.results];
@@ -60,15 +65,16 @@ export function advanceChallenges(profile: ChallengeProfile, save: SaveRecord, r
       const existing = results.find((entry) => entry.challenge.id === challenge.id);
       if (existing) results = results.map((entry) => entry === existing ? { ...entry, attempts: integer(entry.attempts + 1, 1) } : entry);
       else results.push({ challenge, attempts: 1, first: null, best: null });
-      const dates = [...new Set(results.map((entry) => entry.challenge.date))].sort().reverse().slice(0, CHALLENGE_DAYS);
-      results = results.filter((entry) => dates.includes(entry.challenge.date)).sort((first, second) => second.challenge.id.localeCompare(first.challenge.id));
+      results = retained(results);
     }
   } else if (requested && !sameData(requested, active.challenge)) throw new SaveError("conflict");
   if (active && !active.completed && save.source === "local" && save.state.decision.kind === "game_over") {
     if (active.challenge) {
       const ranking = save.state.decision.result.rankings.find((entry) => entry.playerId === "p1")!;
       const candidate: ChallengeScore = { rank: ranking.rank, netAssets: ranking.netAssets, cash: ranking.cash };
+      if (!results.some((entry) => entry.challenge.id === active!.challenge!.id)) results.push({ challenge: active.challenge, attempts: 1, first: null, best: null });
       results = results.map((entry) => entry.challenge.id === active!.challenge!.id ? { ...entry, first: entry.first ?? candidate, best: entry.best === null || better(candidate, entry.best) ? candidate : entry.best } : entry);
+      results = retained(results);
     }
     active = { ...active, completed: true };
   }

@@ -119,6 +119,51 @@
     "construction-discount": "Pay {percent}% for your next legal upgrade this turn, rounded up. Sale refunds and asset value use the actual cost. Expires at turn end.",
     "swap-positions": "Swap positions with another surviving player. No landing effect or Start reward. Then roll normally."
   },
+  "records": {
+    "title": "Local records & achievements",
+    "recent": "Last 20 matches",
+    "empty": "No saved match results yet.",
+    "achievements": "Achievements · display only, no rewards",
+    "unlocked": "Unlocked",
+    "locked": "Locked",
+    "challengeHistory": "Challenges · last 30 UTC dates",
+    "clear": "Clear local records",
+    "clearWarning": "Clear match records, achievements and challenge scores? Your current save, backup and preferences remain. This completed match will not be counted again. An unfinished match can still record new results later.",
+    "confirmClear": "Confirm clearing records",
+    "exportRaw": "Export original local records",
+    "error": "Local records could not be read or saved. Original data is preserved; export it, retry or explicitly clear it.",
+    "loading": "Reading local records…",
+    "free": "Free match",
+    "challenge": "Daily challenge",
+    "summary": "{date} · {map} · {mode} · {rounds}/{limit} rounds",
+    "seat": "Seat {seat}",
+    "ranking": "{seat} · Rank {rank} · Cash {cash} · Net assets {assets}",
+    "conditions": "Rules {rules} · Map v{mapVersion} · Seed {seed}",
+    "controller": "{seat}: {controller}",
+    "human": "Human",
+    "bot": "Bot ({difficulty})",
+    "share": "Share result summary",
+    "shareHeader": "{map} · {mode} · {rounds}/{limit} rounds",
+    "shareText": "Selectable result summary",
+    "copy": "Copy summary",
+    "copied": "Summary copied.",
+    "copyUnavailable": "Clipboard unavailable. Select the text below and copy it manually.",
+    "replayWarning": "The same rules, map version, seat configuration and seed reproduce the initial match. This summary is not a command replay; subsequent choices still affect the result.",
+    "saved": "This match is saved in your local records.",
+    "notSaved": "This match is not yet in your local records; records are confirmed after saving completes.",
+    "notRetained": "This match has no retained record. Viewing a completed save does not add it again.",
+    "imported": "Imported matches do not count toward official local records or achievements.",
+    "achievementNames": {
+      "first-match": "Complete your first match",
+      "first-purchase": "Buy your first property",
+      "complete-group": "Complete a property group",
+      "level-three": "Build a level-three property",
+      "debt-rescued": "Recover from debt",
+      "building-sale": "Sell a building",
+      "first-trade": "Complete a bilateral trade",
+      "both-maps": "Complete both maps"
+    }
+  },
   "challenges": {
     "title": "Daily challenge", "date": "Challenge date (UTC): {date}",
     "configuration": "{map} · {rounds} rounds · {seats} seats · you and {bots} {difficulty} computers",
@@ -126,8 +171,7 @@
     "identity": "Challenge: {id} · map version {mapVersion} · seed {seed}",
     "start": "Start challenge", "replaceStart": "Replace save and start challenge", "attempts": "Attempts started: {attempts}",
     "first": "First result: rank {rank}, net assets {assets}", "best": "Best result: rank {rank}, net assets {assets}",
-    "storageError": "Saved data could not be read. It has not been replaced. Export or recover it before starting a challenge.",
-    "exportRaw": "Export original local challenge data", "reset": "Reset challenge records", "resetWarning": "This deletes local challenge records, not your match or settings. Export any original data you need first.", "confirmReset": "Confirm deletion of challenge records"
+    "storageError": "Saved data could not be read. It has not been replaced. Export or recover it before starting a challenge."
   },
   "maps": {
     "preview": "Map layout preview", "heading": "{name} · {spaces} spaces", "prices": "Layout order, prices and fees", "choose": "Map",
@@ -154,7 +198,7 @@
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
     "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "tradeCashReceived": "Trade cash received", "tradeCashPaid": "Trade cash paid", "tradeBookValueReceived": "Book value of land received in trades", "tradeBookValueGiven": "Book value of land given in trades", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
-    "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
+    "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome."
   },
   "storage": {
     "transfer": {

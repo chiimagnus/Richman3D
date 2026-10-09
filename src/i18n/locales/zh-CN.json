@@ -119,6 +119,51 @@
     "construction-discount": "本回合下一次合法升级仅付{percent}%，向上取整；出售退款与资产按实际造价计算，回合结束失效。",
     "swap-positions": "与另一名存活玩家交换位置，不结算落点、不领取起点奖励，随后正常掷骰。"
   },
+  "records": {
+    "title": "本地战绩与成就",
+    "recent": "最近 20 局",
+    "empty": "还没有已保存的终局记录。",
+    "achievements": "成就 · 仅展示，无奖励",
+    "unlocked": "已达成",
+    "locked": "未达成",
+    "challengeHistory": "最近 30 个 UTC 日期的挑战",
+    "clear": "清除本地记录",
+    "clearWarning": "清除战绩、成就和挑战成绩？当前存档、备份及设置不会删除；已结算的本局不会重新计入。未结束的本局以后仍可记录新的结果。",
+    "confirmClear": "确认清除记录",
+    "exportRaw": "导出原始本地记录",
+    "error": "本地记录无法读取或保存。原数据仍保留，可导出后重试或明确清除。",
+    "loading": "正在读取本地记录…",
+    "free": "自由对局",
+    "challenge": "每日挑战",
+    "summary": "{date} · {map} · {mode} · {rounds}/{limit} 轮",
+    "seat": "席位 {seat}",
+    "ranking": "{seat} · 第 {rank} 名 · 现金 {cash} · 净资产 {assets}",
+    "conditions": "规则 {rules} · 地图 v{mapVersion} · 种子 {seed}",
+    "controller": "{seat}：{controller}",
+    "human": "真人",
+    "bot": "电脑（{difficulty}）",
+    "share": "分享赛后摘要",
+    "shareHeader": "{map} · {mode} · {rounds}/{limit} 轮",
+    "shareText": "可选择并复制的摘要",
+    "copy": "复制摘要",
+    "copied": "已复制摘要。",
+    "copyUnavailable": "剪贴板不可用，请选择下面的文本手动复制。",
+    "replayWarning": "相同规则、地图版本、席位配置和种子才能重玩相同初始局面；摘要不包含命令回放，后续选择仍会改变结果。",
+    "saved": "本局已记入本地战绩。",
+    "notSaved": "本局尚未记入本地战绩；以保存完成后的记录为准。",
+    "notRetained": "本局未保留战绩；查看已结算存档不会重新记入。",
+    "imported": "导入对局不计入正式战绩或成就。",
+    "achievementNames": {
+      "first-match": "完成首局",
+      "first-purchase": "首次买地",
+      "complete-group": "首次集齐整组",
+      "level-three": "首次三级建筑",
+      "debt-rescued": "一次债务救回",
+      "building-sale": "首次出售建筑",
+      "first-trade": "完成双方交易",
+      "both-maps": "完成两张地图"
+    }
+  },
   "challenges": {
     "title": "每日挑战", "date": "挑战日期（UTC）：{date}",
     "configuration": "{map} · {rounds}轮 · {seats}席 · 你与{bots}名{difficulty}电脑",
@@ -126,8 +171,7 @@
     "identity": "挑战：{id} · 地图版本{mapVersion} · 种子{seed}",
     "start": "开始挑战", "replaceStart": "替换存档并开始挑战", "attempts": "已开始次数：{attempts}",
     "first": "首次结果：第{rank}名，净资产{assets}", "best": "最佳结果：第{rank}名，净资产{assets}",
-    "storageError": "无法读取已保存数据，原数据未被替换。开始挑战前请先导出或恢复。",
-    "exportRaw": "导出原始本地挑战数据", "reset": "重置挑战记录", "resetWarning": "将删除本地挑战记录，不删除对局或设置。请先导出需要保留的原始数据。", "confirmReset": "确认删除挑战记录"
+    "storageError": "无法读取已保存数据，原数据未被替换。开始挑战前请先导出或恢复。"
   },
   "maps": {
     "preview": "地图布局预览", "heading": "{name} · {spaces} 格", "prices": "查看路径顺序、地价与费用", "choose": "地图",
@@ -154,7 +198,7 @@
     "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
     "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
     "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "purchaseBookValue": "购入土地账面价值", "tradeCashReceived": "交易现金收入", "tradeCashPaid": "交易现金支出", "tradeBookValueReceived": "交易转入土地账面价值", "tradeBookValueGiven": "交易转出土地账面价值", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "debtWrittenOff": "无法偿还的债务", "rentLost": "无法收回的租金" },
-    "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
+    "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。"
   },
   "storage": {
     "transfer": {

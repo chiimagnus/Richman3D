@@ -2,6 +2,11 @@ import { readSave, SaveError, type SaveIdentity, type SaveRecord, type StoredGam
 import { sameData } from "../domain/restore";
 import type { DailyChallenge } from "../domain/challenges";
 import { advanceChallenges, readChallengeProfile, type ChallengeProfile } from "./challenges";
+import { advanceRecords, EMPTY_RECORDS, readRecordProfile, type RecordProfile } from "./records";
+import type { AchievementId } from "../domain/achievements";
+
+export type SaveActivity = { readonly challenge?: DailyChallenge | undefined; readonly earned?: readonly AchievementId[] };
+export type LocalProfile = { readonly challenges: ChallengeProfile; readonly records: RecordProfile };
 
 export class GameStore {
   constructor(private readonly factory: () => IDBFactory = () => window.indexedDB, private readonly name = "richman3d") {}
@@ -30,7 +35,23 @@ export class GameStore {
     return this.readValue("games", key);
   }
 
-  async readRawProfile(): Promise<unknown> { return this.readValue("profile", "challenges"); }
+  async readRawProfile(): Promise<Record<string, unknown>> {
+    const database = await this.open();
+    try {
+      return await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const transaction = database.transaction("profile", "readonly"); const profile = transaction.objectStore("profile");
+        const challenges = profile.get("challenges"); const records = profile.get("records");
+        transaction.oncomplete = () => resolve({ ...(challenges.result === undefined ? {} : { challenges: challenges.result }), ...(records.result === undefined ? {} : { records: records.result }) });
+        transaction.onabort = () => reject(new SaveError("unavailable", { cause: transaction.error }));
+      });
+    } catch (cause) { throw cause instanceof SaveError ? cause : new SaveError("unavailable", { cause }); }
+    finally { database.close(); }
+  }
+
+  async readProfile(): Promise<LocalProfile> {
+    const raw = await this.readRawProfile();
+    return { challenges: readChallengeProfile(raw.challenges), records: readRecordProfile(raw.records) };
+  }
 
   private async readValue(storeName: "games" | "profile", key: string): Promise<unknown> {
     const database = await this.open();
@@ -51,31 +72,44 @@ export class GameStore {
   }
 
   async readChallenges(): Promise<ChallengeProfile> {
-    return readChallengeProfile(await this.readRawProfile());
+    return readChallengeProfile(await this.readValue("profile", "challenges"));
   }
 
-  async resetChallenges(): Promise<void> {
+  async clearRecords(): Promise<void> {
     const database = await this.open();
     try {
       await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction("profile", "readwrite");
-        transaction.objectStore("profile").delete("challenges");
+        const profile = transaction.objectStore("profile");
+        const progress = profile.get("challenges"); const records = profile.get("records");
+        let failure: unknown;
+        const clear = () => {
+          if (progress.readyState !== "done" || records.readyState !== "done") return;
+          try {
+            let active: ChallengeProfile["active"] = null; let milestones: RecordProfile["milestones"] = null;
+            try { active = readChallengeProfile(progress.result).active; } catch { }
+            try { milestones = readRecordProfile(records.result).milestones; } catch { }
+            profile.put({ active, results: [] }, "challenges");
+            profile.put({ ...EMPTY_RECORDS, milestones }, "records");
+          } catch (cause) { failure = cause; transaction.abort(); }
+        };
+        progress.onsuccess = records.onsuccess = clear;
         transaction.oncomplete = () => resolve();
-        transaction.onabort = () => reject(new SaveError("unavailable", { cause: transaction.error }));
+        transaction.onabort = () => reject(new SaveError("unavailable", { cause: failure ?? transaction.error }));
       });
     } finally { database.close(); }
   }
 
-  async save(value: SaveRecord, expected: SaveIdentity | null, challenge?: DailyChallenge): Promise<SaveRecord> {
-    return this.write(value, { kind: "save", identity: expected }, challenge);
+  async save(value: SaveRecord, expected: SaveIdentity | null, activity: SaveActivity = {}): Promise<SaveRecord> {
+    return this.write(value, { kind: "save", identity: expected }, activity);
   }
 
   async replace(value: SaveRecord, expectedRaw: unknown): Promise<SaveRecord> {
     return this.write(value, { kind: "replace", raw: expectedRaw });
   }
 
-  private async write(value: SaveRecord, expected: { kind: "save"; identity: SaveIdentity | null } | { kind: "replace"; raw: unknown }, challenge?: DailyChallenge): Promise<SaveRecord> {
-    const next = readSave(value).record;
+  private async write(value: SaveRecord, expected: { kind: "save"; identity: SaveIdentity | null } | { kind: "replace"; raw: unknown }, activity: SaveActivity = {}): Promise<SaveRecord> {
+    const { record: next, snapshot } = readSave(value);
     const database = await this.open();
     try {
       return await new Promise<SaveRecord>((resolve, reject) => {
@@ -88,8 +122,9 @@ export class GameStore {
         const profile = transaction.objectStore("profile");
         const current = store.get("current");
         const progress = profile.get("challenges");
+        const records = profile.get("records");
         const commit = () => {
-          if (current.readyState !== "done" || progress.readyState !== "done") return;
+          if (current.readyState !== "done" || progress.readyState !== "done" || records.readyState !== "done") return;
           try {
             if (expected.kind === "replace" && !sameData(current.result, expected.raw)) throw new SaveError("conflict");
             let previous: SaveRecord | null = null;
@@ -108,14 +143,18 @@ export class GameStore {
               return;
             }
             if (previous) store.put(previous, "backup");
-            profile.put(advanceChallenges(readChallengeProfile(progress.result), next, challenge), "challenges");
+            const previousProgress = readChallengeProfile(progress.result);
+            const nextProgress = advanceChallenges(previousProgress, next, activity.challenge);
+            const nextRecords = advanceRecords(readRecordProfile(records.result), previousProgress, nextProgress, next, snapshot, activity.earned ?? []);
+            profile.put(nextProgress, "challenges");
+            profile.put(nextRecords, "records");
             store.put(next, "current");
           } catch (cause) {
             failure = cause instanceof SaveError ? cause : new SaveError("unavailable", { cause });
             transaction.abort();
           }
         };
-        current.onsuccess = progress.onsuccess = commit;
+        current.onsuccess = progress.onsuccess = records.onsuccess = commit;
       });
     } catch (cause) { throw cause instanceof SaveError ? cause : new SaveError("unavailable", { cause }); }
     finally { database.close(); }

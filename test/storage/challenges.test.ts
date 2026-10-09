@@ -40,16 +40,16 @@ it("challenge start, finish, same-day replay and terminal retries are committed 
   let previous = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const game = new Game(challengeConfig(challenge)); const matchId = crypto.randomUUID();
-    const initial = await store.save(makeSave(game.snapshot, matchId), previous, challenge);
+    const initial = await store.save(makeSave(game.snapshot, matchId), previous, { challenge });
     complete(game);
     const final = makeSave(game.snapshot, matchId);
-    await store.save(final, initial, challenge);
+    await store.save(final, initial, { challenge });
     const profile = await store.readChallenges();
     expect(profile.active).toMatchObject({ matchId, challenge, completed: true });
     expect(profile.results).toHaveLength(1);
     expect(profile.results[0]).toMatchObject({ attempts: attempt, first: profile.results[0]!.best });
     expect(profile.results[0]!.best).not.toBeNull();
-    await store.save(final, final, challenge);
+    await store.save(final, final, { challenge });
     expect(await store.readChallenges()).toEqual(profile);
     expect((await store.read())!.record.state).toEqual(final.state);
     previous = final;
@@ -59,7 +59,7 @@ it("challenge start, finish, same-day replay and terminal retries are committed 
 it("aborting after score and backup writes rolls back the whole save and retry does not repeat a rule command", async () => {
   const factory = new IDBFactory(); const store = new GameStore(() => factory);
   const challenge = dailyChallenge("2026-10-08"); const game = new Game(challengeConfig(challenge)); const matchId = crypto.randomUUID();
-  const initial = await store.save(makeSave(game.snapshot, matchId), null, challenge);
+  const initial = await store.save(makeSave(game.snapshot, matchId), null, { challenge });
   complete(game); const final = makeSave(game.snapshot, matchId);
   const before = await store.readChallenges();
   const original = IDBObjectStore.prototype.put;
@@ -68,10 +68,10 @@ it("aborting after score and backup writes rolls back the whole save and retry d
     if (key === "current") request.addEventListener("success", () => this.transaction.abort());
     return request;
   });
-  try { await expect(store.save(final, initial, challenge)).rejects.toMatchObject({ kind: "unavailable" }); } finally { spy.mockRestore(); }
+  try { await expect(store.save(final, initial, { challenge })).rejects.toMatchObject({ kind: "unavailable" }); } finally { spy.mockRestore(); }
   expect((await store.read())!.record).toEqual(initial); expect(await store.read("backup")).toBeNull(); expect(await store.readChallenges()).toEqual(before);
   const state = game.snapshot;
-  await store.save(final, initial, challenge);
+  await store.save(final, initial, { challenge });
   expect(game.snapshot).toBe(state); expect((await store.readChallenges()).results[0]!.first).not.toBeNull();
 });
 
@@ -90,7 +90,7 @@ it("retains at most 30 UTC days and preserves corrupt profile data instead of ov
   for (let day = 1; day <= 31; day += 1) {
     const challenge = dailyChallenge(`2026-10-${String(day).padStart(2, "0")}`);
     const initial = makeSave(new Game(challengeConfig(challenge)).snapshot, crypto.randomUUID());
-    await store.save(initial, previous, challenge); previous = initial;
+    await store.save(initial, previous, { challenge }); previous = initial;
   }
   const profile = await store.readChallenges(); expect(profile.results).toHaveLength(30); expect(profile.results.some((entry) => entry.challenge.date === "2026-10-01")).toBe(false);
   const request = factory.open("richman3d"); const database = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
@@ -99,8 +99,8 @@ it("retains at most 30 UTC days and preserves corrupt profile data instead of ov
   await expect(store.readChallenges()).rejects.toMatchObject({ kind: "invalid" });
   const next = makeSave(new Game(createMatchConfig()).snapshot, crypto.randomUUID());
   await expect(store.save(next, previous)).rejects.toMatchObject({ kind: "invalid" }); expect((await store.read())!.record).toEqual(previous);
-  expect(await store.readRawProfile()).toEqual({ privateData: "keep" });
-  await store.resetChallenges();
+  expect((await store.readRawProfile()).challenges).toEqual({ privateData: "keep" });
+  await store.clearRecords();
   expect(await store.readChallenges()).toEqual({ active: null, results: [] });
   expect((await store.read())!.record).toEqual(previous);
   expect(() => readChallengeProfile({ ...profile, results: [...profile.results, profile.results[0]] })).toThrow();
