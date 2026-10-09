@@ -6,7 +6,7 @@ import { messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import styles from "./SettingsPanel.module.css";
 
-export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraChange, onLookAround, children, initialFocusId }: { app: GameApp; preferences: GamePreferences; onClose: () => void; cameraView?: CameraView; onCameraChange?: (view: CameraView) => void; onLookAround?: () => void; children?: ReactNode; initialFocusId?: string | undefined }) {
+export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraChange, onLookAround, onRecenter, children, initialFocusId }: { app: GameApp; preferences: GamePreferences; onClose: () => void; cameraView?: CameraView; onCameraChange?: (view: CameraView) => void; onLookAround?: () => void; onRecenter?: () => void; children?: ReactNode; initialFocusId?: string | undefined }) {
   const text = messages(preferences.language);
   const copy = text.settings;
   const audioStatus = useSyncExternalStore(app.audio.subscribe, app.audio.getSnapshot, app.audio.getSnapshot);
@@ -32,6 +32,7 @@ export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraC
     }}>
       <option value="overview">{text.setup.overview}</option><option value="first_person">{text.setup.firstPerson}</option>
     </select></label>}
+    {cameraView === "overview" && onRecenter && <button className={styles.look} onClick={onRecenter}>{copy.recenter}</button>}
     {onLookAround && <button className={styles.look} aria-keyshortcuts="L" onClick={onLookAround} onKeyDown={(event) => {
       if (event.code === "KeyL" && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) { event.preventDefault(); onLookAround(); }
     }}>{copy.lookAround}</button>}

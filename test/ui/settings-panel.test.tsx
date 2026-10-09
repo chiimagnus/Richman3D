@@ -9,6 +9,13 @@ import { messages } from "../../src/i18n";
 import { MatchSetup } from "../../src/ui/MatchSetup";
 import { BOT_DIFFICULTIES } from "../../src/domain/types";
 import { MenuArtwork } from "../../src/ui/MenuArtwork";
+import { App } from "../../src/ui/App";
+import { createMatchConfig } from "../../src/domain/config";
+
+vi.mock("react", async (importOriginal) => ({
+  ...await importOriginal<typeof import("react")>(),
+  useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
+}));
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -53,7 +60,28 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
     expect(cameraSettings).toContain(copy.settings.lookAround);
     expect(cameraSettings.match(/<button\b/g)).toHaveLength(3);
     expect(lookAround).not.toHaveBeenCalled();
+    const recenter = vi.fn();
+    const overviewSettings = renderToStaticMarkup(<SettingsPanel app={app} preferences={state.preferences} onClose={() => {}} cameraView="overview" onCameraChange={changeView} onRecenter={recenter} />);
+    expect(overviewSettings).toContain(copy.settings.recenter);
+    expect(cameraSettings).not.toContain(copy.settings.recenter);
+    expect(recenter).not.toHaveBeenCalled();
     expect(app.getSnapshot()).toBe(state);
+    const unbind = app.subscribe(() => {
+      const session = app.getSnapshot().session;
+      if (session && !session.getSnapshot().attached) session.bind({ sync() {}, stop() {}, async present() {} });
+    });
+    await app.start(createMatchConfig(940));
+    unbind();
+    expect(app.getSnapshot().session).not.toBeNull();
+    const before = app.getSnapshot().session!.getSnapshot().committed;
+    const game = renderToStaticMarkup(<App app={app} />);
+    expect(game).toContain('aria-keyshortcuts="Escape"');
+    expect(game).not.toContain(copy.settings.recenter);
+    expect(game).not.toContain(copy.settings.title);
+    expect(game).not.toContain(copy.setup.firstPerson);
+    expect(game).not.toContain(copy.setup.overview);
+    expect(game).not.toContain('aria-keyshortcuts="V"');
+    expect(app.getSnapshot().session!.getSnapshot().committed).toBe(before);
   } finally { app.dispose(); }
 });
 
