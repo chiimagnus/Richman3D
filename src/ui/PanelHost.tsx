@@ -1,13 +1,14 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import styles from "./PanelHost.module.css";
 
-export function PanelHost({ title, onClose, action, children }: { title: string; onClose?: (() => void) | undefined; action?: ReactNode; children: ReactNode }) {
+export function PanelHost({ title, onClose, action, children, initialFocusId }: { title: string; onClose?: (() => void) | undefined; action?: ReactNode; children: ReactNode; initialFocusId?: string | undefined }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const element = dialog.current!;
     if (document.pointerLockElement) document.exitPointerLock();
     element.showModal();
+    if (initialFocusId) element.querySelector<HTMLElement>(`#${initialFocusId}`)?.focus({ preventScroll: true });
     return () => {
       element.close();
       if (previous?.isConnected) previous.focus({ preventScroll: true });

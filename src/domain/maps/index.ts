@@ -1,7 +1,18 @@
 import { CITY } from "./city";
-import type { MapDefinition } from "../board";
+import { HARBOR } from "./harbor";
+import { validateMap, type MapDefinition } from "../board";
+
+export function validateMaps(maps: readonly MapDefinition[]): void {
+  const identities = maps.map((map) => `${map.id}:${map.version}`);
+  if (new Set(identities).size !== maps.length) throw new Error("地图版本重复");
+  maps.forEach(validateMap);
+}
+
+export const MAPS: readonly MapDefinition[] = [CITY, HARBOR];
+validateMaps(MAPS);
 
 export function mapFor(id: string, version: number): MapDefinition {
-  if (id !== CITY.id || version !== CITY.version) throw new Error("地图版本未知");
-  return CITY;
+  const map = MAPS.find((candidate) => candidate.id === id && candidate.version === version);
+  if (!map) throw new Error("地图版本未知");
+  return map;
 }

@@ -17,6 +17,7 @@ const GROUP_COLORS = {
   amber: 0xd99a2b,
   violet: 0x8d64d8,
   emerald: 0x30a874,
+  rose: 0xda6789,
 } as const;
 
 export class BoardView {
@@ -218,6 +219,13 @@ export class BoardView {
       tileGroup.add(arrow);
 
       if (tile.type === "property") {
+        if (tile.group === "rose") {
+          const diamond = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.025, 0.3), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+          diamond.name = `rose-diamond-${tile.id}`;
+          diamond.rotation.y = Math.PI / 4;
+          diamond.position.set(-1.55, 0.23, 1.55);
+          tileGroup.add(diamond);
+        }
         const geometry = new THREE.BoxGeometry();
         const group = new THREE.Group();
         group.name = `complete-group-${tile.id}`;
@@ -264,6 +272,7 @@ export class BoardView {
   }
 
   private buildCenter(): void {
+    if (this.map.id === "harbor") { this.buildHarbor(); return; }
     const centerSize = TILE_SPACING * 4.15;
     const bounds = boardBounds(this.map);
     const size = bounds.getSize(new THREE.Vector3());
@@ -327,6 +336,42 @@ export class BoardView {
     monument.scale.setScalar(0.72);
     monument.castShadow = true;
     city.add(monument);
+  }
+
+  private buildHarbor(): void {
+    const harbor = new THREE.Group();
+    harbor.name = "harbor-decoration";
+    const bounds = boardBounds(this.map);
+    const size = bounds.getSize(new THREE.Vector3());
+    harbor.position.copy(bounds.getCenter(new THREE.Vector3()));
+    this.object.add(harbor);
+    const geometry = new THREE.BoxGeometry();
+    const water = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x153e59, roughness: 0.25, metalness: 0.35 }));
+    water.scale.set(size.x - TILE_SIZE * 2, 0.12, size.z - TILE_SIZE * 2);
+    water.position.y = -0.08;
+    water.receiveShadow = true;
+    harbor.add(water);
+    const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7e6d, roughness: 0.8 });
+    for (const position of [-6, 0, 6]) {
+      const dock = new THREE.Mesh(geometry, dockMaterial);
+      dock.scale.set(1.5, 0.18, 6);
+      dock.position.set(position, 0.08, -6);
+      dock.receiveShadow = true;
+      harbor.add(dock);
+    }
+    const hullMaterial = new THREE.MeshStandardMaterial({ color: 0xcedde4, roughness: 0.55 });
+    for (const position of [-6, 0, 6]) {
+      const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.4, 6), hullMaterial);
+      hull.scale.set(1, 1, 2.5);
+      hull.position.set(position + 1.4, 0.15, -4);
+      hull.castShadow = true;
+      harbor.add(hull);
+    }
+    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 1.2, 8), hullMaterial);
+    beacon.position.set(0, 0.6, 4);
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshStandardMaterial({ color: 0xffd78c, emissive: 0xffbb55, emissiveIntensity: 0.7 }));
+    light.position.set(0, 1.4, 4);
+    harbor.add(beacon, light);
   }
 
   private createOwnerMarker(ownerId: PlayerId): THREE.Mesh {

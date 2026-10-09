@@ -6,11 +6,11 @@ import { messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import styles from "./SettingsPanel.module.css";
 
-export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraChange, onLookAround, children }: { app: GameApp; preferences: GamePreferences; onClose: () => void; cameraView?: CameraView; onCameraChange?: (view: CameraView) => void; onLookAround?: () => void; children?: ReactNode }) {
+export function SettingsPanel({ app, preferences, onClose, cameraView, onCameraChange, onLookAround, children, initialFocusId }: { app: GameApp; preferences: GamePreferences; onClose: () => void; cameraView?: CameraView; onCameraChange?: (view: CameraView) => void; onLookAround?: () => void; children?: ReactNode; initialFocusId?: string | undefined }) {
   const text = messages(preferences.language);
   const copy = text.settings;
   const audioStatus = useSyncExternalStore(app.audio.subscribe, app.audio.getSnapshot, app.audio.getSnapshot);
-  return <PanelHost title={copy.title} onClose={onClose} action={<button className={styles.done} aria-keyshortcuts="Escape" onClick={onClose}>{copy.returnToGame}<kbd aria-hidden="true">Esc</kbd></button>}>
+  return <PanelHost title={copy.title} onClose={onClose} initialFocusId={initialFocusId} action={<button className={styles.done} aria-keyshortcuts="Escape" onClick={onClose}>{copy.returnToGame}<kbd aria-hidden="true">Esc</kbd></button>}>
     <label className={styles.row}>{copy.sound}<kbd aria-hidden="true">M</kbd><input type="checkbox" aria-keyshortcuts="M" checked={preferences.soundEnabled} onChange={(event) => app.setPreferences({ ...preferences, soundEnabled: event.currentTarget.checked })} onKeyDown={(event) => {
       if (event.code === "KeyM" && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) { event.preventDefault(); app.setPreferences({ ...preferences, soundEnabled: !preferences.soundEnabled }); }
     }} /></label>

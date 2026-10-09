@@ -94,7 +94,11 @@
       "chance-4": "机会",
       "grand-boulevard": "中央大道",
       "financial-center": "金融中心",
-      "chance-5": "机会"
+      "chance-5": "机会",
+      "pier-walk": "码头步道", "old-wharf": "老码头", "harbor-tax": "港湾税", "ferry-terminal": "渡轮站", "fish-market": "鱼市",
+      "marine-park": "海洋公园", "cargo-lane": "货运路", "lighthouse-square": "灯塔广场", "port-service-fee": "港口服务费", "coastal-street": "滨海街",
+      "ocean-museum": "海洋博物馆", "bay-garden": "海湾花园", "shipyard": "造船厂", "island-terminal": "海岛总站", "sea-wall-maintenance": "海堤维护费",
+      "waterfront-tower": "滨水大厦", "sunset-marina": "落日游艇港", "harbor-center": "港湾中心"
     }
   },
   "items": {
@@ -115,13 +119,74 @@
     "construction-discount": "本回合下一次合法升级仅付{percent}%，向上取整；出售退款与资产按实际造价计算，回合结束失效。",
     "swap-positions": "与另一名存活玩家交换位置，不结算落点、不领取起点奖励，随后正常掷骰。"
   },
+  "records": {
+    "title": "本地战绩与成就",
+    "recent": "最近 {limit} 局",
+    "empty": "还没有已保存的终局记录。",
+    "achievements": "成就 · 仅展示，无奖励",
+    "unlocked": "已达成",
+    "locked": "未达成",
+    "challengeHistory": "最近 {days} 个 UTC 日期的挑战",
+    "clear": "清除本地记录",
+    "clearWarning": "清除战绩、成就和挑战成绩？当前存档、备份及设置不会删除；已结算的本局不会重新计入。未结束的本局以后仍可记录新的结果。",
+    "confirmClear": "确认清除记录",
+    "exportRaw": "导出原始本地记录",
+    "error": "本地记录无法读取或保存。原数据仍保留，可导出后重试或明确清除。",
+    "loading": "正在读取本地记录…",
+    "free": "自由对局",
+    "challenge": "每日挑战",
+    "summary": "{date} · {map} · {mode} · {rounds}/{limit} 轮",
+    "seat": "席位 {seat}",
+    "ranking": "{seat} · 第 {rank} 名 · 现金 {cash} · 净资产 {assets}",
+    "conditions": "规则 {rules} · 地图 v{mapVersion} · 种子 {seed}",
+    "controller": "{seat}：{controller}",
+    "human": "真人",
+    "bot": "电脑（{difficulty}）",
+    "share": "分享赛后摘要",
+    "shareHeader": "{map} · {mode} · {rounds}/{limit} 轮",
+    "shareText": "可选择并复制的摘要",
+    "copy": "复制摘要",
+    "copied": "已复制摘要。",
+    "copyUnavailable": "剪贴板不可用，请选择下面的文本手动复制。",
+    "replayWarning": "相同规则、地图版本、席位配置和种子才能重玩相同初始局面；摘要不包含命令回放，后续选择仍会改变结果。",
+    "saved": "本局已记入本地战绩。",
+    "notSaved": "本局尚未记入本地战绩；以保存完成后的记录为准。",
+    "notRetained": "本局未保留战绩；查看已结算存档不会重新记入。",
+    "imported": "导入对局不计入正式战绩或成就。",
+    "achievementNames": {
+      "first-match": "完成首局",
+      "first-purchase": "首次买地",
+      "complete-group": "首次集齐整组",
+      "level-three": "首次三级建筑",
+      "debt-rescued": "一次债务救回",
+      "building-sale": "首次出售建筑",
+      "first-trade": "完成双方交易",
+      "both-maps": "完成两张地图"
+    }
+  },
+  "challenges": {
+    "title": "每日挑战", "date": "挑战日期（UTC）：{date}",
+    "configuration": "{map} · {rounds}轮 · {seats}席 · 你与{bots}名{difficulty}电脑",
+    "localOnly": "仅供本机自我挑战，不是可信排行榜。设备时间和本地数据可以被修改。最佳结果依次比较净资产、现金和排名。",
+    "identity": "挑战：{id} · 地图版本{mapVersion} · 种子{seed}",
+    "start": "开始挑战", "replaceStart": "替换存档并开始挑战", "attempts": "已开始次数：{attempts}",
+    "first": "首次结果：第{rank}名，净资产{assets}", "best": "最佳结果：第{rank}名，净资产{assets}",
+    "storageError": "无法读取已保存数据，原数据未被替换。开始挑战前请先导出或恢复。"
+  },
+  "maps": {
+    "preview": "地图布局预览", "heading": "{name} · {spaces} 格", "prices": "查看路径顺序、地价与费用", "choose": "地图",
+    "definitions": {
+      "city": { "name": "城市", "description": "紧凑的单环棋盘，同组地产多数相邻。" },
+      "harbor": { "name": "港湾", "description": "更长的单环棋盘，五组地产分散各处。起点奖励间隔更长，集齐同组需要跨区买地或交易。" }
+    }
+  },
   "setup": {
     "title": "新对局",
     "seats": "对局人数", "seatOption": "{count}席", "computerSeat": "电脑{number}的名字",
     "humans": "本地真人", "humanOption": "{count}名本地真人", "humanSeat": "本地玩家{number}的名字",
     "turnOrder": "固定轮序：{players}", "spectating": "你已淘汰，可继续观看或从设置返回主菜单。跳过动画仅加速演出。",
     "length": "对局长度", "quick": "快速 · {rounds}轮", "standard": "标准 · {rounds}轮",
-    "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项", "city": "城市 · {spaces}格 · 普通电脑",
+    "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项",
     "color": "{player} · 棋子颜色", "colors": { "cyan": "青色", "amber": "琥珀", "violet": "紫色", "emerald": "绿色" },
     "launch": "开始对局", "cancel": "取消", "nameError": "名字需为1–16个可见字符，留空则使用默认名。",
     "round": "第{round} / {limit}轮", "tied": "{playerName}并列获胜。", "nameSeparator": "、",
@@ -133,7 +198,7 @@
     "yourResult": "你的结果：第{rank}名，净资产{assets}。", "rankings": "最终净资产排名", "details": "财务明细与重玩",
     "cash": "最终现金", "propertyValue": "地产账面价值", "startingCash": "初始现金",
     "statistics": { "startBonus": "起点奖励", "rentReceived": "租金收入", "rentPaid": "租金支出", "taxesPaid": "费用支出", "chanceIncome": "机会收入", "chanceExpense": "机会支出", "purchases": "购地支出", "purchaseBookValue": "购入土地账面价值", "tradeCashReceived": "交易现金收入", "tradeCashPaid": "交易现金支出", "tradeBookValueReceived": "交易转入土地账面价值", "tradeBookValueGiven": "交易转出土地账面价值", "constructionSpent": "建设支出", "constructionRefunds": "建筑出售收入", "constructionSoldCost": "已售建筑原造价", "debtWrittenOff": "无法偿还的债务", "rentLost": "无法收回的租金" },
-    "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。", "notRecorded": "当前结果尚未记入永久战绩。"
+    "seed": "种子：{seed}", "replay": "重玩原种子", "replayDetail": "从相同种子与配置重玩，选择不同可能改变结果。"
   },
   "storage": {
     "transfer": {
@@ -214,7 +279,8 @@
       "cyan": "青色组",
       "amber": "琥珀组",
       "violet": "紫色组",
-      "emerald": "翡翠组"
+      "emerald": "翡翠组",
+      "rose": "玫瑰组 · 菱形"
     },
     "reasons": {
       "players_invalid": "双方须为不同的存活玩家。",

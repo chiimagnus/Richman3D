@@ -2,12 +2,13 @@ import { useState } from "react";
 import type { GameApp } from "../app/GameApp";
 import { createMatchConfig, normalizeName, SEAT_COLORS, SEAT_IDS } from "../domain/config";
 import { QUICK_RULES, STANDARD_RULES, rulesFor } from "../domain/rules";
-import { mapFor } from "../domain/maps";
+import { MAPS, mapFor } from "../domain/maps";
 import { CONTROLLED_TOTALS } from "../domain/cards";
 import { BOT_DIFFICULTIES, type BotDifficulty } from "../domain/types";
 import { chanceCardText, formatMessage, messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import styles from "./MatchSetup.module.css";
+import { MapPreview } from "./MapPreview";
 
 export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void }) {
   const language = app.getSnapshot().preferences.language;
@@ -18,17 +19,17 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
   const [seats, setSeats] = useState(2);
   const [humans, setHumans] = useState(1);
   const [version, setVersion] = useState(QUICK_RULES.version);
+  const [mapId, setMapId] = useState(createMatchConfig().mapId);
   const [error, setError] = useState(false);
   const rules = rulesFor(version);
-  const defaultConfig = createMatchConfig();
-  const map = mapFor(defaultConfig.mapId, defaultConfig.mapVersion);
+  const map = mapFor(mapId, MAPS.find((candidate) => candidate.id === mapId)!.version);
   return <PanelHost title={copy.title} onClose={onClose}>
     <form onSubmit={(event) => {
       event.preventDefault();
       try {
         const config = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1, seats);
         const players = config.players.map((player, index) => ({ ...player, controller: index < humans ? "human" as const : "bot" as const, difficulty: difficulties[index]!, name: normalizeName(names[index]!), color: colors[index]! }));
-        void app.start({ ...config, players, rulesVersion: version });
+        void app.start({ ...config, players, rulesVersion: version, mapId: map.id, mapVersion: map.version });
         onClose();
       } catch { setError(true); }
     }}>
@@ -51,8 +52,11 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
         <option value={STANDARD_RULES.version}>{formatMessage(copy.standard, { rounds: STANDARD_RULES.roundLimit })}</option>
       </select></label>
       <p>{formatMessage(copy.moneyRules, { cash: rules.startingCash, bonus: rules.passStartBonus })}</p>
+      <label className={styles.row}>{messages(language).maps.choose}<select value={mapId} onChange={(event) => setMapId(event.currentTarget.value)}>
+        {MAPS.map((candidate) => <option key={candidate.id} value={candidate.id}>{messages(language).maps.definitions[candidate.id as keyof ReturnType<typeof messages>["maps"]["definitions"]].name}</option>)}
+      </select></label>
+      <MapPreview map={map} rules={rules} language={language} />
       <details><summary>{copy.advanced}</summary>
-        <p>{formatMessage(copy.city, { spaces: map.tiles.length })}</p>
         {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(copy.color, { player: messages(language).players[id] })}
           <select value={colors[index]} onChange={(event) => { const next = [...colors]; next[index] = event.currentTarget.value; setColors(next); }}>
             {SEAT_COLORS.map((color, colorIndex) => <option key={color} value={color}>{Object.values(copy.colors)[colorIndex]}</option>)}

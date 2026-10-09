@@ -94,7 +94,11 @@
       "chance-4": "Chance",
       "grand-boulevard": "Grand Boulevard",
       "financial-center": "Financial Center",
-      "chance-5": "Chance"
+      "chance-5": "Chance",
+      "pier-walk": "Pier Walk", "old-wharf": "Old Wharf", "harbor-tax": "Harbor Tax", "ferry-terminal": "Ferry Terminal", "fish-market": "Fish Market",
+      "marine-park": "Marine Park", "cargo-lane": "Cargo Lane", "lighthouse-square": "Lighthouse Square", "port-service-fee": "Port Service Fee", "coastal-street": "Coastal Street",
+      "ocean-museum": "Ocean Museum", "bay-garden": "Bay Garden", "shipyard": "Shipyard", "island-terminal": "Island Terminal", "sea-wall-maintenance": "Sea Wall Maintenance",
+      "waterfront-tower": "Waterfront Tower", "sunset-marina": "Sunset Marina", "harbor-center": "Harbor Center"
     }
   },
   "items": {
@@ -115,13 +119,74 @@
     "construction-discount": "Pay {percent}% for your next legal upgrade this turn, rounded up. Sale refunds and asset value use the actual cost. Expires at turn end.",
     "swap-positions": "Swap positions with another surviving player. No landing effect or Start reward. Then roll normally."
   },
+  "records": {
+    "title": "Local records & achievements",
+    "recent": "Last {limit} matches",
+    "empty": "No saved match results yet.",
+    "achievements": "Achievements · display only, no rewards",
+    "unlocked": "Unlocked",
+    "locked": "Locked",
+    "challengeHistory": "Challenges · last {days} UTC dates",
+    "clear": "Clear local records",
+    "clearWarning": "Clear match records, achievements and challenge scores? Your current save, backup and preferences remain. This completed match will not be counted again. An unfinished match can still record new results later.",
+    "confirmClear": "Confirm clearing records",
+    "exportRaw": "Export original local records",
+    "error": "Local records could not be read or saved. Original data is preserved; export it, retry or explicitly clear it.",
+    "loading": "Reading local records…",
+    "free": "Free match",
+    "challenge": "Daily challenge",
+    "summary": "{date} · {map} · {mode} · {rounds}/{limit} rounds",
+    "seat": "Seat {seat}",
+    "ranking": "{seat} · Rank {rank} · Cash {cash} · Net assets {assets}",
+    "conditions": "Rules {rules} · Map v{mapVersion} · Seed {seed}",
+    "controller": "{seat}: {controller}",
+    "human": "Human",
+    "bot": "Bot ({difficulty})",
+    "share": "Share result summary",
+    "shareHeader": "{map} · {mode} · {rounds}/{limit} rounds",
+    "shareText": "Selectable result summary",
+    "copy": "Copy summary",
+    "copied": "Summary copied.",
+    "copyUnavailable": "Clipboard unavailable. Select the text below and copy it manually.",
+    "replayWarning": "The same rules, map version, seat configuration and seed reproduce the initial match. This summary is not a command replay; subsequent choices still affect the result.",
+    "saved": "This match is saved in your local records.",
+    "notSaved": "This match is not yet in your local records; records are confirmed after saving completes.",
+    "notRetained": "This match has no retained record. Viewing a completed save does not add it again.",
+    "imported": "Imported matches do not count toward official local records or achievements.",
+    "achievementNames": {
+      "first-match": "Complete your first match",
+      "first-purchase": "Buy your first property",
+      "complete-group": "Complete a property group",
+      "level-three": "Build a level-three property",
+      "debt-rescued": "Recover from debt",
+      "building-sale": "Sell a building",
+      "first-trade": "Complete a bilateral trade",
+      "both-maps": "Complete both maps"
+    }
+  },
+  "challenges": {
+    "title": "Daily challenge", "date": "Challenge date (UTC): {date}",
+    "configuration": "{map} · {rounds} rounds · {seats} seats · you and {bots} {difficulty} computers",
+    "localOnly": "A local self-challenge, not a trusted leaderboard. Your device clock and local data can be changed. Best results compare net assets, then cash, then rank.",
+    "identity": "Challenge: {id} · map version {mapVersion} · seed {seed}",
+    "start": "Start challenge", "replaceStart": "Replace save and start challenge", "attempts": "Attempts started: {attempts}",
+    "first": "First result: rank {rank}, net assets {assets}", "best": "Best result: rank {rank}, net assets {assets}",
+    "storageError": "Saved data could not be read. It has not been replaced. Export or recover it before starting a challenge."
+  },
+  "maps": {
+    "preview": "Map layout preview", "heading": "{name} · {spaces} spaces", "prices": "Layout order, prices and fees", "choose": "Map",
+    "definitions": {
+      "city": { "name": "City", "description": "A compact loop with mostly neighboring property groups." },
+      "harbor": { "name": "Harbor", "description": "A longer loop with five scattered property groups. Start rewards arrive less often; completing groups requires purchases across the board or trades." }
+    }
+  },
   "setup": {
     "title": "New match",
     "seats": "Players", "seatOption": "{count} seats", "computerSeat": "Computer {number} name",
     "humans": "Local humans", "humanOption": "{count} local humans", "humanSeat": "Local player {number} name",
     "turnOrder": "Fixed turn order: {players}", "spectating": "You are eliminated. Watch the remaining players or return to Main Menu from Settings. Skip Animation only speeds presentation.",
     "length": "Match length", "quick": "Quick · {rounds} rounds", "standard": "Standard · {rounds} rounds",
-    "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options", "city": "City · {spaces} spaces · Normal computer",
+    "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options",
     "color": "{player} · Pawn color", "colors": { "cyan": "Cyan", "amber": "Amber", "violet": "Violet", "emerald": "Emerald" },
     "launch": "Start match", "cancel": "Cancel", "nameError": "Use 1–16 visible characters, or leave the name blank for the default.",
     "round": "Round {round} / {limit}", "tied": "{playerName} tied for the win.", "nameSeparator": " & ",
@@ -133,7 +198,7 @@
     "yourResult": "Your result: rank {rank}, net assets {assets}.", "rankings": "Final net asset rankings", "details": "Financial details and replay",
     "cash": "Final cash", "propertyValue": "Property book value", "startingCash": "Initial cash",
     "statistics": { "startBonus": "Start rewards", "rentReceived": "Rent received", "rentPaid": "Rent paid", "taxesPaid": "Fees paid", "chanceIncome": "Chance income", "chanceExpense": "Chance expenses", "purchases": "Purchase costs", "purchaseBookValue": "Book value of purchased land", "tradeCashReceived": "Trade cash received", "tradeCashPaid": "Trade cash paid", "tradeBookValueReceived": "Book value of land received in trades", "tradeBookValueGiven": "Book value of land given in trades", "constructionSpent": "Construction costs", "constructionRefunds": "Building sale proceeds", "constructionSoldCost": "Original cost of sold buildings", "debtWrittenOff": "Unpaid debt written off", "rentLost": "Uncollectible rent" },
-    "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome.", "notRecorded": "This result has not been added to a permanent match history."
+    "seed": "Seed: {seed}", "replay": "Replay original seed", "replayDetail": "Restart from the same seed and settings. Your choices may change the outcome."
   },
   "storage": {
     "transfer": {
@@ -214,7 +279,8 @@
       "cyan": "Cyan group",
       "amber": "Amber group",
       "violet": "Violet group",
-      "emerald": "Emerald group"
+      "emerald": "Emerald group",
+      "rose": "Rose group · Diamond"
     },
     "reasons": {
       "players_invalid": "Choose two different living players.",

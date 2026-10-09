@@ -6,6 +6,40 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { currentTile } from "../../src/domain/selectors";
+import { MAPS, mapFor, validateMaps } from "../../src/domain/maps";
+import { messages, tileName } from "../../src/i18n";
+import { makeSave, readSave } from "../../src/storage/snapshot";
+
+it("registered maps have unique versions, translated content and round-trip without falling back", () => {
+  validateMaps(MAPS);
+  expect(() => validateMaps([CITY, CITY])).toThrow("地图版本重复");
+  for (const map of MAPS) {
+    expect(mapFor(map.id, map.version)).toBe(map);
+    for (const language of ["zh-CN", "en"] as const) {
+      const definitions = messages(language).maps.definitions;
+      expect(definitions[map.id as keyof typeof definitions]).toBeDefined();
+      for (const tile of map.tiles) expect(tileName(language, tile)).toBeTruthy();
+    }
+    const game = new Game({ ...createMatchConfig(6), mapId: map.id, mapVersion: map.version });
+    const save = makeSave(game.snapshot, "00000000-0000-4000-8000-000000000001", "local", 1);
+    expect(readSave(save).snapshot).toEqual(game.snapshot);
+    const unknown = { ...save, mapVersion: 999, state: { ...save.state, config: { ...save.state.config, mapVersion: 999 } } };
+    expect(() => readSave(unknown)).toThrow("incompatible");
+    expect(() => mapFor("missing", map.version)).toThrow();
+  }
+});
+
+it("rejects invalid coordinates, broken loops, extra starts, invalid groups and unsafe money", () => {
+  const invalid = [
+    { ...CITY, path: CITY.path.map((point, index) => index === 1 ? { x: NaN, z: point.z } : point) },
+    { ...CITY, path: CITY.path.map((point, index) => index === 1 ? CITY.path[0]! : point) },
+    { ...CITY, path: CITY.path.map((point, index) => index === 1 ? { x: point.x + 1, z: point.z } : point) },
+    { ...CITY, tiles: CITY.tiles.map((tile, index) => index === 1 ? { type: "start" as const, id: tile.id } : tile) },
+    { ...CITY, tiles: CITY.tiles.map((tile) => tile.type === "property" ? { ...tile, price: -1 } : tile) },
+    { ...CITY, tiles: CITY.tiles.map((tile) => tile.type === "property" ? { ...tile, rent: Number.MAX_SAFE_INTEGER + 1 } : tile) },
+  ];
+  for (const map of invalid) expect(() => validateMap(map)).toThrow();
+});
 
 it("preserves every city coordinate, price and rent", () => {
   const oldCoordinates = [[10.5,10.5],[6.3,10.5],[2.1,10.5],[-2.1,10.5],[-6.3,10.5],[-10.5,10.5],[-10.5,6.3],[-10.5,2.1],[-10.5,-2.1],[-10.5,-6.3],[-10.5,-10.5],[-6.3,-10.5],[-2.1,-10.5],[2.1,-10.5],[6.3,-10.5],[10.5,-10.5],[10.5,-6.3],[10.5,-2.1],[10.5,2.1],[10.5,6.3]];

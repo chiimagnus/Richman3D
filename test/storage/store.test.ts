@@ -79,7 +79,7 @@ it("repeated replacements keep only the fixed current and backup keys", async ()
     await store.save(next, expected);
     expected = next;
   }
-  const request = factory.open("richman3d", 1);
+  const request = factory.open("richman3d");
   const database = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
   const keys = database.transaction("games").objectStore("games").getAllKeys();
   expect(await new Promise((resolve) => { keys.onsuccess = () => resolve(keys.result); })).toEqual(["backup", "current"]);
@@ -89,7 +89,7 @@ it("repeated replacements keep only the fixed current and backup keys", async ()
 it("preserves unreadable data and refuses ordinary writes instead of clearing it", async () => {
   const { factory, store, initial } = fixture();
   await store.save(initial, null);
-  const request = factory.open("richman3d", 1);
+  const request = factory.open("richman3d");
   const database = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
   const transaction = database.transaction("games", "readwrite");
   const raw = { schemaVersion: 999, privateData: "preserve me" };
@@ -112,7 +112,7 @@ it("keeps an old mortgage-era record and backup unchanged rather than silently r
   const old = { ...initial, rulesVersion: "city-v12-quick", state: { ...initial.state,
     config: { ...initial.state.config, rulesVersion: "city-v12-quick" }, properties: { ...initial.state.properties,
       "neon-avenue": { ...initial.state.properties["neon-avenue"], mortgagePrincipal: 90 } } } };
-  const request = factory.open("richman3d", 1);
+  const request = factory.open("richman3d");
   request.onupgradeneeded = () => request.result.createObjectStore("games");
   const database = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
   const transaction = database.transaction("games", "readwrite");
@@ -144,7 +144,7 @@ it("confirmed damaged-data replacement keeps the valid backup and rejects interv
   await store.save(initial, null);
   game.apply(legalCommands(game.snapshot, "p1")[0]!);
   await store.save(makeSave(game.snapshot, firstId), initial);
-  const request = factory.open("richman3d", 1);
+  const request = factory.open("richman3d");
   const database = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
   const raw = { schemaVersion: 999, privateData: "keep until explicit confirmation", brokenAmount: NaN };
   const transaction = database.transaction("games", "readwrite");

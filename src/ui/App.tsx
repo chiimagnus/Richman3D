@@ -30,25 +30,29 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
 import { assetManagementView, debtView, handCommands, tradeView } from "./viewModel";
 import styles from "./App.module.css";
+import { dailyChallenge, type DailyChallenge } from "../domain/challenges";
+import { ChallengePanel } from "./ChallengePanel";
+import { RecordsPanel } from "./RecordsPanel";
 
 const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: module.SceneHost })));
 
 export function App({ app }: { app: GameApp }) {
   const state = useSyncExternalStore(app.subscribe, app.getSnapshot);
-  const [panel, setPanel] = useState<"settings" | "setup" | "transfer" | null>(null);
+  const [panel, setPanel] = useState<"settings" | "setup" | "transfer" | "records" | { kind: "challenge"; challenge: DailyChallenge } | null>(null);
   const lastPanel = useRef(panel);
   useEffect(() => {
     if (lastPanel.current === "transfer" && panel === "settings") document.querySelector<HTMLButtonElement>("#transfer-open")?.focus({ preventScroll: true });
     lastPanel.current = panel;
   }, [panel]);
   return state.session ? <GamePlay key={state.session.matchId} app={app} session={state.session} preferences={state.preferences} /> : <>
-    <MainMenu app={app} onSettings={() => setPanel("settings")} onStart={() => setPanel("setup")} />
-    {panel === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("settings")} /> : panel === "settings" ? <SettingsPanel app={app} preferences={state.preferences} onClose={() => setPanel(null)}><button id="transfer-open" onClick={() => setPanel("transfer")}>{messages(state.preferences.language).storage.transfer.title}</button></SettingsPanel> : panel === "setup" && <MatchSetup app={app} onClose={() => setPanel(null)} />}
+    <MainMenu app={app} onSettings={() => setPanel("settings")} onStart={() => setPanel("setup")} onChallenge={() => setPanel({ kind: "challenge", challenge: dailyChallenge(new Date().toISOString().slice(0, 10)) })} />
+    {typeof panel === "object" && panel && <ChallengePanel app={app} challenge={panel.challenge} onClose={() => setPanel(null)} onRecover={() => setPanel("transfer")} />}
+    {panel === "records" ? <RecordsPanel app={app} onClose={() => setPanel("settings")} /> : panel === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("settings")} /> : panel === "settings" ? <SettingsPanel app={app} initialFocusId={lastPanel.current === "records" ? "records-open" : undefined} preferences={state.preferences} onClose={() => setPanel(null)}><button id="transfer-open" onClick={() => setPanel("transfer")}>{messages(state.preferences.language).storage.transfer.title}</button><button id="records-open" onClick={() => setPanel("records")}>{messages(state.preferences.language).records.title}</button></SettingsPanel> : panel === "setup" && <MatchSetup app={app} onClose={() => setPanel(null)} />}
   </>;
 }
 
 function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSession; preferences: GamePreferences }) {
-  const [panel, setPanel] = useState<"pause" | "transfer" | "history" | "trade_draft" | "hand" | { kind: "assets"; playerId: PlayerId } | null>(null);
+  const [panel, setPanel] = useState<"pause" | "transfer" | "history" | "records" | "trade_draft" | "hand" | { kind: "assets"; playerId: PlayerId } | null>(null);
   const cameraView = preferences.cameraView ?? "first_person";
   const setCameraView = (cameraView: CameraView) => app.setPreferences({ ...preferences, cameraView });
   const [inspectedTileId, setInspectedTileId] = useState<string | null>(null);
@@ -72,8 +76,8 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
   const inlineAssets = requested === "assets" && !view.presenting && view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId;
   let surface: string | null = requested;
   if (view.error === "presentation_failed") surface = "fault";
-  else if (saveProblem) surface = panel === "transfer" ? "transfer" : "save";
-  else if (ended) surface = requested === "history" ? "history" : "results";
+  else if (saveProblem) surface = panel === "transfer" || panel === "records" ? panel : "save";
+  else if (ended) surface = requested === "history" || requested === "records" ? requested : "results";
   else if (view.displayed.decision.kind === "awaiting_debt" && !view.presenting && view.mode === "running") surface = handover ? "handover" : "debt";
   else if (view.displayed.decision.kind === "awaiting_trade" && !view.presenting && view.mode === "running") surface = handover ? "handover" : "trade";
   else if (view.displayed.decision.kind === "awaiting_discard" && !view.presenting && view.mode === "running") surface = handover ? "handover" : "discard";
@@ -133,9 +137,10 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: GameSe
     {surface === "fault" ? <PanelHost title={copy.runtime.presentation_failed}>
       <p>{copy.storage.exportWarning}</p><button onClick={() => downloadSave(session.exportRecord())}>{copy.storage.export}</button>
       {view.save.kind === "unsaved" || view.save.kind === "conflict" ? <><p>{copy.storage.discardWarning}</p><button onClick={() => app.leave(true)}>{copy.storage.discard}</button></> : <button onClick={() => app.leave()}>{copy.runtime.leave}</button>}
-    </PanelHost> : surface === "debt" ? <DebtPanel model={debtView(view)!} snapshot={view.displayed} language={preferences.language} onCommand={(command) => { void session.dispatch(command); }} onPause={pause} /> : surface === "trade" ? <TradePanel snapshot={view.displayed} language={preferences.language} commands={tradeView(view).commands} onCommand={(command) => { void session.dispatch(command); }} onPause={pause} /> : surface === "trade_draft" ? <TradeDraft key={view.displayed.revision} snapshot={view.displayed} language={preferences.language} enabled={tradeView(view).canPropose} onCommand={(command) => { setPanel(null); void session.dispatch(command); }} onClose={() => setPanel({ kind: "assets", playerId: view.displayed.turnPlayerId })} /> : surface === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("pause")} /> : surface === "save" ? <SavePanel app={app} session={session} onTransfer={() => setPanel("transfer")} /> : surface === "results" ? <ResultsScreen app={app} snapshot={view.displayed} onHistory={() => setPanel("history")} /> : surface === "pause" ? <SettingsPanel app={app} preferences={preferences} onClose={closeSettings} cameraView={cameraView} onCameraChange={setCameraView} {...(view.viewPlayerId !== null ? { onLookAround: lookAround } : {})}>
+    </PanelHost> : surface === "debt" ? <DebtPanel model={debtView(view)!} snapshot={view.displayed} language={preferences.language} onCommand={(command) => { void session.dispatch(command); }} onPause={pause} /> : surface === "trade" ? <TradePanel snapshot={view.displayed} language={preferences.language} commands={tradeView(view).commands} onCommand={(command) => { void session.dispatch(command); }} onPause={pause} /> : surface === "trade_draft" ? <TradeDraft key={view.displayed.revision} snapshot={view.displayed} language={preferences.language} enabled={tradeView(view).canPropose} onCommand={(command) => { setPanel(null); void session.dispatch(command); }} onClose={() => setPanel({ kind: "assets", playerId: view.displayed.turnPlayerId })} /> : surface === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("pause")} /> : surface === "save" ? <SavePanel app={app} session={session} onTransfer={() => setPanel("transfer")} onRecords={() => setPanel("records")} /> : surface === "records" ? <RecordsPanel app={app} onClose={() => setPanel(ended ? null : "pause")} /> : surface === "results" ? <ResultsScreen app={app} snapshot={view.displayed} onHistory={() => setPanel("history")} onRecords={() => setPanel("records")} returnToRecords={lastPanel.current === "records"} /> : surface === "pause" ? <SettingsPanel app={app} initialFocusId={lastPanel.current === "records" ? "records-open" : undefined} preferences={preferences} onClose={closeSettings} cameraView={cameraView} onCameraChange={setCameraView} {...(view.viewPlayerId !== null ? { onLookAround: lookAround } : {})}>
       <details open={matchOptionsOpen}><summary onClick={(event) => { event.preventDefault(); setMatchOptionsOpen((open) => !open); }}>{copy.settings.match}</summary>
         <p>{formatMessage(copy.setup.turnOrder, { players: view.displayed.turnOrder.map((id) => playerName(preferences.language, id, view.displayed.config)).join(copy.setup.nameSeparator) })}</p>
+        <button id="records-open" onClick={() => setPanel("records")}>{copy.records.title}</button>
         <button id="history-open" onClick={() => setPanel("history")}>{copy.history.title}</button>
         <button id="transfer-open" onClick={() => setPanel("transfer")}>{copy.storage.transfer.title}</button>
         <button onClick={() => void app.restart()}>{copy.feedback.restart}</button>
