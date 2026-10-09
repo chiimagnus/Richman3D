@@ -1,7 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { GameApp } from "../app/GameApp";
 import { ACHIEVEMENTS } from "../domain/achievements";
-import type { MatchSummary } from "../domain/records";
+import { MATCH_RECORD_LIMIT, type MatchSummary } from "../domain/records";
+import { CHALLENGE_DAYS } from "../domain/challenges";
 import { formatCash, formatMessage, messages } from "../i18n";
 import type { Language } from "../i18n/language";
 import { downloadRawProfile } from "../storage/transfer";
@@ -41,7 +42,7 @@ export function RecordsPanel({ app, onClose }: { app: GameApp; onClose: () => vo
     {state.profile.kind === "loading" && <p role="status">{copy.records.loading}</p>}
     {(state.profile.kind === "error" || error) && <><p role="alert">{copy.records.error}</p><button disabled={working} onClick={() => void app.refreshProfile()}>{copy.storage.retry}</button></>}
     {state.profile.kind === "ready" && <>
-      <h3>{copy.records.recent}</h3>
+      <h3>{formatMessage(copy.records.recent, { limit: MATCH_RECORD_LIMIT })}</h3>
       {state.profile.records.recent.length === 0 && <p>{copy.records.empty}</p>}
       {state.profile.records.recent.map((record) => <details key={record.matchId}>
         <summary>{formatMessage(copy.records.summary, { date: new Date(record.endedAt).toISOString().slice(0, 10), map: copy.maps.definitions[record.mapId as keyof typeof copy.maps.definitions].name, mode: copy.records[record.mode], rounds: record.rounds, limit: record.roundLimit })}</summary>
@@ -54,7 +55,7 @@ export function RecordsPanel({ app, onClose }: { app: GameApp; onClose: () => vo
         </section>)}
       </details>)}
       <details><summary>{copy.records.achievements}</summary><ul>{ACHIEVEMENTS.map((id) => <li key={id}>{copy.records.achievementNames[id]} · {state.profile.kind === "ready" && state.profile.records.achievements.includes(id) ? copy.records.unlocked : copy.records.locked}</li>)}</ul></details>
-      <details><summary>{copy.records.challengeHistory}</summary>
+      <details><summary>{formatMessage(copy.records.challengeHistory, { days: CHALLENGE_DAYS })}</summary>
         <p>{copy.challenges.localOnly}</p>
         {state.profile.challenges.results.length === 0 && <p>{copy.records.empty}</p>}
         {state.profile.challenges.results.map((record) => <section key={record.challenge.id}>
