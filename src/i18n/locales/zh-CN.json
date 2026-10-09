@@ -94,7 +94,11 @@
       "chance-4": "机会",
       "grand-boulevard": "中央大道",
       "financial-center": "金融中心",
-      "chance-5": "机会"
+      "chance-5": "机会",
+      "pier-walk": "码头步道", "old-wharf": "老码头", "harbor-tax": "港湾税", "ferry-terminal": "渡轮站", "fish-market": "鱼市",
+      "marine-park": "海洋公园", "cargo-lane": "货运路", "lighthouse-square": "灯塔广场", "port-service-fee": "港口服务费", "coastal-street": "滨海街",
+      "ocean-museum": "海洋博物馆", "bay-garden": "海湾花园", "shipyard": "造船厂", "island-terminal": "海岛总站", "sea-wall-maintenance": "海堤维护费",
+      "waterfront-tower": "滨水大厦", "sunset-marina": "落日游艇港", "harbor-center": "港湾中心"
     }
   },
   "items": {
@@ -117,7 +121,10 @@
   },
   "maps": {
     "preview": "地图布局预览", "heading": "{name} · {spaces} 格", "prices": "查看路径顺序、地价与费用", "choose": "地图",
-    "definitions": { "city": { "name": "城市", "description": "紧凑的单环棋盘，同组地产多数相邻。" } }
+    "definitions": {
+      "city": { "name": "城市", "description": "紧凑的单环棋盘，同组地产多数相邻。" },
+      "harbor": { "name": "港湾", "description": "更长的单环棋盘，五组地产分散各处。起点奖励间隔更长，集齐同组需要跨区买地或交易。" }
+    }
   },
   "setup": {
     "title": "新对局",
@@ -218,7 +225,8 @@
       "cyan": "青色组",
       "amber": "琥珀组",
       "violet": "紫色组",
-      "emerald": "翡翠组"
+      "emerald": "翡翠组",
+      "rose": "玫瑰组 · 菱形"
     },
     "reasons": {
       "players_invalid": "双方须为不同的存活玩家。",

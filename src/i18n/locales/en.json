@@ -94,7 +94,11 @@
       "chance-4": "Chance",
       "grand-boulevard": "Grand Boulevard",
       "financial-center": "Financial Center",
-      "chance-5": "Chance"
+      "chance-5": "Chance",
+      "pier-walk": "Pier Walk", "old-wharf": "Old Wharf", "harbor-tax": "Harbor Tax", "ferry-terminal": "Ferry Terminal", "fish-market": "Fish Market",
+      "marine-park": "Marine Park", "cargo-lane": "Cargo Lane", "lighthouse-square": "Lighthouse Square", "port-service-fee": "Port Service Fee", "coastal-street": "Coastal Street",
+      "ocean-museum": "Ocean Museum", "bay-garden": "Bay Garden", "shipyard": "Shipyard", "island-terminal": "Island Terminal", "sea-wall-maintenance": "Sea Wall Maintenance",
+      "waterfront-tower": "Waterfront Tower", "sunset-marina": "Sunset Marina", "harbor-center": "Harbor Center"
     }
   },
   "items": {
@@ -117,7 +121,10 @@
   },
   "maps": {
     "preview": "Map layout preview", "heading": "{name} · {spaces} spaces", "prices": "Layout order, prices and fees", "choose": "Map",
-    "definitions": { "city": { "name": "City", "description": "A compact loop with mostly neighboring property groups." } }
+    "definitions": {
+      "city": { "name": "City", "description": "A compact loop with mostly neighboring property groups." },
+      "harbor": { "name": "Harbor", "description": "A longer loop with five scattered property groups. Start rewards arrive less often; completing groups requires purchases across the board or trades." }
+    }
   },
   "setup": {
     "title": "New match",
@@ -218,7 +225,8 @@
       "cyan": "Cyan group",
       "amber": "Amber group",
       "violet": "Violet group",
-      "emerald": "Emerald group"
+      "emerald": "Emerald group",
+      "rose": "Rose group · Diamond"
     },
     "reasons": {
       "players_invalid": "Choose two different living players.",

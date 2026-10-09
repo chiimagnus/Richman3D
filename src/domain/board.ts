@@ -1,4 +1,4 @@
-export const PROPERTY_GROUPS = ["cyan", "amber", "violet", "emerald"] as const;
+export const PROPERTY_GROUPS = ["cyan", "amber", "violet", "emerald", "rose"] as const;
 export type PropertyTile = { readonly type: "property"; readonly id: string; readonly price: number; readonly rent: number; readonly group: typeof PROPERTY_GROUPS[number] };
 export type StartTile = { readonly type: "start"; readonly id: string };
 export type TaxTile = { readonly type: "tax"; readonly id: string; readonly amount: number };

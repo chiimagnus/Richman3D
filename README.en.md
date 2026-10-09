@@ -46,4 +46,4 @@ npm run test:balance -- -t smoke
 npm run test:balance
 ```
 
-The full batch runs 1,000 fixed seeds for each 2/3/4-seat quick and standard group, checking cash, card entities, bounded progress and restoration. Its untracked report is `test-results/balance/report.json`. Repeating the same configuration compares all non-timing statistics. These are computer-policy simulations, not evidence of human duration, enjoyment or game balance. Preserve and move an older report out of the way before generating a new baseline after rules or policy changes.
+The full batch runs 1,000 fixed seeds for each built-in map and each 2/3/4-seat quick and standard group, checking cash, card entities, bounded progress and restoration, and comparing rounds, cash and group completion. Its untracked report is `test-results/balance/maps-report.json`. Repeating the same configuration compares all non-timing statistics. These are computer-policy simulations, not evidence of human duration, enjoyment or game balance. Preserve and move an older report out of the way before generating a new baseline after rules or policy changes.

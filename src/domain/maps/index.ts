@@ -1,4 +1,5 @@
 import { CITY } from "./city";
+import { HARBOR } from "./harbor";
 import { validateMap, type MapDefinition } from "../board";
 
 export function validateMaps(maps: readonly MapDefinition[]): void {
@@ -7,7 +8,7 @@ export function validateMaps(maps: readonly MapDefinition[]): void {
   maps.forEach(validateMap);
 }
 
-export const MAPS: readonly MapDefinition[] = [CITY];
+export const MAPS: readonly MapDefinition[] = [CITY, HARBOR];
 validateMaps(MAPS);
 
 export function mapFor(id: string, version: number): MapDefinition {

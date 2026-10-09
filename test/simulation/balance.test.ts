@@ -7,7 +7,9 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import { cardInstances } from "../../src/domain/cards";
-import { netAssets } from "../../src/domain/economy";
+import { completeGroup, netAssets } from "../../src/domain/economy";
+import { MAPS } from "../../src/domain/maps";
+import type { MapDefinition } from "../../src/domain/board";
 import { QUICK_RULES, STANDARD_RULES } from "../../src/domain/rules";
 import type { RuleSet } from "../../src/domain/rules";
 import { BOT_DIFFICULTIES, type Command, type FinancialStats, type GameSnapshot } from "../../src/domain/types";
@@ -43,10 +45,10 @@ function assertState(snapshot: GameSnapshot, instances: readonly string[]): void
   assert(zones.every((instance) => instances.includes(instance)), "unknown card entity");
 }
 
-function simulate(seed: number, seats: number, rules: RuleSet, sample: number) {
+function simulate(seed: number, seats: number, rules: RuleSet, sample: number, map: MapDefinition) {
   const config = createMatchConfig(seed, seats);
   const rotation = Math.floor(sample / 6) % seats;
-  const game = new Game({ ...config, rulesVersion: rules.version, players: config.players.map((player, index) => ({ ...player,
+  const game = new Game({ ...config, mapId: map.id, mapVersion: map.version, rulesVersion: rules.version, players: config.players.map((player, index) => ({ ...player,
     controller: "bot", difficulty: BOT_DIFFICULTIES[(sample % 3 + (sample % 2 === 0 ? 0 : (index + rotation) % seats)) % 3]! })) });
   const instances = cardInstances(game.snapshot.rules);
   const commands: Record<string, number> = {};
@@ -57,6 +59,7 @@ function simulate(seed: number, seats: number, rules: RuleSet, sample: number) {
   const history: Command[] = [];
   let conflictCount = 0;
   let used = 0;
+  const completedGroups = new Set<string>();
   try {
     assertState(game.snapshot, instances);
     for (; game.snapshot.decision.kind !== "game_over" && used < commandLimit; used += 1) {
@@ -81,6 +84,7 @@ function simulate(seed: number, seats: number, rules: RuleSet, sample: number) {
       assert(game.snapshot.completedRounds <= rules.roundLimit, "round limit overrun");
       assert(game.snapshot.random.draws >= before.random.draws, "random cursor went backwards");
       assertState(game.snapshot, instances);
+      for (const tile of map.tiles) if (tile.type === "property" && completeGroup(game.snapshot, tile)) completedGroups.add(tile.group);
       for (const event of result.events) {
         if (event.kind === "paid") {
           assert(event.amount + event.writtenOff === event.debt.amount, "partial payment not accounted");
@@ -108,7 +112,7 @@ function simulate(seed: number, seats: number, rules: RuleSet, sample: number) {
     if (game.snapshot.decision.result.reason === "round_limit") assert.equal(game.snapshot.completedRounds, rules.roundLimit);
     const assets = game.snapshot.players.map((player) => netAssets(game.snapshot, player.id));
     const totalAssets = assets.reduce((sum, value) => sum + value, 0);
-    return { seed, seats, rulesVersion: rules.version, commands: used, rounds: game.snapshot.completedRounds, actions: commands, items, reasons, decisions, bankruptcies, conflictCount,
+    return { seed, seats, mapId: map.id, mapVersion: map.version, completedGroups: completedGroups.size, rulesVersion: rules.version, commands: used, rounds: game.snapshot.completedRounds, actions: commands, items, reasons, decisions, bankruptcies, conflictCount,
       roundLimit: game.snapshot.decision.result.reason === "round_limit", winners: [...game.snapshot.decision.result.winnerIds],
       players: game.snapshot.config.players.map((player) => ({ id: player.id, difficulty: player.difficulty, order: game.snapshot.turnOrder.indexOf(player.id),
         cash: game.snapshot.players.find((state) => state.id === player.id)!.cash, netAssets: netAssets(game.snapshot, player.id),
@@ -117,7 +121,7 @@ function simulate(seed: number, seats: number, rules: RuleSet, sample: number) {
       assetConcentration: totalAssets === 0 ? 0 : Math.max(...assets) / totalAssets };
   } catch (cause) {
     mkdirSync(output, { recursive: true });
-    writeFileSync(`${output}/failure-${rules.version}-${seats}-${seed}.json`, JSON.stringify({ seed, config: game.snapshot.config, commands: used, error: String(cause), lastCommands: history, state: game.snapshot }, null, 2));
+    writeFileSync(`${output}/failure-${map.id}-${rules.version}-${seats}-${seed}.json`, JSON.stringify({ seed, config: game.snapshot.config, commands: used, error: String(cause), lastCommands: history, state: game.snapshot }, null, 2));
     throw new Error(`Balance failure: ${rules.version}, seats=${seats}, seed=${seed}, commands=${used}`, { cause });
   }
 }
@@ -161,7 +165,8 @@ function summarize(samples: readonly Sample[]) {
   const seats = samples[0]!.seats;
   const sameDifficulty = samples.filter((sample) => sample.players.every((player) => player.difficulty === sample.players[0]!.difficulty));
   const mixedDifficulty = samples.filter((sample) => !sameDifficulty.includes(sample));
-  return { seats, rulesVersion: samples[0]!.rulesVersion, matches: samples.length,
+  return { seats, mapId: samples[0]!.mapId, mapVersion: samples[0]!.mapVersion, rulesVersion: samples[0]!.rulesVersion, matches: samples.length,
+    completedGroups: distribution(samples.map((sample) => sample.completedGroups)), groupCompletion: interval(samples.filter((sample) => sample.completedGroups > 0).length, samples.length),
     roundLimit: interval(samples.filter((sample) => sample.roundLimit).length, samples.length), ties: samples.filter((sample) => sample.winners.length > 1).length,
     commands: distribution(samples.map((sample) => sample.commands)), rounds: distribution(samples.map((sample) => sample.rounds)),
     finalCash: distribution(samples.flatMap((sample) => sample.players.map((player) => player.cash))),
@@ -179,16 +184,16 @@ function summarize(samples: readonly Sample[]) {
 async function batch(selectedSeeds: readonly number[], reportName: string) {
   const started = performance.now();
   const groups = [];
-  for (const rules of [QUICK_RULES, STANDARD_RULES]) for (const seats of [2, 3, 4]) {
+  for (const map of MAPS) for (const rules of [QUICK_RULES, STANDARD_RULES]) for (const seats of [2, 3, 4]) {
     const samples: Sample[] = [];
     for (const [index, seed] of selectedSeeds.entries()) {
-      samples.push(simulate(seed, seats, rules, index));
+      samples.push(simulate(seed, seats, rules, index, map));
       await setImmediate();
     }
     groups.push(summarize(samples));
-    console.info(`${rules.version}, ${seats} seats: ${samples.length} matches, max ${Math.max(...samples.map((sample) => sample.commands))} commands`);
+    console.info(`${map.id}, ${rules.version}, ${seats} seats: ${samples.length} matches, max ${Math.max(...samples.map((sample) => sample.commands))} commands`);
   }
-  const deterministic = { mapId: "city", mapVersion: 1, seeds: [...selectedSeeds], commandLimit,
+  const deterministic = { maps: MAPS.map((map) => ({ id: map.id, version: map.version })), seeds: [...selectedSeeds], commandLimit,
     sampling: "Alternating same-difficulty and mixed-difficulty games; rotate difficulty assignments every six samples. Rule-controlled initial order is never overwritten.",
     evidence: "Domain-only internal all-bot matches. Unique wins exclude ties; 95% Wilson intervals are descriptive, not a claim of fairness or stronger play. No human time, UI, device or playtest evidence.", groups };
   mkdirSync(output, { recursive: true });
@@ -242,8 +247,8 @@ it("smoke: rotating same-strategy identities between seats changes neither legal
 });
 
 it("smoke: finishes all six scale/mode groups with actual restored rounds and deterministic strategy actions", async () => {
-  const report = await batch(seeds.slice(0, 6), "smoke");
-  expect(report.groups).toHaveLength(6);
+  const report = await batch(seeds.slice(0, 6), "maps-smoke");
+  expect(report.groups).toHaveLength(MAPS.length * 6);
   expect(report.groups.every((group) => group.matches === 6)).toBe(true);
   for (const group of report.groups) {
     expect(group.finalCash.min).toBeGreaterThanOrEqual(0);
@@ -252,10 +257,10 @@ it("smoke: finishes all six scale/mode groups with actual restored rounds and de
   }
 });
 
-it("batch: finishes and reconciles 6000 fixed-seed games without dropping failures", async () => {
+it("batch: finishes and reconciles 6000 fixed-seed games per map without dropping failures", async () => {
   expect(seeds).toHaveLength(1000);
   expect(new Set(seeds).size).toBe(1000);
   expect(seeds.every((seed) => Number.isSafeInteger(seed) && seed >= 0 && seed <= 0xffff_ffff)).toBe(true);
-  const report = await batch(seeds, "report");
+  const report = await batch(seeds, "maps-report");
   expect(report.groups.every((group) => group.matches === 1000)).toBe(true);
 });

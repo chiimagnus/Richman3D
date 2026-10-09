@@ -1,0 +1,37 @@
+import type { MapDefinition } from "../board";
+
+export const HARBOR: MapDefinition = {
+  id: "harbor", version: 1,
+  tiles: [
+    { type: "start", id: "start" },
+    { type: "property", id: "pier-walk", group: "cyan", price: 120, rent: 22 },
+    { type: "chance", id: "chance-1" },
+    { type: "property", id: "old-wharf", group: "amber", price: 180, rent: 32 },
+    { type: "tax", id: "harbor-tax", amount: 80 },
+    { type: "property", id: "ferry-terminal", group: "violet", price: 240, rent: 44 },
+    { type: "property", id: "fish-market", group: "cyan", price: 160, rent: 28 },
+    { type: "chance", id: "chance-2" },
+    { type: "property", id: "marine-park", group: "emerald", price: 260, rent: 48 },
+    { type: "property", id: "cargo-lane", group: "amber", price: 200, rent: 38 },
+    { type: "property", id: "lighthouse-square", group: "violet", price: 280, rent: 52 },
+    { type: "tax", id: "port-service-fee", amount: 100 },
+    { type: "chance", id: "chance-3" },
+    { type: "property", id: "coastal-street", group: "cyan", price: 180, rent: 34 },
+    { type: "property", id: "ocean-museum", group: "rose", price: 300, rent: 56 },
+    { type: "property", id: "bay-garden", group: "emerald", price: 320, rent: 62 },
+    { type: "property", id: "shipyard", group: "amber", price: 240, rent: 44 },
+    { type: "chance", id: "chance-4" },
+    { type: "property", id: "island-terminal", group: "violet", price: 300, rent: 58 },
+    { type: "tax", id: "sea-wall-maintenance", amount: 120 },
+    { type: "property", id: "waterfront-tower", group: "rose", price: 380, rent: 76 },
+    { type: "property", id: "sunset-marina", group: "emerald", price: 360, rent: 72 },
+    { type: "chance", id: "chance-5" },
+    { type: "property", id: "harbor-center", group: "rose", price: 440, rent: 90 },
+  ],
+  path: [
+    { x: 12.6, z: 12.6 }, { x: 8.4, z: 12.6 }, { x: 4.2, z: 12.6 }, { x: 0, z: 12.6 }, { x: -4.2, z: 12.6 }, { x: -8.4, z: 12.6 }, { x: -12.6, z: 12.6 },
+    { x: -12.6, z: 8.4 }, { x: -12.6, z: 4.2 }, { x: -12.6, z: 0 }, { x: -12.6, z: -4.2 }, { x: -12.6, z: -8.4 }, { x: -12.6, z: -12.6 },
+    { x: -8.4, z: -12.6 }, { x: -4.2, z: -12.6 }, { x: 0, z: -12.6 }, { x: 4.2, z: -12.6 }, { x: 8.4, z: -12.6 }, { x: 12.6, z: -12.6 },
+    { x: 12.6, z: -8.4 }, { x: 12.6, z: -4.2 }, { x: 12.6, z: 0 }, { x: 12.6, z: 4.2 }, { x: 12.6, z: 8.4 },
+  ],
+};
