@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 import type { BoardTile, MapDefinition } from "../domain/board";
 import type { RuleSet } from "../domain/rules";
@@ -6,18 +7,19 @@ import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../doma
 import { playerConfig } from "../domain/config";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
-import { boardBounds, boardDirection, boardPosition, TILE_SIZE, TILE_SPACING } from "./boardGeometry";
+import { boardBounds, boardDirection, boardPosition, TILE_SIZE } from "./boardGeometry";
 import { disposeObject } from "./disposeObject";
 import { completeGroup, rentFor } from "../domain/economy";
 import { createNumberTexture, createPropertyBuilding } from "./PropertyBuilding";
 import type { MotionClock } from "./MotionClock";
+import { createBoardScenery } from "./BoardScenery";
 
 const GROUP_COLORS = {
-  cyan: 0x1da9c5,
-  amber: 0xd99a2b,
-  violet: 0x8d64d8,
-  emerald: 0x30a874,
-  rose: 0xda6789,
+  cyan: 0x53b5bd,
+  amber: 0xe2b35b,
+  violet: 0x9b87be,
+  emerald: 0x70a585,
+  rose: 0xd88e9c,
 } as const;
 
 export class BoardView {
@@ -171,7 +173,11 @@ export class BoardView {
 
   private buildTiles(): void {
     const arrowGeometry = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0.28, 0, -0.19, -0.18, 0, 0.19, -0.18, 0], 3));
-    const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xf5fbff });
+    const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0x365960 });
+    const tileGeometry = new RoundedBoxGeometry(TILE_SIZE, 0.32, TILE_SIZE, 2, 0.12);
+    const insetGeometry = new RoundedBoxGeometry(TILE_SIZE - 0.18, 0.035, TILE_SIZE - 0.18, 2, 0.015);
+    const insetMaterial = new THREE.MeshStandardMaterial({ color: 0xfff4df, roughness: 0.8 });
+    const bandGeometry = new RoundedBoxGeometry(2.95, 0.04, 0.3, 2, 0.02);
     this.map.tiles.forEach((tile, index) => {
       const position = boardPosition(this.map, index);
       const tileGroup = new THREE.Group();
@@ -179,12 +185,12 @@ export class BoardView {
       tileGroup.position.copy(position);
 
       const baseMaterial = new THREE.MeshStandardMaterial({
-        color: tileColor(tile),
-        roughness: 0.72,
-        metalness: 0.08,
+        color: 0xe4d1ac,
+        roughness: 0.8,
+        metalness: 0,
       });
       const base = new THREE.Mesh(
-        new THREE.BoxGeometry(TILE_SIZE, 0.32, TILE_SIZE),
+        tileGeometry,
         baseMaterial,
       );
       this.tileMaterials.set(index, baseMaterial);
@@ -193,16 +199,16 @@ export class BoardView {
       tileGroup.add(base);
 
       const inset = new THREE.Mesh(
-        new THREE.BoxGeometry(TILE_SIZE - 0.18, 0.035, TILE_SIZE - 0.18),
-        new THREE.MeshStandardMaterial({
-          color: 0x142331,
-          roughness: 0.55,
-          metalness: 0.18,
-        }),
+        insetGeometry,
+        insetMaterial,
       );
       inset.position.y = 0.18;
       inset.receiveShadow = true;
       tileGroup.add(inset);
+      const band = new THREE.Mesh(bandGeometry, new THREE.MeshStandardMaterial({ color: tileColor(tile), roughness: 0.65 }));
+      band.name = `tile-band-${tile.id}`;
+      band.position.set(0, 0.22, 1.5);
+      tileGroup.add(band);
 
       const label = createTileLabel(tile, this.language, this.rules);
       label.position.set(0, 0.205, 0);
@@ -220,7 +226,7 @@ export class BoardView {
 
       if (tile.type === "property") {
         if (tile.group === "rose") {
-          const diamond = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.025, 0.3), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+          const diamond = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.025, 0.3), new THREE.MeshBasicMaterial({ color: 0x365960 }));
           diamond.name = `rose-diamond-${tile.id}`;
           diamond.rotation.y = Math.PI / 4;
           diamond.position.set(-1.55, 0.23, 1.55);
@@ -248,7 +254,7 @@ export class BoardView {
     this.selection.name = "selected-tile";
     this.selection.visible = false;
     const geometry = new THREE.BoxGeometry(0.5, 0.035, 0.1);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const material = new THREE.MeshBasicMaterial({ color: 0x174e56 });
     for (const horizontal of [-1, 1]) for (const depth of [-1, 1]) {
       const across = new THREE.Mesh(geometry, material);
       across.position.set(horizontal * 1.45, 0.26, depth * 1.75);
@@ -272,106 +278,18 @@ export class BoardView {
   }
 
   private buildCenter(): void {
-    if (this.map.id === "harbor") { this.buildHarbor(); return; }
-    const centerSize = TILE_SPACING * 4.15;
     const bounds = boardBounds(this.map);
     const size = bounds.getSize(new THREE.Vector3());
-    const interior = Math.min(size.x, size.z) - TILE_SIZE * 2;
-    if (interior <= 0) return;
-    const city = new THREE.Group();
-    city.name = "city-decoration";
-    city.position.copy(bounds.getCenter(new THREE.Vector3()));
-    city.scale.set(interior / centerSize, 0.14, interior / centerSize);
-    this.object.add(city);
-    const plaza = new THREE.Mesh(
-      new THREE.BoxGeometry(centerSize, 0.2, centerSize),
-      new THREE.MeshStandardMaterial({
-        color: 0x0d1f2d,
-        roughness: 0.6,
-        metalness: 0.25,
-      }),
+    const tray = new THREE.Mesh(
+      new RoundedBoxGeometry(size.x + 1.2, 0.6, size.z + 1.2, 3, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0xbda780, roughness: 0.78 }),
     );
-    plaza.position.y = -0.04;
-    plaza.receiveShadow = true;
-    city.add(plaza);
-
-    const buildings = [
-      [-5.8, -5.4, 2.7, 6.2],
-      [-1.9, -5.2, 2.4, 4.4],
-      [2.2, -5.6, 3.1, 7.6],
-      [5.8, -4.2, 2.2, 5.1],
-      [-5.4, -0.7, 2.5, 4.1],
-      [5.2, 0.3, 2.9, 6.8],
-      [-5.9, 4.6, 2.4, 5.6],
-      [-1.7, 5.5, 3.0, 7.1],
-      [2.4, 5.1, 2.5, 4.9],
-      [5.8, 4.7, 2.2, 6.1],
-    ] as const;
-
-    const towerGeometry = new THREE.BoxGeometry();
-    const towerMaterials = [0x1b394b, 0x244d63].map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.28 }));
-    for (const [x, z, footprint, height] of buildings) {
-      const building = new THREE.Mesh(
-        towerGeometry,
-        towerMaterials[height > 6 ? 1 : 0],
-      );
-      building.scale.set(footprint, height, footprint);
-      building.position.set(x, height / 2 + 0.08, z);
-      building.castShadow = true;
-      building.receiveShadow = true;
-      city.add(building);
-    }
-
-    const monument = new THREE.Mesh(
-      new THREE.TorusKnotGeometry(1.2, 0.26, 96, 12),
-      new THREE.MeshStandardMaterial({
-        color: 0x53d6e8,
-        emissive: 0x123849,
-        emissiveIntensity: 0.65,
-        metalness: 0.75,
-        roughness: 0.22,
-      }),
-    );
-    monument.position.y = 2.3;
-    monument.scale.setScalar(0.72);
-    monument.castShadow = true;
-    city.add(monument);
-  }
-
-  private buildHarbor(): void {
-    const harbor = new THREE.Group();
-    harbor.name = "harbor-decoration";
-    const bounds = boardBounds(this.map);
-    const size = bounds.getSize(new THREE.Vector3());
-    harbor.position.copy(bounds.getCenter(new THREE.Vector3()));
-    this.object.add(harbor);
-    const geometry = new THREE.BoxGeometry();
-    const water = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x153e59, roughness: 0.25, metalness: 0.35 }));
-    water.scale.set(size.x - TILE_SIZE * 2, 0.12, size.z - TILE_SIZE * 2);
-    water.position.y = -0.08;
-    water.receiveShadow = true;
-    harbor.add(water);
-    const dockMaterial = new THREE.MeshStandardMaterial({ color: 0x8c7e6d, roughness: 0.8 });
-    for (const position of [-6, 0, 6]) {
-      const dock = new THREE.Mesh(geometry, dockMaterial);
-      dock.scale.set(1.5, 0.18, 6);
-      dock.position.set(position, 0.08, -6);
-      dock.receiveShadow = true;
-      harbor.add(dock);
-    }
-    const hullMaterial = new THREE.MeshStandardMaterial({ color: 0xcedde4, roughness: 0.55 });
-    for (const position of [-6, 0, 6]) {
-      const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.4, 6), hullMaterial);
-      hull.scale.set(1, 1, 2.5);
-      hull.position.set(position + 1.4, 0.15, -4);
-      hull.castShadow = true;
-      harbor.add(hull);
-    }
-    const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 1.2, 8), hullMaterial);
-    beacon.position.set(0, 0.6, 4);
-    const light = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshStandardMaterial({ color: 0xffd78c, emissive: 0xffbb55, emissiveIntensity: 0.7 }));
-    light.position.set(0, 1.4, 4);
-    harbor.add(beacon, light);
+    tray.name = "board-tray";
+    tray.position.copy(bounds.getCenter(new THREE.Vector3()));
+    tray.position.y = -0.48;
+    tray.castShadow = true;
+    tray.receiveShadow = true;
+    this.object.add(tray, createBoardScenery(this.map));
   }
 
   private createOwnerMarker(ownerId: PlayerId): THREE.Mesh {
@@ -429,11 +347,11 @@ function reducedMotion(): boolean {
 function tileColor(tile: BoardTile): number {
   switch (tile.type) {
     case "start":
-      return 0x2b9aaa;
+      return 0x5d9c86;
     case "chance":
-      return 0x7f5bd1;
+      return 0xa08bbd;
     case "tax":
-      return 0xa84f53;
+      return 0xd38e78;
     case "property":
       return GROUP_COLORS[tile.group];
   }
@@ -446,6 +364,7 @@ function createTileLabel(tile: BoardTile, language: Language, rules: RuleSet): T
       map: createTileLabelTexture(tile, language, rules),
       transparent: true,
       depthWrite: false,
+      toneMapped: false,
     }),
   );
 }
@@ -466,17 +385,17 @@ function createTileLabelTexture(
   }
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(6, 17, 27, 0.82)";
+  context.fillStyle = "rgba(255, 248, 231, 0.94)";
   roundedRect(context, 24, 24, 464, 336, 28);
   context.fill();
 
-  context.fillStyle = "#f5fbff";
+  context.fillStyle = "#294b51";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.font = "700 48px system-ui, sans-serif";
   const detailTop = drawWrappedText(context, tileName(language, tile), language, 80, 56) + 12;
 
-  context.fillStyle = "rgba(224, 241, 249, 0.72)";
+  context.fillStyle = "#526764";
   context.font = "600 28px system-ui, sans-serif";
   drawWrappedText(context, detail, language, detailTop, 38);
 

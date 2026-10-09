@@ -48,15 +48,15 @@ export class World {
     this.dice = new DiceView(this.clock);
     disposeDice = () => this.dice.dispose();
 
-    this.scene.background = new THREE.Color(0x07111a);
-    this.scene.fog = new THREE.FogExp2(0x07111a, 0.016);
+    this.scene.background = new THREE.Color(0xd8e9e5);
+    this.scene.fog = new THREE.FogExp2(0xd8e9e5, 0.012);
 
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.1;
     this.renderer.autoClear = false;
 
     this.addEnvironment();
@@ -118,7 +118,7 @@ export class World {
   setView(view: CameraView): void {
     this.cameraRig.setView(view);
     for (const [id, player] of this.players) player.setVisible(view === "overview" || id !== this.observer);
-    this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0x07111a, 0.016);
+    this.scene.fog = view === "overview" ? null : new THREE.FogExp2(0xd8e9e5, 0.012);
   }
 
   setInteractive(interactive: boolean): void { this.cameraRig.setInteractive(interactive); }
@@ -210,11 +210,11 @@ export class World {
   };
 
   private addEnvironment(): void {
-    const hemisphere = new THREE.HemisphereLight(0xa8dfff, 0x081019, 1.5);
+    const hemisphere = new THREE.HemisphereLight(0xe5f4ff, 0xc6b593, 2);
     this.scene.add(hemisphere);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
-    keyLight.position.set(12, 24, 10);
+    const keyLight = new THREE.DirectionalLight(0xffecd1, 3);
+    keyLight.position.set(-18, 28, 14);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.camera.left = -30;
@@ -223,30 +223,25 @@ export class World {
     keyLight.shadow.camera.bottom = -30;
     keyLight.shadow.camera.near = 1;
     keyLight.shadow.camera.far = 70;
+    keyLight.shadow.normalBias = 0.03;
+    keyLight.shadow.bias = -0.0001;
     this.scene.add(keyLight);
+    const fill = new THREE.DirectionalLight(0xc7e8ed, 0.7);
+    fill.position.set(14, 12, -18);
+    this.scene.add(fill);
 
     const ground = new THREE.Mesh(
       new THREE.CircleGeometry(52, 64),
       new THREE.MeshStandardMaterial({
-        color: 0x071821,
+        color: 0xd8e9e5,
         roughness: 0.9,
         metalness: 0.04,
       }),
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.22;
+    ground.position.y = -0.82;
     ground.receiveShadow = true;
     this.scene.add(ground);
 
-    const grid = new THREE.GridHelper(72, 36, 0x1f6175, 0x123543);
-    grid.position.y = -0.2;
-    const gridMaterials = Array.isArray(grid.material)
-      ? grid.material
-      : [grid.material];
-    for (const material of gridMaterials) {
-      material.transparent = true;
-      material.opacity = 0.28;
-    }
-    this.scene.add(grid);
   }
 }

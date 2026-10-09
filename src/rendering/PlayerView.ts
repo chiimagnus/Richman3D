@@ -17,8 +17,8 @@ export class PlayerView {
       new THREE.CylinderGeometry(0.48, 0.62, 1.25, 20),
       new THREE.MeshStandardMaterial({
         color,
-        roughness: 0.34,
-        metalness: 0.24,
+        roughness: 0.4,
+        metalness: 0.08,
       }),
     );
     body.position.y = 0.63;
@@ -29,7 +29,7 @@ export class PlayerView {
       new THREE.MeshStandardMaterial({
         color,
         roughness: 0.3,
-        metalness: 0.2,
+        metalness: 0.08,
       }),
     );
     head.position.y = 1.55;
@@ -38,9 +38,9 @@ export class PlayerView {
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.7, 0.08, 8, 28),
       new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffffff,
-        emissiveIntensity: 0.3,
+        color: 0x235e65,
+        emissive: 0x235e65,
+        emissiveIntensity: 0.12,
       }),
     );
     ring.rotation.x = Math.PI / 2;

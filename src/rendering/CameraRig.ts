@@ -70,7 +70,7 @@ export class CameraRig {
     const size = bounds.getSize(new THREE.Vector3());
     const tangent = Math.tan(THREE.MathUtils.degToRad(this.overviewCamera.fov / 2));
     const height = Math.max(size.z, size.x / aspect) / (2 * tangent) * 1.65;
-    const offset = this.fitHeight === 0 ? new THREE.Vector3(0, height, 0.001) : this.overviewCamera.position.clone().sub(this.overview.target).multiplyScalar(height / this.fitHeight);
+    const offset = this.fitHeight === 0 ? new THREE.Vector3(0.22, 0.88, 0.42).normalize().multiplyScalar(height) : this.overviewCamera.position.clone().sub(this.overview.target).multiplyScalar(height / this.fitHeight);
     this.fitHeight = height;
     this.overview.minDistance = height * 0.6;
     this.overview.maxDistance = height * 1.25;
