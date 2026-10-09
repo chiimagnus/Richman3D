@@ -292,34 +292,34 @@ note = "31针对/746全测/typecheck/build/diff-check；后台原生音频M/双�
 [[tasks]]
 id = "P10-T1"
 title = "地图定义与显式路径坐标"
-status = "pending"
+status = "completed"
 plan = "plan-p10.md#p10-t1"
-commit = ""
-note = ""
+commit = "38564c38cba2a93163bf5125119eee4f251c78a7"
+note = "typecheck、684单测、build、diff-check通过；后台Helium真实20格价格、中文配置/英文购买HUD与设置；通用地图边界保留零租金合法性。"
 
 [[tasks]]
 id = "P10-T2"
 title = "24格港湾地图及策略差异"
-status = "pending"
+status = "completed"
 plan = "plan-p10.md#p10-t2"
-commit = ""
-note = ""
+commit = "183237b4564201eca69444e625920051f9b02112"
+note = "692测试/typecheck/build；两次72局冒烟一致、12000局通过521秒；城市原有统计全一致。港湾快速轮满95.9/98.2/99.8%，现金均674/895/1105，整组79.9/83.8/84%；无证据要求调参。后台两图真实20轮终局，双语UI/CSS200%文字；报告test-results/balance/maps-report.json。"
 
 [[tasks]]
 id = "P10-T3"
 title = "版本化每日挑战与可重复种子"
-status = "pending"
+status = "completed"
 plan = "plan-p10.md#p10-t3"
-commit = ""
-note = ""
+commit = "745d4f7e5c32ae1b04bd98f3d644b3ed16ea12ae"
+note = "711测试/typecheck/build；IndexedDB v1保全升级/同事务abort/重试去重/30天/导入排除/UTC向量/跨日续玩通过；后台真实挑战20轮成绩1828，第3名/828现金；修复实际保存引用触发成绩投影，重载续看无重复次数。"
 
 [[tasks]]
 id = "P10-T4"
 title = "战绩、成就与克制的赛后分享"
-status = "pending"
+status = "completed"
 plan = "plan-p10.md#p10-t4"
-commit = ""
-note = ""
+commit = "d21e218ac5f9467bbd551c61921521d29f723d41"
+note = "729测试/typecheck/build/diff-check；72局经济冒烟仍一致。后台真实挑战20轮战绩/成就/双语财务、清除保全存档/备份/偏好及刷新去重；800px/CSS200%和菜单/结算焦点恢复通过。原生剪贴板拒绝及可选文本，注入成功回调；坏记录保留/恢复UI及真实会话重试不重执行命令由回归证明。"
 
 [[tasks]]
 id = "P11-T1"
