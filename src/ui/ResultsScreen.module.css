@@ -1,7 +1,7 @@
 .rankings { padding-inline-start: 24px; }
-.rankings li { padding: 8px 0; overflow-wrap: anywhere; }
+.rankings li { padding: 12px; margin-block: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--field); overflow-wrap: anywhere; }
 .rankings strong { display: block; font-variant-numeric: tabular-nums; }
-.primary { background: var(--accent); color: #07111a; margin: 8px 0 16px; }
+.primary { background: var(--primary); color: var(--on-primary); margin: 8px 0 16px; }
 .finances { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .finances dd { margin: 0; font-variant-numeric: tabular-nums; }
 .stat { display: contents; }

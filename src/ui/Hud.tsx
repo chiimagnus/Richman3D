@@ -1,5 +1,5 @@
 import type { GameSession } from "../app/GameSession";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type CSSProperties } from "react";
 import type { PlayerId } from "../domain/types";
 import type { ItemCardId } from "../domain/types";
 import { cardType } from "../domain/cards";
@@ -31,7 +31,7 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
       {view.displayed.players.map((player, index) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: formatMessage(copy.assets.seat, { number: index + 1, player: playerName(language, player.id, view.displayed.config) }) })} onClick={() => onAssets(player.id)}>
-        <span><span className={styles.seat} aria-hidden="true">{index + 1}</span>{playerName(language, player.id, view.displayed.config)}</span><strong>{formatCash(language, player.cash)}</strong>
+        <span><span className={styles.seat} style={{ "--seat-color": view.displayed.config.players[index]!.color } as CSSProperties} aria-hidden="true">{index + 1}</span>{playerName(language, player.id, view.displayed.config)}</span><strong>{formatCash(language, player.cash)}</strong>
       </button>)}
       <span className={styles.round}>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
     </aside>

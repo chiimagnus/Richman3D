@@ -8,6 +8,7 @@ import { SettingsPanel } from "../../src/ui/SettingsPanel";
 import { messages } from "../../src/i18n";
 import { MatchSetup } from "../../src/ui/MatchSetup";
 import { BOT_DIFFICULTIES } from "../../src/domain/types";
+import { MenuArtwork } from "../../src/ui/MenuArtwork";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,6 +23,11 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
     const menu = renderToStaticMarkup(<MainMenu app={app} onSettings={() => {}} onStart={() => {}} onChallenge={() => {}} />);
     expect(menu.match(/<button\b/g)).toHaveLength(3);
     expect(menu).toContain(copy.settings.title);
+    expect(menu).toContain(copy.menu.eyebrow);
+    expect(menu).toContain(copy.menu.tagline);
+    expect(menu).toContain('aria-hidden="true" focusable="false"');
+    expect(menu).not.toContain("<canvas");
+    expect(menu).not.toMatch(/(?:src|href)="https?:/);
     expect(menu).not.toContain("<select");
     expect(menu).not.toContain(copy.storage.transfer.title);
     const setup = renderToStaticMarkup(<MatchSetup app={app} onClose={() => {}} />);
@@ -49,4 +55,14 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
     expect(lookAround).not.toHaveBeenCalled();
     expect(app.getSnapshot()).toBe(state);
   } finally { app.dispose(); }
+});
+
+it("keeps all decorative SVG references local and unique across simultaneous menu artwork instances", () => {
+  const artwork = renderToStaticMarkup(<><MenuArtwork /><MenuArtwork /></>);
+  const ids = [...artwork.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+  expect(ids).toHaveLength(6);
+  expect(new Set(ids).size).toBe(6);
+  for (const match of artwork.matchAll(/(?:href="#|url\(#)([^"\)]+)/g)) expect(ids).toContain(match[1]);
+  expect(artwork).not.toContain("<button");
+  expect(artwork).not.toContain("tabindex");
 });

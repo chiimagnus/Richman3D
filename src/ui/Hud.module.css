@@ -1,18 +1,18 @@
 .balances { grid-area: 1 / 1; z-index: 2; display: flex; flex-wrap: wrap; gap: 2px; min-width: 0; max-width: 100%; justify-self: start; align-self: start; align-items: center; border: 1px solid var(--border); border-radius: 16px; padding: 4px; background: var(--panel); box-shadow: var(--shadow); }
 .balances button { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; min-width: 0; max-width: 100%; padding: 10px 12px; border-color: transparent; border-radius: 11px; background: transparent; box-shadow: none; text-align: left; overflow-wrap: anywhere; }
-.balances button[aria-current="true"] { background: rgb(121 217 238 / 9%); }
+.balances button[aria-current="true"] { background: var(--selected); box-shadow: inset 0 0 0 1px rgb(35 101 108 / 15%); }
 .balances button span { font-weight: 500; color: var(--muted); }
 .balances strong { font-variant-numeric: tabular-nums; }
-.balances .seat { display: inline-grid; place-content: center; min-width: 1.5em; margin-inline-end: 6px; border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.balances .seat { display: inline-grid; place-content: center; min-width: 1.5em; margin-inline-end: 6px; border: 1px solid rgb(38 63 67 / 20%); border-radius: 6px; color: #263f43; background: var(--seat-color); font-variant-numeric: tabular-nums; }
 .round { padding: 10px 12px; color: var(--muted); font-size: .875rem; overflow-wrap: anywhere; }
-.dock { grid-area: 3 / 1 / 4 / -1; justify-self: center; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; width: min(760px, 100%); padding: 18px 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow); }
+.dock { grid-area: 3 / 1 / 4 / -1; justify-self: center; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; width: min(820px, 100%); padding: 14px 18px 4px; border: 1px solid var(--border); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow); }
 .copy { display: grid; min-width: 0; gap: 6px; overflow-wrap: anywhere; }
 .copy strong { font-size: 1.125rem; font-weight: 650; }
 .copy span { color: var(--muted); line-height: 1.6; }
 .actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 340px; }
-.primary { background: var(--primary); color: #09212c; border-color: transparent; box-shadow: inset 0 1px rgb(255 255 255 / 40%), 0 2px 8px rgb(0 8 16 / 16%); }
+.primary { background: var(--primary); color: var(--on-primary); border-color: transparent; box-shadow: inset 0 1px rgb(255 255 255 / 20%), 0 3px 6px rgb(35 101 108 / 16%); }
 .dice { display: flex; gap: 4px; margin-inline-end: 4px; }
-.dice span { display: grid; place-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: #102a38; color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 650; }
+.dice span { display: grid; place-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 650; }
 .reason { flex-basis: 100%; color: var(--muted); font-size: .875rem; }
 .property, .assets, .notice { grid-column: 1 / -1; min-width: 0; }
 .property, .assets { border-top: 1px solid var(--border); }

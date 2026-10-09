@@ -1,4 +1,5 @@
 {
+  "menu": { "eyebrow": "A CITY ON THE TABLE", "tagline": "A little city. A grand adventure." },
   "ai": {"choose":"Computer {number} difficulty","difficulties":{"easy":"Easy","normal":"Normal","hard":"Hard"},"action":"{actor} · {difficulty}: {reason}","reasons":{"roll":"Continue the turn","use_item":"Use an item with a current benefit","keep_valuable":"Keep the more useful items","reserve_cash":"Keep cash for upcoming costs","buy_property":"Buy within the cash budget","complete_group":"Complete a color group","upgrade_income":"Improve expected rent","debt_rescue":"Raise enough cash with less loss","insolvent":"Settle the unaffordable debt","fair_trade":"Accept useful value and groups","unfair_trade":"Reject an unfavorable or risky trade"}},
   "navigation": { "loading": "Loading game…", "retry": "Reload menu", "loadFailed": "Could not load the game. Reload the menu to retry the download. Saved data has not been erased." },
   "players": {
