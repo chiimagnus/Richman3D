@@ -18,13 +18,21 @@ export function downloadSave(record: SaveRecord): void {
 }
 
 export function downloadRawSave(raw: unknown): void {
+  downloadRawJson(raw, "original.richman.json");
+}
+
+export function downloadRawProfile(raw: unknown): void {
+  downloadRawJson(raw, "original.richman-profile.json");
+}
+
+function downloadRawJson(raw: unknown, filename: string): void {
   try {
     const content = JSON.stringify(raw, (_key, value: unknown) => {
       if (value === undefined || typeof value === "number" && !Number.isFinite(value)) throw new SaveError("invalid");
       return value;
     }, 2);
     if (!sameData(JSON.parse(content), raw)) throw new SaveError("invalid");
-    downloadJson(content, "original.richman.json");
+    downloadJson(content, filename);
   } catch (cause) { throw cause instanceof SaveError ? cause : new SaveError("unavailable", { cause }); }
 }
 

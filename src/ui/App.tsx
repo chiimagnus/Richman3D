@@ -30,19 +30,22 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { useGameView } from "./useGameView";
 import { assetManagementView, debtView, handCommands, tradeView } from "./viewModel";
 import styles from "./App.module.css";
+import { dailyChallenge, type DailyChallenge } from "../domain/challenges";
+import { ChallengePanel } from "./ChallengePanel";
 
 const SceneHost = lazy(() => import("./SceneHost").then((module) => ({ default: module.SceneHost })));
 
 export function App({ app }: { app: GameApp }) {
   const state = useSyncExternalStore(app.subscribe, app.getSnapshot);
-  const [panel, setPanel] = useState<"settings" | "setup" | "transfer" | null>(null);
+  const [panel, setPanel] = useState<"settings" | "setup" | "transfer" | { kind: "challenge"; challenge: DailyChallenge } | null>(null);
   const lastPanel = useRef(panel);
   useEffect(() => {
     if (lastPanel.current === "transfer" && panel === "settings") document.querySelector<HTMLButtonElement>("#transfer-open")?.focus({ preventScroll: true });
     lastPanel.current = panel;
   }, [panel]);
   return state.session ? <GamePlay key={state.session.matchId} app={app} session={state.session} preferences={state.preferences} /> : <>
-    <MainMenu app={app} onSettings={() => setPanel("settings")} onStart={() => setPanel("setup")} />
+    <MainMenu app={app} onSettings={() => setPanel("settings")} onStart={() => setPanel("setup")} onChallenge={() => setPanel({ kind: "challenge", challenge: dailyChallenge(new Date().toISOString().slice(0, 10)) })} />
+    {typeof panel === "object" && panel && <ChallengePanel app={app} challenge={panel.challenge} onClose={() => setPanel(null)} onRecover={() => setPanel("transfer")} />}
     {panel === "transfer" ? <TransferPanel app={app} onClose={() => setPanel("settings")} /> : panel === "settings" ? <SettingsPanel app={app} preferences={state.preferences} onClose={() => setPanel(null)}><button id="transfer-open" onClick={() => setPanel("transfer")}>{messages(state.preferences.language).storage.transfer.title}</button></SettingsPanel> : panel === "setup" && <MatchSetup app={app} onClose={() => setPanel(null)} />}
   </>;
 }

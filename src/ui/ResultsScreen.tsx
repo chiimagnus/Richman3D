@@ -11,9 +11,15 @@ export function ResultsScreen({ app, snapshot, onHistory }: { app: GameApp; snap
   const preferences = app.getSnapshot().preferences;
   const language = preferences.language;
   const copy = messages(language);
+  const challenge = app.getSnapshot().session?.challenge;
+  const profile = app.getSnapshot().profile;
+  const challengeRecord = challenge && profile.kind === "ready" ? profile.challenges.results.find((entry) => entry.challenge.id === challenge.id) : null;
   const own = snapshot.config.players.filter((player) => player.controller === "human").length === 1 ? result.rankings.find((entry) => entry.playerId === observerId(snapshot.config))! : null;
   return <PanelHost title={resultTitle(language, result, snapshot.config)}>
     <p>{copy.setup[result.reason]}</p>
+    {challenge && <p>{formatMessage(copy.challenges.date, { date: challenge.date })}</p>}
+    {challengeRecord?.best && <p>{formatMessage(copy.challenges.best, { rank: challengeRecord.best.rank, assets: formatCash(language, challengeRecord.best.netAssets) })}</p>}
+    {challengeRecord && <p>{formatMessage(copy.challenges.attempts, { attempts: challengeRecord.attempts })}</p>}
     {result.reason === "round_limit" && <p>{formatMessage(copy.setup.round, { round: snapshot.completedRounds, limit: snapshot.rules.roundLimit })}</p>}
     {own && <p>{formatMessage(copy.results.yourResult, { rank: own.rank, assets: formatCash(language, own.netAssets) })}</p>}
     <ol className={styles.rankings} aria-label={copy.results.rankings}>

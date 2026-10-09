@@ -1,10 +1,12 @@
 import { GameAudio } from "../audio/GameAudio";
 import { loadPreferences, savePreferences, type GamePreferences } from "../settings/preferences";
-import type { GameSession } from "./GameSession";
+import type { GameSession, SaveView } from "./GameSession";
 import { createMatchConfig } from "../domain/config";
 import type { MatchConfig } from "../domain/types";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveRecord, type StoredGame } from "../storage/snapshot";
+import { challengeConfig, type DailyChallenge } from "../domain/challenges";
+import type { ChallengeProfile } from "../storage/challenges";
 
 export type StoredView = { readonly kind: "loading" | "empty" } | { readonly kind: "valid"; readonly record: SaveRecord }
   | { readonly kind: "error"; readonly error: SaveError["kind"] };
@@ -15,10 +17,11 @@ export type AppView = {
   readonly loading: boolean;
   readonly loadFailed: boolean;
   readonly stored: StoredView;
+  readonly profile: { readonly kind: "loading" } | { readonly kind: "ready"; readonly challenges: ChallengeProfile } | { readonly kind: "error"; readonly error: SaveError["kind"] };
 };
 
 export class GameApp {
-  private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false, stored: { kind: "loading" } };
+  private view: AppView = { preferences: loadPreferences(), session: null, loading: false, loadFailed: false, stored: { kind: "loading" }, profile: { kind: "loading" } };
   private readonly listeners = new Set<() => void>();
   readonly audio = new GameAudio(this.view.preferences.soundEnabled, this.view.preferences.effectsVolume, this.view.preferences.musicVolume);
   private unbindAudio = () => {};
@@ -28,6 +31,7 @@ export class GameApp {
     document.documentElement.lang = this.view.preferences.language;
     document.addEventListener("visibilitychange", this.visibility);
     void this.readStored();
+    void this.refreshProfile();
   }
 
   getSnapshot = (): AppView => this.view;
@@ -36,7 +40,7 @@ export class GameApp {
     return () => this.listeners.delete(listener);
   };
 
-  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1), restored?: StoredGame): Promise<void> {
+  async start(config: MatchConfig = createMatchConfig(crypto.getRandomValues(new Uint32Array(1))[0] ?? 1), restored?: StoredGame, challenge?: DailyChallenge): Promise<void> {
     if (this.view.loading) return;
     this.audio.unlock();
     const request = ++this.request;
@@ -55,14 +59,17 @@ export class GameApp {
     try {
       const [{ Game }, { GameSession }] = await Promise.all([import("../domain/game"), import("./GameSession"), import("../ui/SceneHost")]);
       const stored = restored ?? await this.readStored();
+      const progress = restored ? await this.store.readChallenges() : null;
       if (request !== this.request) return;
       const session = new GameSession(restored ? Game.restore(restored.record.state) : new Game(config), restored?.record.matchId ?? crypto.randomUUID(),
-        { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local" });
+        { store: this.store, expected: stored?.record ?? null, source: restored?.record.source ?? "local", challenge: challenge ?? (progress?.active?.matchId === restored?.record.matchId ? progress?.active?.challenge ?? undefined : undefined) });
       session.setPresentationSpeed(this.view.preferences.presentationSpeed);
       if (document.hidden) session.pause();
+      let observedSave: SaveView | null = null;
       const syncAudio = () => {
         const view = session.getSnapshot();
         this.audio.setPlaying(view.mode === "running" && view.committed.decision.kind !== "game_over");
+        if (view.save.kind === "saved" && observedSave !== view.save) { observedSave = view.save; void this.refreshProfile(); }
       };
       this.unbindAudio = session.subscribe(syncAudio);
       syncAudio();
@@ -76,8 +83,22 @@ export class GameApp {
   }
 
   restart(replay = false): Promise<void> {
+    const challenge = this.view.session?.challenge;
+    if (challenge) return this.startChallenge(challenge);
     const config = this.view.session?.getSnapshot().committed.config;
     return this.start(config ? { ...config, seed: replay ? config.seed : crypto.getRandomValues(new Uint32Array(1))[0] ?? 1 } : undefined);
+  }
+
+  startChallenge(challenge: DailyChallenge): Promise<void> { return this.start(challengeConfig(challenge), undefined, challenge); }
+
+  async refreshProfile(): Promise<void> {
+    const request = this.request;
+    try {
+      const challenges = await this.store.readChallenges();
+      if (request === this.request) this.publish({ ...this.view, profile: { kind: "ready", challenges } });
+    } catch (cause) {
+      if (request === this.request) this.publish({ ...this.view, profile: { kind: "error", error: cause instanceof SaveError ? cause.kind : "unavailable" } });
+    }
   }
 
   async continueSaved(): Promise<void> {
@@ -136,6 +157,7 @@ export class GameApp {
     this.audio.stop();
     this.publish({ ...this.view, session: null, loading: false, loadFailed: false });
     await this.readStored();
+    await this.refreshProfile();
   }
 
   setPreferences(preferences: GamePreferences): void {

@@ -119,6 +119,16 @@
     "construction-discount": "本回合下一次合法升级仅付{percent}%，向上取整；出售退款与资产按实际造价计算，回合结束失效。",
     "swap-positions": "与另一名存活玩家交换位置，不结算落点、不领取起点奖励，随后正常掷骰。"
   },
+  "challenges": {
+    "title": "每日挑战", "date": "挑战日期（UTC）：{date}",
+    "configuration": "{map} · {rounds}轮 · {seats}席 · 你与{bots}名{difficulty}电脑",
+    "localOnly": "仅供本机自我挑战，不是可信排行榜。设备时间和本地数据可以被修改。最佳结果依次比较净资产、现金和排名。",
+    "identity": "挑战：{id} · 地图版本{mapVersion} · 种子{seed}",
+    "start": "开始挑战", "replaceStart": "替换存档并开始挑战", "attempts": "已开始次数：{attempts}",
+    "first": "首次结果：第{rank}名，净资产{assets}", "best": "最佳结果：第{rank}名，净资产{assets}",
+    "storageError": "无法读取已保存数据，原数据未被替换。开始挑战前请先导出或恢复。",
+    "exportRaw": "导出原始本地挑战数据", "reset": "重置挑战记录", "resetWarning": "将删除本地挑战记录，不删除对局或设置。请先导出需要保留的原始数据。", "confirmReset": "确认删除挑战记录"
+  },
   "maps": {
     "preview": "地图布局预览", "heading": "{name} · {spaces} 格", "prices": "查看路径顺序、地价与费用", "choose": "地图",
     "definitions": {

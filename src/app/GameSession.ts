@@ -6,6 +6,7 @@ import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
 import { PRESENTATION_RATES, type PresentationSpeed } from "../settings/preferences";
+import type { DailyChallenge } from "../domain/challenges";
 
 export type SaveView = { readonly kind: "disabled" | "saving" } | { readonly kind: "saved"; readonly savedAt: number }
   | { readonly kind: "unsaved"; readonly acknowledged: boolean; readonly error: SaveError["kind"] } | { readonly kind: "conflict" };
@@ -40,12 +41,13 @@ export class GameSession {
   private presentationSpeed: PresentationSpeed = "normal";
 
   constructor(private readonly game: Game, readonly matchId = "local",
-    private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"] }) {
+    private readonly persistence?: { readonly store: GameStore; readonly expected: SaveIdentity | null; readonly source: SaveRecord["source"]; readonly challenge?: DailyChallenge | undefined }) {
     this.expected = persistence?.expected ?? null;
     this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, settledRoll: null, botDecision: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
   }
 
   getSnapshot = (): GameView => this.view;
+  get challenge(): DailyChallenge | null { return this.persistence?.challenge ?? null; }
   setPresentationSpeed(speed: PresentationSpeed): void { this.presentationSpeed = speed; }
 
   get handoverActor(): PlayerId | null {
@@ -90,7 +92,7 @@ export class GameSession {
     this.publish({ save: { kind: "saving" } });
     this.saving = Promise.resolve().then(async () => {
       try {
-        const saved = await store.save(makeSave(snapshot, this.matchId, source), this.expected);
+        const saved = await store.save(makeSave(snapshot, this.matchId, source), this.expected, this.persistence?.challenge);
         this.expected = { matchId: saved.matchId, revision: saved.revision };
         if (this.view.mode !== "disposed") this.publish({ save: { kind: "saved", savedAt: saved.savedAt } });
         return true;

@@ -119,6 +119,16 @@
     "construction-discount": "Pay {percent}% for your next legal upgrade this turn, rounded up. Sale refunds and asset value use the actual cost. Expires at turn end.",
     "swap-positions": "Swap positions with another surviving player. No landing effect or Start reward. Then roll normally."
   },
+  "challenges": {
+    "title": "Daily challenge", "date": "Challenge date (UTC): {date}",
+    "configuration": "{map} · {rounds} rounds · {seats} seats · you and {bots} {difficulty} computers",
+    "localOnly": "A local self-challenge, not a trusted leaderboard. Your device clock and local data can be changed. Best results compare net assets, then cash, then rank.",
+    "identity": "Challenge: {id} · map version {mapVersion} · seed {seed}",
+    "start": "Start challenge", "replaceStart": "Replace save and start challenge", "attempts": "Attempts started: {attempts}",
+    "first": "First result: rank {rank}, net assets {assets}", "best": "Best result: rank {rank}, net assets {assets}",
+    "storageError": "Saved data could not be read. It has not been replaced. Export or recover it before starting a challenge.",
+    "exportRaw": "Export original local challenge data", "reset": "Reset challenge records", "resetWarning": "This deletes local challenge records, not your match or settings. Export any original data you need first.", "confirmReset": "Confirm deletion of challenge records"
+  },
   "maps": {
     "preview": "Map layout preview", "heading": "{name} · {spaces} spaces", "prices": "Layout order, prices and fees", "choose": "Map",
     "definitions": {
