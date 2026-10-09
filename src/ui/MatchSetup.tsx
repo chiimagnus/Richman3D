@@ -8,6 +8,7 @@ import { BOT_DIFFICULTIES, type BotDifficulty } from "../domain/types";
 import { chanceCardText, formatMessage, messages } from "../i18n";
 import { PanelHost } from "./PanelHost";
 import styles from "./MatchSetup.module.css";
+import { MapPreview } from "./MapPreview";
 
 export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void }) {
   const language = app.getSnapshot().preferences.language;
@@ -51,8 +52,8 @@ export function MatchSetup({ app, onClose }: { app: GameApp; onClose: () => void
         <option value={STANDARD_RULES.version}>{formatMessage(copy.standard, { rounds: STANDARD_RULES.roundLimit })}</option>
       </select></label>
       <p>{formatMessage(copy.moneyRules, { cash: rules.startingCash, bonus: rules.passStartBonus })}</p>
+      <MapPreview map={map} rules={rules} language={language} />
       <details><summary>{copy.advanced}</summary>
-        <p>{formatMessage(copy.city, { spaces: map.tiles.length })}</p>
         {SEAT_IDS.slice(0, seats).map((id, index) => <label className={styles.row} key={id}>{formatMessage(copy.color, { player: messages(language).players[id] })}
           <select value={colors[index]} onChange={(event) => { const next = [...colors]; next[index] = event.currentTarget.value; setColors(next); }}>
             {SEAT_COLORS.map((color, colorIndex) => <option key={color} value={color}>{Object.values(copy.colors)[colorIndex]}</option>)}

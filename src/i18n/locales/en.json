@@ -115,13 +115,17 @@
     "construction-discount": "Pay {percent}% for your next legal upgrade this turn, rounded up. Sale refunds and asset value use the actual cost. Expires at turn end.",
     "swap-positions": "Swap positions with another surviving player. No landing effect or Start reward. Then roll normally."
   },
+  "maps": {
+    "preview": "Map layout preview", "heading": "{name} · {spaces} spaces", "prices": "Layout order, prices and fees", "choose": "Map",
+    "definitions": { "city": { "name": "City", "description": "A compact loop with mostly neighboring property groups." } }
+  },
   "setup": {
     "title": "New match",
     "seats": "Players", "seatOption": "{count} seats", "computerSeat": "Computer {number} name",
     "humans": "Local humans", "humanOption": "{count} local humans", "humanSeat": "Local player {number} name",
     "turnOrder": "Fixed turn order: {players}", "spectating": "You are eliminated. Watch the remaining players or return to Main Menu from Settings. Skip Animation only speeds presentation.",
     "length": "Match length", "quick": "Quick · {rounds} rounds", "standard": "Standard · {rounds} rounds",
-    "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options", "city": "City · {spaces} spaces · Normal computer",
+    "moneyRules": "Start with ¥{cash}. Passing Start earns ¥{bonus}.", "advanced": "More options",
     "color": "{player} · Pawn color", "colors": { "cyan": "Cyan", "amber": "Amber", "violet": "Violet", "emerald": "Emerald" },
     "launch": "Start match", "cancel": "Cancel", "nameError": "Use 1–16 visible characters, or leave the name blank for the default.",
     "round": "Round {round} / {limit}", "tied": "{playerName} tied for the win.", "nameSeparator": " & ",

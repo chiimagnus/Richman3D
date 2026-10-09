@@ -1,0 +1,9 @@
+.preview { border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-block: 16px; }
+.preview h3 { margin: 0; }
+.preview p { color: var(--muted); }
+.layout { display: block; width: min(100%, 260px); margin: 16px auto; }
+.layout rect { fill: var(--panel); stroke: var(--accent); stroke-width: .07; }
+.layout text { fill: currentColor; font-size: 1.2px; }
+.prices { padding-left: 2em; }
+.prices li { margin-block: 12px; }
+.prices span { display: block; }

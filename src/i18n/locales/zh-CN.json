@@ -115,13 +115,17 @@
     "construction-discount": "本回合下一次合法升级仅付{percent}%，向上取整；出售退款与资产按实际造价计算，回合结束失效。",
     "swap-positions": "与另一名存活玩家交换位置，不结算落点、不领取起点奖励，随后正常掷骰。"
   },
+  "maps": {
+    "preview": "地图布局预览", "heading": "{name} · {spaces} 格", "prices": "查看路径顺序、地价与费用", "choose": "地图",
+    "definitions": { "city": { "name": "城市", "description": "紧凑的单环棋盘，同组地产多数相邻。" } }
+  },
   "setup": {
     "title": "新对局",
     "seats": "对局人数", "seatOption": "{count}席", "computerSeat": "电脑{number}的名字",
     "humans": "本地真人", "humanOption": "{count}名本地真人", "humanSeat": "本地玩家{number}的名字",
     "turnOrder": "固定轮序：{players}", "spectating": "你已淘汰，可继续观看或从设置返回主菜单。跳过动画仅加速演出。",
     "length": "对局长度", "quick": "快速 · {rounds}轮", "standard": "标准 · {rounds}轮",
-    "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项", "city": "城市 · {spaces}格 · 普通电脑",
+    "moneyRules": "初始资金{cash}，经过起点获得{bonus}。", "advanced": "更多选项",
     "color": "{player} · 棋子颜色", "colors": { "cyan": "青色", "amber": "琥珀", "violet": "紫色", "emerald": "绿色" },
     "launch": "开始对局", "cancel": "取消", "nameError": "名字需为1–16个可见字符，留空则使用默认名。",
     "round": "第{round} / {limit}轮", "tied": "{playerName}并列获胜。", "nameSeparator": "、",
