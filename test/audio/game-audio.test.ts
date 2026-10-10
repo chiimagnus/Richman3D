@@ -1,6 +1,30 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { GameAudio } from "../../src/audio/GameAudio";
 import { audioProtocol } from "../fixtures/audio";
+import { playSeatFeedback } from "../../src/ui/SceneHost";
+import { GameSession } from "../../src/app/GameSession";
+import { Game } from "../../src/domain/game";
+import { createMatchConfig } from "../../src/domain/config";
+import { builtRentDebtMatch } from "../fixtures/debt-match";
+
+it.each(["human", "bot"] as const)("preserves %s p2 feedback for real local sessions", (controller) => {
+  const config = createMatchConfig();
+  const session = new GameSession(new Game({ ...config, players: config.players.map((player, index) => ({ ...player, controller: index === 1 ? controller : player.controller })) }));
+  const game = builtRentDebtMatch(2);
+  for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  const result = game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision });
+  if (!result.ok) throw new Error("Expected terminal command");
+  const ended = result.events.find((event) => event.kind === "ended");
+  if (!ended || ended.kind !== "ended") throw new Error("Expected terminal event");
+  const contexts = audioProtocol(); const audio = new GameAudio(); audio.unlock();
+  try {
+    playSeatFeedback(audio, session.getSnapshot(), { kind: "turn", actor: "p2" });
+    expect(contexts[0]!.oscillators.map((node) => node.frequency.value)).toEqual(controller === "human" ? [440, 660] : [300, 240]);
+    const offset = contexts[0]!.oscillators.length;
+    audio.stop(); playSeatFeedback(audio, session.getSnapshot(), ended);
+    expect(contexts[0]!.oscillators.slice(offset).map((node) => node.frequency.value)).toEqual(controller === "human" ? [440, 554, 659, 880] : [330, 247, 196]);
+  } finally { audio.dispose(); session.dispose(); }
+});
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 

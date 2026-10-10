@@ -15,6 +15,10 @@ import { matchId } from "../../src/app/matchId";
 import { GameApp } from "../../src/app/GameApp";
 import { GameStore } from "../../src/storage/GameStore";
 import { IDBFactory } from "fake-indexeddb";
+import { playSeatFeedback } from "../../src/ui/SceneHost";
+import { GameAudio } from "../../src/audio/GameAudio";
+import { audioProtocol } from "../fixtures/audio";
+import { builtRentDebtMatch } from "../fixtures/debt-match";
 
 const options = { seats: 2, mapId: CITY.id, rulesVersion: QUICK_RULES.version };
 const storage = { setItem: vi.fn() };
@@ -172,6 +176,27 @@ describe("browser client and online session against native workerd", () => {
       expect(room.snapshot!.players).toHaveLength(seats);
       expect(room.snapshot!.players.every((player) => player.id === room.playerId ? Array.isArray(player.hand) : player.hand === null)).toBe(true);
       expect(room.snapshot!.properties).toEqual(host.getSnapshot().room!.snapshot!.properties);
+    }
+  });
+
+  it("plays each online seat's actual own/opponent turn and victory/defeat notes", async () => {
+    const { left, right } = await start();
+    const game = builtRentDebtMatch(2);
+    for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ kind: "sell_building", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    const result = game.apply({ kind: "bankrupt", actor: "p1", expectedRevision: game.snapshot.revision });
+    if (!result.ok) throw new Error("Expected terminal command");
+    const ended = result.events.find((event) => event.kind === "ended");
+    if (!ended || ended.kind !== "ended") throw new Error("Expected terminal event");
+    expect(ended.result.winnerIds).toEqual(["p2"]);
+    for (const session of [left, right]) {
+      const contexts = audioProtocol(); const audio = new GameAudio(); audio.unlock();
+      try {
+        playSeatFeedback(audio, session.getSnapshot(), { kind: "turn", actor: "p1" });
+        expect(contexts[0]!.oscillators.map((node) => node.frequency.value)).toEqual(session === left ? [440, 660] : [300, 240]);
+        const offset = contexts[0]!.oscillators.length;
+        audio.stop(); playSeatFeedback(audio, session.getSnapshot(), ended);
+        expect(contexts[0]!.oscillators.slice(offset).map((node) => node.frequency.value)).toEqual(session === right ? [440, 554, 659, 880] : [330, 247, 196]);
+      } finally { audio.dispose(); }
     }
   });
 });

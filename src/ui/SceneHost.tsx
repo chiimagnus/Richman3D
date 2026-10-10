@@ -8,6 +8,15 @@ import { useGameView } from "./useGameView";
 import styles from "./App.module.css";
 import { playerConfig } from "../domain/config";
 import type { CameraView } from "../rendering/CameraRig";
+import type { GameAudio } from "../audio/GameAudio";
+import type { GameView } from "../app/GameSession";
+import type { GameEvent, PlayerId } from "../domain/types";
+
+export function playSeatFeedback(audio: Pick<GameAudio, "playTurn" | "playGameOver">, view: GameView, event: Extract<GameEvent, { kind: "turn" | "ended" }>): void {
+  const localPlayer = (id: PlayerId) => view.network ? id === view.viewPlayerId : playerConfig(view.committed.config, id).controller === "human";
+  if (event.kind === "turn") audio.playTurn(localPlayer(event.actor));
+  else audio.playGameOver(event.result.winnerIds.some(localPlayer));
+}
 
 export type SceneControls = { lookAround(): void; centerCurrent(): void };
 
@@ -104,8 +113,8 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "skipped": break;
               case "paid":
               case "liquidated": break;
-              case "turn": audio.playTurn(playerConfig(snapshot.config, event.actor).controller === "human"); break;
-              case "ended": activeWorld.unlockFirstPerson(); audio.playGameOver(event.result.winnerIds.some((id) => playerConfig(snapshot.config, id).controller === "human")); break;
+              case "turn": playSeatFeedback(audio, session.getSnapshot(), event); break;
+              case "ended": activeWorld.unlockFirstPerson(); playSeatFeedback(audio, session.getSnapshot(), event); break;
             }
           }
           await feedback();
