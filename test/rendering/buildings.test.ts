@@ -47,6 +47,16 @@ it("renders the real three levels, replaces their resources once, and restores w
     expect(height).toBeGreaterThan(previousHeight);
     expect(new THREE.Box3().setFromObject(current).max.y).toBeLessThan(1.72);
     expect(current.getObjectByName("property-building-base")!.scale.toArray()).toEqual([1.1, 0.1, 1.1]);
+    const base = current.getObjectByName("property-building-base") as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    expect(base.material.color.getHexString()).toBe(snapshot.config.players[0]!.color.slice(1));
+    const house = current.getObjectByName("property-building-house") as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    expect(house.geometry.getAttribute("position").count).toBe([874, 1218, 1278][level - 1]);
+    expect(house.material.vertexColors).toBe(true);
+    expect(house.scale.x).toBe(house.scale.y);
+    expect(house.scale.z).toBe(house.scale.y);
+    const footprint = new THREE.Box3().setFromObject(house).getSize(new THREE.Vector3());
+    expect(footprint.x).toBeLessThanOrEqual(1.051);
+    expect(footprint.z).toBeLessThanOrEqual(1.051);
     expect(fillText.mock.calls.some((call) => call[0] === String(level))).toBe(true);
     const restored = readSave(makeSave(game.snapshot, propertyMatchId)).snapshot;
     fillText.mockClear();
