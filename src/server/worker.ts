@@ -16,6 +16,23 @@ function json(value: unknown, status = 200) {
 
 function error(error: RoomError, status = 400) { return json({ error }, status); }
 
+async function readBody(request: Request): Promise<string> {
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error("invalid_request");
+  const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+  let length = 0;
+  let body = "";
+  try {
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) return body + decoder.decode();
+      length += chunk.value.byteLength;
+      if (length > 2048) throw new Error("invalid_request");
+      body += decoder.decode(chunk.value, { stream: true });
+    }
+  } finally { try { await reader.cancel(); } finally { reader.releaseLock(); } }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -63,8 +80,7 @@ export class Room extends DurableObject<Env> {
     }
     let input: ReturnType<typeof memberInput>;
     try {
-      const body = await request.text();
-      if (body.length > 2048) return error("invalid_request");
+      const body = await readBody(request);
       input = memberInput(JSON.parse(body), action === "create");
     } catch { return error("invalid_request"); }
     try {

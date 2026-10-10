@@ -159,6 +159,21 @@ describe("browser client and online session against native workerd", () => {
       expect(app.getSnapshot().session!.getSnapshot().displayed.revision).toBe(0);
     } finally { unbind(); app.dispose(); }
   });
+
+  it.each([3, 4])("starts %s independent native clients with private per-seat projections", async (seats) => {
+    const host = await enter(roomCredential("create", "Host", "", { ...options, seats }));
+    for (let index = 1; index < seats; index += 1) await enter(roomCredential("join", `Guest ${index}`, host.credential.code, null));
+    await until(() => host.getSnapshot().room!.members.length === seats && host.getSnapshot().room!.members.every((member) => member.connected));
+    expect(host.start()).toBe(true);
+    await until(() => clients.every((client) => client.getSnapshot().room?.snapshot !== null));
+    for (const [index, client] of clients.entries()) {
+      const room = client.getSnapshot().room!;
+      expect(room.playerId).toBe(`p${index + 1}`);
+      expect(room.snapshot!.players).toHaveLength(seats);
+      expect(room.snapshot!.players.every((player) => player.id === room.playerId ? Array.isArray(player.hand) : player.hand === null)).toBe(true);
+      expect(room.snapshot!.properties).toEqual(host.getSnapshot().room!.snapshot!.properties);
+    }
+  });
 });
 
 it("validates remembered credentials without deleting corrupt or inaccessible data", () => {

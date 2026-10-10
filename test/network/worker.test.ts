@@ -101,6 +101,17 @@ describe("authoritative rooms in real workerd", () => {
     expect(forbidden.status).toBe(403);
   });
 
+  it("rejects oversized HTTP bodies before membership changes and keeps the room usable", async () => {
+    expect((await post("create", { token: firstToken, name: "Host", options, padding: "x".repeat(10000) })).status).toBe(400);
+    expect((await post("create", { token: firstToken, name: "Host", options })).status).toBe(200);
+    expect((await post("join", { token: secondToken, name: "é".repeat(1600) })).status).toBe(400);
+    const host = await connect(firstToken);
+    expect(host.state.room.members).toHaveLength(1);
+    expect((await post("join", { token: secondToken, name: "Guest" })).status).toBe(200);
+    const guest = await connect(secondToken);
+    expect(guest.state.room.members).toHaveLength(2);
+  });
+
   it("synchronizes real cash/ownership/trades and rejects impersonation and duplicate economic commands", async () => {
     const { first, second } = await room();
     const clients = { p1: first, p2: second };

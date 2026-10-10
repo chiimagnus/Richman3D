@@ -6,6 +6,8 @@
 
 **在线试玩：https://chiimagnus.github.io/Richman3D/**
 
+**远程联机：https://richman3d-multiplayer.chiimagnus.workers.dev/**
+
 ![Richman 3D gameplay](public/og-image.png)
 
 当前仅面向 PC 桌面浏览器，使用鼠标、键盘和界面按钮操作；不提供手机或平板适配。
@@ -18,6 +20,36 @@ npm run dev
 ```
 
 浏览器打开终端显示的本地地址即可开始游戏。
+
+## 联机开发与部署
+
+联机使用同一个 Cloudflare Worker + SQLite Durable Object 后端，支持 2–4 位真人分别使用电脑。领域层在服务器裁定，浏览器只呈现本人的视角和手牌；原有同机真人、电脑、存档和挑战仍保留。GitHub Pages 与 Vite 开发服务器没有房间后端，其「联机房间」入口前往独立 Worker 服务；开发联机使用下面的局域网命令。
+
+房主电脑先安装 Node.js 22.12+ 和依赖，再构建启动：
+
+```bash
+npm ci
+npm run lan
+```
+
+所有电脑（包括房主）访问 `http://房主局域网IP:8787/`，使用页面的联机入口。不要分享 `localhost` 或 `127.0.0.1` 的邀请地址，它们只指向访问者自己的电脑。启动脚本关闭 Wrangler 的本地开发存储/观测 API，游戏服务器监听局域网接口，调试端口只监听本机；系统防火墙可能需要允许 Node 的局域网访问，不需要路由器端口转发。
+
+准备好依赖和 `dist-worker/` 后，断网时直接启动，无需 Cloudflare 登录：
+
+```bash
+npm run lan:start
+```
+
+本地房间存于 `.wrangler/state/`，房主必须保持服务器运行，重启可读取未到期房间。普通 HTTP 只适合可信局域网，不要暴露到公网。远程服务使用 HTTPS/WSS，同样在服务器保存房间；席位凭据留在当前浏览器标签的 `sessionStorage`，刷新或重连恢复原席位，关闭标签或清理数据可能丢失凭据。新玩家不能顶替已开始对局的席位。房间在最后有效操作后保留 24 小时，页面显示到期时间。
+
+部署独立服务（会创建或更新 `wrangler.jsonc` 指定的 Worker，请先核对账号和同名服务归属）：
+
+```bash
+npx wrangler whoami
+npm run deploy:worker
+```
+
+Pages 构建仍是 `npm run build` → `dist/`；Worker/LAN 使用根路径 `npm run build:worker` → `dist-worker/`，不能混用产物。Workers Free 支持本项目使用的 SQLite Durable Objects；采用 WebSocket 休眠，静态资源不经过房间 Worker。免费额度为账号共享且不是无限免费，超额会停止服务，不会由项目自动升级付费；已付费账号仍按其订阅计费。部署前在控制台确认 Workers Free，限额以 [Workers 定价](https://developers.cloudflare.com/workers/platform/pricing/) 与 [Durable Objects 定价](https://developers.cloudflare.com/durable-objects/platform/pricing/) 为准。
 
 ## 技术栈
 

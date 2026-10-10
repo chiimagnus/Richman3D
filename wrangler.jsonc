@@ -4,6 +4,7 @@
   "main": "src/server/worker.ts",
   "compatibility_date": "2026-05-08",
   "workers_dev": true,
+  "send_metrics": false,
   "ratelimits": [{ "name": "ROOM_LIMIT", "namespace_id": "874621009", "simple": { "limit": 60, "period": 60 } }],
   "assets": {
     "directory": "./dist-worker",
