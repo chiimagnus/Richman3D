@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import type { GameApp } from "../app/GameApp";
-import type { GameSession } from "../app/GameSession";
+import type { PlaySession } from "../app/Session";
 import { World } from "../rendering/World";
 import { lookSensitivityScale, type GamePreferences } from "../settings/preferences";
 import { messages } from "../i18n";
@@ -11,7 +11,7 @@ import type { CameraView } from "../rendering/CameraRig";
 
 export type SceneControls = { lookAround(): void; centerCurrent(): void };
 
-export function SceneHost({ app, session, preferences, cameraView, interactive, selectedTileId, onInspect, ref }: { app: GameApp; session: GameSession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; selectedTileId: string | null; onInspect: (tileId: string) => void; ref: Ref<SceneControls> }) {
+export function SceneHost({ app, session, preferences, cameraView, interactive, selectedTileId, onInspect, ref }: { app: GameApp; session: PlaySession; preferences: GamePreferences; cameraView: CameraView; interactive: boolean; selectedTileId: string | null; onInspect: (tileId: string) => void; ref: Ref<SceneControls> }) {
   const host = useRef<HTMLDivElement>(null);
   const resources = useRef<{ world: World } | null>(null);
   const [failed, setFailed] = useState(false);

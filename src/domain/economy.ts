@@ -1,6 +1,6 @@
 import type { MapDefinition, PropertyTile } from "./board";
 import type { RuleSet } from "./rules";
-import type { GameSnapshot, LandingResult, PendingDebt, PlayerId, PropertyState } from "./types";
+import type { GameReadSnapshot, LandingResult, PendingDebt, PlayerId, PropertyState } from "./types";
 import { cardType } from "./cards";
 
 function money(value: bigint): number {
@@ -18,13 +18,13 @@ export function propertyTile(map: MapDefinition, propertyId: string): PropertyTi
   return tile;
 }
 
-export function completeGroup(snapshot: GameSnapshot, tile: PropertyTile): boolean {
+export function completeGroup(snapshot: GameReadSnapshot, tile: PropertyTile): boolean {
   const owner = snapshot.properties[tile.id]!.ownerId;
   return owner !== null && snapshot.map.tiles.filter((candidate) => candidate.type === "property" && candidate.group === tile.group)
     .every((candidate) => snapshot.properties[candidate.id]!.ownerId === owner);
 }
 
-export function rentFor(snapshot: GameSnapshot, propertyId: string): number {
+export function rentFor(snapshot: GameReadSnapshot, propertyId: string): number {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   return rentAmount(tile, property, snapshot.rules, completeGroup(snapshot, tile));
@@ -43,7 +43,7 @@ export function discountedCost(amount: number, percent: number): number {
   return money((BigInt(amount) * BigInt(percent) + 99n) / 100n);
 }
 
-export function upgradeOption(snapshot: GameSnapshot, actor: PlayerId, propertyId: string) {
+export function upgradeOption(snapshot: GameReadSnapshot, actor: PlayerId, propertyId: string) {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   const player = snapshot.players.find((candidate) => candidate.id === actor)!;
@@ -67,7 +67,7 @@ export function constructionRefund(cost: number, rules: RuleSet): number {
   return money(BigInt(cost) * BigInt(rules.constructionSalePercent) / 100n);
 }
 
-export function saleOption(snapshot: GameSnapshot, actor: PlayerId, propertyId: string) {
+export function saleOption(snapshot: GameReadSnapshot, actor: PlayerId, propertyId: string) {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   const player = snapshot.players.find((candidate) => candidate.id === actor)!;
@@ -93,15 +93,15 @@ export function propertyLiquidationValue(property: PropertyState, rules: RuleSet
   return money(property.constructionCosts.reduce((total, cost) => total + BigInt(constructionRefund(cost, rules)), 0n));
 }
 
-export function propertyValue(snapshot: GameSnapshot, id: PlayerId): number {
+export function propertyValue(snapshot: GameReadSnapshot, id: PlayerId): number {
   return money(snapshot.map.tiles.reduce((total, tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === id ? total + BigInt(propertyBookValue(tile, snapshot.properties[tile.id]!)) : total, 0n));
 }
 
-export function liquidationValue(snapshot: GameSnapshot, id: PlayerId): number {
+export function liquidationValue(snapshot: GameReadSnapshot, id: PlayerId): number {
   return money(snapshot.map.tiles.reduce((total, tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === id ? total + BigInt(propertyLiquidationValue(snapshot.properties[tile.id]!, snapshot.rules)) : total, 0n));
 }
 
-export function netAssets(snapshot: GameSnapshot, id: PlayerId): number {
+export function netAssets(snapshot: GameReadSnapshot, id: PlayerId): number {
   const player = snapshot.players.find((candidate) => candidate.id === id);
   if (!player) throw new Error("玩家不存在");
   return money(BigInt(player.cash) + BigInt(propertyValue(snapshot, id)));
@@ -112,7 +112,7 @@ export function obligation(landing: LandingResult): PendingDebt | null {
   return { creditorId: landing.kind === "rent" ? landing.ownerId : null, amount: Math.abs(landing.amount), source: { ...landing }, continuation: "finish_turn" };
 }
 
-export function canDeclareBankruptcy(snapshot: GameSnapshot, actor: PlayerId): boolean {
+export function canDeclareBankruptcy(snapshot: GameReadSnapshot, actor: PlayerId): boolean {
   const decision = snapshot.decision;
   const player = snapshot.players.find((candidate) => candidate.id === actor);
   return decision.kind === "awaiting_debt" && decision.actorId === actor && !!player && !player.bankrupt &&

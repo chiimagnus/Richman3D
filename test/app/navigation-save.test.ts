@@ -20,7 +20,7 @@ async function fixture() {
   const present = vi.fn(async () => {});
   app.subscribe(() => {
     const session = app.getSnapshot().session;
-    if (session && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop() {}, present }); }
+    if (session?.kind === "local" && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop() {}, present }); }
   });
   await vi.waitFor(() => expect(app.getSnapshot().stored.kind).toBe("empty"));
   return { app, store, present };
@@ -44,6 +44,7 @@ it("a late leave waiting for a rule save cannot cancel the later new-match inten
     release();
     await Promise.all([rolling, leaving, starting]);
     const current = app.getSnapshot().session!;
+    if (current.kind !== "local") throw new Error("Expected local session");
     expect(current.matchId).not.toBe(old.matchId);
     expect(current.getSnapshot().committed.config.seed).toBe(768);
     expect(old.getSnapshot().mode).toBe("disposed");
@@ -117,6 +118,7 @@ it.each(["unavailable", "conflict"] as const)("failed %s replacement preserves t
     await expect(app.replaceSaved(incoming, current, "imported")).rejects.toMatchObject({ kind });
     expect(app.getSnapshot().session).toBe(old);
     expect(old.getSnapshot().mode).toBe("paused");
+    if (old.kind !== "local") throw new Error("Expected local session");
     expect(old.getSnapshot().committed.config.seed).toBe(940);
     expect(app.getSnapshot().loading).toBe(false);
     expect(await store.readRaw()).toEqual(current);

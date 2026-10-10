@@ -1,5 +1,5 @@
 import type { GameApp } from "../app/GameApp";
-import type { GameSnapshot } from "../domain/types";
+import type { GameReadSnapshot } from "../domain/types";
 import { observerId } from "../domain/config";
 import { formatCash, formatMessage, messages, playerName, resultTitle } from "../i18n";
 import { PanelHost } from "./PanelHost";
@@ -8,26 +8,29 @@ import { useState } from "react";
 import { matchSummary } from "../domain/records";
 import { summaryText } from "./RecordsPanel";
 
-export function ResultsScreen({ app, snapshot, onHistory, onRecords, returnToRecords = false }: { app: GameApp; snapshot: GameSnapshot; onHistory: () => void; onRecords?: () => void; returnToRecords?: boolean }) {
+export function ResultsScreen({ app, snapshot, onHistory, onRecords, returnToRecords = false }: { app: GameApp; snapshot: GameReadSnapshot; onHistory: () => void; onRecords?: (() => void) | undefined; returnToRecords?: boolean }) {
   const [copied, setCopied] = useState<"copied" | "copyUnavailable" | null>(null);
   if (snapshot.decision.kind !== "game_over") return null;
   const result = snapshot.decision.result;
   const preferences = app.getSnapshot().preferences;
   const language = preferences.language;
   const copy = messages(language);
-  const challenge = app.getSnapshot().session?.challenge;
-  const profile = app.getSnapshot().profile;
   const session = app.getSnapshot().session;
+  const local = session?.kind !== "online";
+  const challenge = session?.kind === "local" ? session.challenge : null;
+  const profile = app.getSnapshot().profile;
   const save = session?.getSnapshot().save;
   const recorded = profile.kind === "ready" ? profile.records.recent.find((entry) => entry.matchId === session?.matchId) : null;
   const completed = profile.kind === "ready" && profile.challenges.active?.matchId === session?.matchId && profile.challenges.active?.completed;
-  const share = summaryText(recorded ?? matchSummary(snapshot, session?.matchId ?? "", challenge ? "challenge" : "free", save?.kind === "saved" ? save.savedAt : 0), language);
+  const localSnapshot = local && "seed" in snapshot.config && "random" in snapshot && "deck" in snapshot ? snapshot as import("../domain/types").GameSnapshot : null;
+  const share = recorded ? summaryText(recorded, language) : localSnapshot ? summaryText(matchSummary(localSnapshot, session?.matchId ?? "", challenge ? "challenge" : "free", save?.kind === "saved" ? save.savedAt : 0), language)
+    : resultTitle(language, result, snapshot.config) + "\n" + result.rankings.map((entry) => `${entry.rank}. ${playerName(language, entry.playerId, snapshot.config)} · ${formatCash(language, entry.netAssets)}`).join("\n");
   const copySummary = async () => {
     try { await navigator.clipboard.writeText(share); setCopied("copied"); }
     catch { setCopied("copyUnavailable"); }
   };
   const challengeRecord = challenge && profile.kind === "ready" ? profile.challenges.results.find((entry) => entry.challenge.id === challenge.id) : null;
-  const own = snapshot.config.players.filter((player) => player.controller === "human").length === 1 ? result.rankings.find((entry) => entry.playerId === observerId(snapshot.config))! : null;
+  const own = !local ? result.rankings.find((entry) => entry.playerId === session?.getSnapshot().viewPlayerId) : snapshot.config.players.filter((player) => player.controller === "human").length === 1 ? result.rankings.find((entry) => entry.playerId === observerId(snapshot.config))! : null;
   return <PanelHost title={resultTitle(language, result, snapshot.config)} initialFocusId={returnToRecords ? "records-open" : undefined}>
     <p>{copy.setup[result.reason]}</p>
     {challenge && <p>{formatMessage(copy.challenges.date, { date: challenge.date })}</p>}
@@ -40,7 +43,7 @@ export function ResultsScreen({ app, snapshot, onHistory, onRecords, returnToRec
         <span>{playerName(language, entry.playerId, snapshot.config)}</span><strong>{formatCash(language, entry.netAssets)}</strong>
       </li>)}
     </ol>
-    <button autoFocus className={styles.primary} onClick={() => void app.restart()}>{copy.feedback.restart}</button>
+    {local ? <button autoFocus className={styles.primary} onClick={() => void app.restart()}>{copy.feedback.restart}</button> : <button autoFocus className={styles.primary} onClick={() => void app.leave()}>{copy.network.leave}</button>}
     <details><summary>{copy.results.details}</summary>
       {result.rankings.map((entry) => {
         const player = snapshot.players.find((candidate) => candidate.id === entry.playerId)!;
@@ -56,9 +59,7 @@ export function ResultsScreen({ app, snapshot, onHistory, onRecords, returnToRec
           </dl>
         </section>;
       })}
-      <p>{formatMessage(copy.results.seed, { seed: snapshot.config.seed })}</p>
-      <p>{copy.results.replayDetail}</p>
-      <button onClick={() => void app.restart(true)}>{copy.results.replay}</button>
+      {localSnapshot && <><p>{formatMessage(copy.results.seed, { seed: localSnapshot.config.seed })}</p><p>{copy.results.replayDetail}</p><button onClick={() => void app.restart(true)}>{copy.results.replay}</button></>}
     </details>
     <details><summary>{copy.records.share}</summary>
       <label>{copy.records.shareText}<textarea className={styles.share} readOnly value={share} onFocus={(event) => event.currentTarget.select()} /></label>
@@ -68,11 +69,11 @@ export function ResultsScreen({ app, snapshot, onHistory, onRecords, returnToRec
     <div className={styles.secondary}>
       <button id="history-open" onClick={onHistory}>{copy.history.title}</button>
       {onRecords && <button id="records-open" onClick={onRecords}>{copy.records.title}</button>}
-      <button onClick={() => app.leave()}>{copy.runtime.leave}</button>
+      {local && <button onClick={() => app.leave()}>{copy.runtime.leave}</button>}
       <label>{copy.settings.language}<select value={language} onChange={(event) => app.setPreferences({ ...preferences, language: event.currentTarget.value as "en" | "zh-CN" })}>
         <option value="zh-CN">{copy.settings.languageOptions["zh-CN"]}</option><option value="en">{copy.settings.languageOptions.en}</option>
       </select></label>
     </div>
-    <p>{session?.source === "imported" ? copy.records.imported : profile.kind === "error" ? copy.records.error : recorded ? copy.records.saved : completed ? copy.records.notRetained : copy.records.notSaved}</p>
+    <p>{!local ? copy.network.notRecorded : session?.kind === "local" && session.source === "imported" ? copy.records.imported : profile.kind === "error" ? copy.records.error : recorded ? copy.records.saved : completed ? copy.records.notRetained : copy.records.notSaved}</p>
   </PanelHost>;
 }

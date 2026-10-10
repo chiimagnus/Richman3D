@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
-import type { GameSession } from "../app/GameSession";
+import type { PlaySession } from "../app/Session";
 
-export function useGameView(session: GameSession) {
+export function useGameView(session: PlaySession) {
   return useSyncExternalStore(session.subscribe, session.getSnapshot);
 }

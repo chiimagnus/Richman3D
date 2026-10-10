@@ -27,8 +27,9 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
     app.setPreferences({ ...app.getSnapshot().preferences, language });
     const state = app.getSnapshot();
     const copy = messages(language);
-    const menu = renderToStaticMarkup(<MainMenu app={app} onSettings={() => {}} onStart={() => {}} onChallenge={() => {}} />);
-    expect(menu.match(/<button\b/g)).toHaveLength(3);
+    const menu = renderToStaticMarkup(<MainMenu app={app} onSettings={() => {}} onStart={() => {}} onChallenge={() => {}} onNetwork={() => {}} />);
+    expect(menu.match(/<button\b/g)).toHaveLength(4);
+    expect(menu).toContain(copy.network.title);
     expect(menu).toContain(copy.settings.title);
     expect(menu).toContain(copy.menu.eyebrow);
     expect(menu).toContain(copy.menu.tagline);

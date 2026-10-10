@@ -33,7 +33,7 @@ export function playerConfig(config: Pick<MatchConfig, "players">, id: PlayerId)
   return player;
 }
 
-export function observerId(config: MatchConfig): PlayerId {
+export function observerId(config: Pick<MatchConfig, "players">): PlayerId {
   const player = config.players.find((candidate) => candidate.controller === "human");
   if (!player) throw new Error("缺少本地玩家");
   return player.id;

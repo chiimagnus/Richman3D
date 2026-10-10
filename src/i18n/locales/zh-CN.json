@@ -1,4 +1,8 @@
 {
+  "network": {
+    "title": "联机房间", "create": "创建房间", "join": "加入房间", "name": "你的姓名", "code": "房间码", "invite": "邀请地址", "copy": "复制邀请", "copied": "邀请已复制", "copyUnavailable": "请选中邀请地址手动复制。", "resume": "返回上次房间", "start": "开始对局", "waiting": "等待 {actor} 操作", "waitingPlayers": "等待 {count} 位玩家加入", "hostOnly": "由房主开始对局", "connecting": "正在连接房间…", "connected": "在线", "disconnected": "断线", "reconnect": "重新连接", "pending": "正在等待服务器确认…", "you": "你", "host": "房主", "leave": "离开房间", "expiry": "房间保留至 {time}；有效操作后续期。", "localPause": "设置只暂停你的画面，其他玩家仍可继续。", "notRemembered": "无法保存席位凭据；关闭或刷新页面后可能无法返回原席位。", "invalidCredential": "上次房间凭据无法读取，原数据未删除。", "notRecorded": "联机结果保留在房间内，不写入单机战绩。", "offlinePlayer": "当前操作者已断线，等待其返回。", "seat": "席位 {number}",
+    "errors": { "invalid_request": "房间码、姓名或配置无效。", "not_found": "房间不存在或已经到期。", "full": "房间席位已满。", "started": "对局已经开始，只有原玩家可以返回。", "forbidden": "没有这个席位的操作权限。", "not_ready": "请等待所有玩家加入并连接。", "stale_revision": "状态已更新，已同步最新结果，请重新选择操作。", "illegal_action": "当前不能执行这项操作。", "storage_failed": "服务器未能保存这项操作，请稍后重试。", "rate_limited": "操作过于频繁，请稍后重连。", "incompatible": "联机版本不匹配或数据无效，请重新加载页面。", "unavailable": "连接中断或联机服务不可用；已确认的对局结果不会重新执行。" }
+  },
   "menu": { "eyebrow": "桌上有座城", "tagline": "把小城，玩成你的故事。" },
   "ai": {"choose":"电脑{number}难度","difficulties":{"easy":"简单","normal":"普通","hard":"困难"},"action":"{actor} · {difficulty}：{reason}","reasons":{"roll":"继续当前回合","use_item":"使用当前有收益的道具","keep_valuable":"保留更有用的道具","reserve_cash":"保留现金应付后续费用","buy_property":"按现金预算购地","complete_group":"补齐同色地产","upgrade_income":"提高预期租金","debt_rescue":"用较小损失筹足资金","insolvent":"结清无法全额偿付的债务","fair_trade":"接受有利的价值与组合","unfair_trade":"拒绝亏损或风险过高的交易"}},
   "navigation": { "loading": "正在载入对局…", "retry": "重新加载菜单", "loadFailed": "对局加载失败，重新加载菜单可重试下载，已有存档没有被删除。" },

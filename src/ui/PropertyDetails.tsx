@@ -1,4 +1,4 @@
-import type { GameSnapshot, PlayerConfig } from "../domain/types";
+import type { GameReadSnapshot, PlayerConfig } from "../domain/types";
 import type { BoardTile } from "../domain/board";
 import { publicProperty } from "../domain/selectors";
 import { formatCash, formatMessage, messages, playerName } from "../i18n";
@@ -19,7 +19,7 @@ export function PropertyDetails({ property, players, language }: { property: Ret
   </dl>;
 }
 
-export function TileDetails({ snapshot, tile, language }: { snapshot: GameSnapshot; tile: BoardTile; language: Language }) {
+export function TileDetails({ snapshot, tile, language }: { snapshot: GameReadSnapshot; tile: BoardTile; language: Language }) {
   if (tile.type === "property") return <PropertyDetails property={publicProperty(snapshot, tile.id)} players={snapshot.config.players} language={language} />;
   const copy = messages(language);
   return tile.type === "chance" ? <p>{copy.board.chanceDetail}</p> : <dl className={styles.values}>

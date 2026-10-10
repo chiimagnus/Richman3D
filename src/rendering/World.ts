@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
+import type { GameReadSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
 import type { MapDefinition } from "../domain/board";
 import type { RuleSet } from "../domain/rules";
 import { observerId } from "../domain/config";
@@ -28,7 +28,7 @@ export class World {
   private lastTime: number | null = null;
   private disposed = false;
 
-  constructor(container: HTMLElement, language: Language, config: MatchConfig, map: MapDefinition, rules: RuleSet, private readonly onFailure: () => void = () => {}, onInspect: (tileId: string) => void = () => {}) {
+  constructor(container: HTMLElement, language: Language, config: Pick<MatchConfig, "players">, map: MapDefinition, rules: RuleSet, private readonly onFailure: () => void = () => {}, onInspect: (tileId: string) => void = () => {}) {
     this.observer = observerId(config);
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -80,7 +80,7 @@ export class World {
     }
   }
 
-  sync(snapshot: GameSnapshot): void {
+  sync(snapshot: GameReadSnapshot): void {
     this.board.syncOwnership(snapshot);
 
     for (const player of snapshot.players) {
@@ -94,7 +94,7 @@ export class World {
   growProperty(propertyId: string, signal: AbortSignal): Promise<boolean> { return this.board.growProperty(propertyId, this.clock, signal); }
   popOwner(propertyId: string, signal: AbortSignal): Promise<boolean> { return this.board.popOwner(propertyId, this.clock, signal); }
 
-  setObserver(id: PlayerId | null, snapshot: GameSnapshot): void {
+  setObserver(id: PlayerId | null, snapshot: GameReadSnapshot): void {
     if (id === this.observer) return;
     this.unlockFirstPerson();
     this.observer = id;
@@ -122,7 +122,7 @@ export class World {
   }
 
   setInteractive(interactive: boolean): void { this.cameraRig.setInteractive(interactive); }
-  centerCurrent(snapshot: GameSnapshot): void {
+  centerCurrent(snapshot: GameReadSnapshot): void {
     const player = snapshot.players.find((player) => player.id === snapshot.turnPlayerId)!;
     this.cameraRig.focus(player.position, player.id);
   }

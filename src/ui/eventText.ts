@@ -1,10 +1,10 @@
-import type { GameEvent, GameSnapshot, PendingDebt, PlayerId, RollResult, TradeProposal } from "../domain/types";
+import type { GameEvent, GameReadSnapshot, PendingDebt, PlayerId, RollResult, TradeProposal } from "../domain/types";
 import { chanceCardText, formatCash, formatMessage, messages, playerName, resultTitle, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import { cardType } from "../domain/cards";
 import type { ItemCardId } from "../domain/types";
 
-export function eventText(language: Language, event: GameEvent, snapshot: GameSnapshot): string {
+export function eventText(language: Language, event: GameEvent, snapshot: GameReadSnapshot): string {
   const copy = messages(language).status;
   switch (event.kind) {
     case "item_discarded": return formatMessage(messages(language).items.discarded, { actor: playerName(language, event.actor, snapshot.config) });
@@ -47,7 +47,7 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameSn
   }
 }
 
-export function tradeTermsText(language: Language, proposal: TradeProposal, snapshot: GameSnapshot): string {
+export function tradeTermsText(language: Language, proposal: TradeProposal, snapshot: GameReadSnapshot): string {
   const copy = messages(language).trade;
   const names = (ids: readonly string[]) => ids.map((id) => tileName(language, snapshot.map.tiles.find((tile) => tile.id === id)!)).join(messages(language).setup.nameSeparator) || copy.none;
   const cash = proposal.cash;
@@ -55,7 +55,7 @@ export function tradeTermsText(language: Language, proposal: TradeProposal, snap
     cash: cash ? formatMessage(copy.cashTransfer, { payer: playerName(language, cash.payerId, snapshot.config), receiver: playerName(language, cash.payerId === proposal.proposerId ? proposal.recipientId : proposal.proposerId, snapshot.config), amount: formatCash(language, cash.amount) }) : copy.noCash });
 }
 
-export function debtSourceText(language: Language, debt: PendingDebt, snapshot: GameSnapshot): string {
+export function debtSourceText(language: Language, debt: PendingDebt, snapshot: GameReadSnapshot): string {
   const source = debt.source;
   const copy = messages(language).debt;
   return source.kind === "rent" ? formatMessage(copy.rentSource, { propertyName: tileName(language, snapshot.map.tiles.find((tile) => tile.id === source.propertyId)!) })
@@ -66,7 +66,7 @@ function rollStatus(
   language: Language,
   actorId: PlayerId,
   result: RollResult,
-  snapshot: GameSnapshot,
+  snapshot: GameReadSnapshot,
 ): string {
   const copy = messages(language).status;
   const actor = playerName(language, actorId, snapshot.config);

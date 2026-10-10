@@ -1,5 +1,5 @@
 import { legalCommands, publicProperty } from "./selectors";
-import type { BotDifficulty, CardInstanceId, Command, Decision, GameSnapshot, PlayerId, TradeTerms } from "./types";
+import type { BotDifficulty, CardInstanceId, Command, Decision, GameReadSnapshot, GameSnapshot, PlayerId, TradeTerms } from "./types";
 import { playerConfig } from "./config";
 import { completeGroup, discountedCost, saleOption, netAssets, rentFor, upgradeOption } from "./economy";
 import { canProposeTrade, tradeOption } from "./market";
@@ -37,7 +37,7 @@ export type BotObservation = {
 function evaluateTrade(snapshot: GameSnapshot, proposerId: PlayerId, terms: TradeTerms, actor: PlayerId): TradeEvaluation | null {
   const option = tradeOption(snapshot, proposerId, terms);
   if (!option.candidate) return null;
-  const groupValue = (state: GameSnapshot, owner: PlayerId) => state.map.tiles.reduce((value, tile) => value + (tile.type === "property" && state.properties[tile.id]!.ownerId === owner && completeGroup(state, tile) ? tile.price : 0), 0);
+  const groupValue = (state: GameReadSnapshot, owner: PlayerId) => state.map.tiles.reduce((value, tile) => value + (tile.type === "property" && state.properties[tile.id]!.ownerId === owner && completeGroup(state, tile) ? tile.price : 0), 0);
   const other = actor === proposerId ? terms.recipientId : proposerId;
   return { gain: netAssets(option.candidate, actor) - netAssets(snapshot, actor), cashAfter: option.candidate.players.find((player) => player.id === actor)!.cash,
     groupGain: groupValue(option.candidate, actor) - groupValue(snapshot, actor), opponentGroupGain: groupValue(option.candidate, other) - groupValue(snapshot, other) };

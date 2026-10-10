@@ -1,27 +1,27 @@
 import { tileAt, type PropertyTile } from "./board";
-import type { Command, GameSnapshot, PlayerId, MatchResult } from "./types";
+import type { Command, GameReadSnapshot, PlayerId, MatchResult } from "./types";
 import { playerConfig } from "./config";
 import { canDeclareBankruptcy, completeGroup, liquidationValue, saleOption, netAssets, propertyBookValue, propertyLiquidationValue, propertyTile, propertyValue, rentFor, upgradeOption } from "./economy";
 import { tradeOption } from "./market";
 import { itemCommands } from "./cards";
 
-export function pendingProperty(snapshot: GameSnapshot): PropertyTile | null {
+export function pendingProperty(snapshot: GameReadSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
   if (decision.kind !== "awaiting_purchase") return null;
   const tile = snapshot.map.tiles.find((candidate) => candidate.id === decision.propertyId);
   return tile?.type === "property" ? tile : null;
 }
 
-export function currentTile(snapshot: GameSnapshot, actor: PlayerId = snapshot.turnPlayerId) {
+export function currentTile(snapshot: GameReadSnapshot, actor: PlayerId = snapshot.turnPlayerId) {
   const player = snapshot.players.find((candidate) => candidate.id === actor);
   if (!player) throw new Error("当前玩家不存在");
   return tileAt(snapshot.map, player.position);
 }
 
-export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Command[] {
+export function legalCommands(snapshot: GameReadSnapshot, actor: PlayerId): readonly Command[] {
   if (snapshot.decision.kind === "game_over" || actor !== snapshot.decision.actorId || !snapshot.players.some((player) => player.id === actor && !player.bankrupt)) return [];
   const base = { actor, expectedRevision: snapshot.revision };
-  if (snapshot.decision.kind === "awaiting_discard") return snapshot.players.find((player) => player.id === actor)!.hand.map((instanceId) => ({ ...base, kind: "discard_item", instanceId }));
+  if (snapshot.decision.kind === "awaiting_discard") return snapshot.players.find((player) => player.id === actor)!.hand?.map((instanceId) => ({ ...base, kind: "discard_item", instanceId })) ?? [];
   if (snapshot.decision.kind === "awaiting_trade") {
     const proposal = snapshot.decision.proposal;
     const response = { ...base, proposalRevision: proposal.revision };
@@ -47,7 +47,7 @@ export function legalCommands(snapshot: GameSnapshot, actor: PlayerId): readonly
   ];
 }
 
-export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
+export function publicProperty(snapshot: GameReadSnapshot, propertyId: string) {
   const tile = propertyTile(snapshot.map, propertyId);
   const property = snapshot.properties[propertyId]!;
   return { tile: { type: tile.type, id: tile.id, price: tile.price, rent: tile.rent, group: tile.group },
@@ -55,7 +55,7 @@ export function publicProperty(snapshot: GameSnapshot, propertyId: string) {
     bookValue: propertyBookValue(tile, property), liquidationValue: propertyLiquidationValue(property, snapshot.rules) };
 }
 
-export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
+export function playerAssets(snapshot: GameReadSnapshot, id: PlayerId) {
   const player = snapshot.players.find((candidate) => candidate.id === id);
   if (!player) throw new Error("玩家不存在");
   const config = playerConfig(snapshot.config, id);
@@ -66,7 +66,7 @@ export function playerAssets(snapshot: GameSnapshot, id: PlayerId) {
   };
 }
 
-export function matchResult(snapshot: GameSnapshot, reason: MatchResult["reason"]): MatchResult {
+export function matchResult(snapshot: GameReadSnapshot, reason: MatchResult["reason"]): MatchResult {
   const ordered = snapshot.players.map((player) => ({ playerId: player.id, bankrupt: player.bankrupt, cash: player.cash, propertyValue: propertyValue(snapshot, player.id), netAssets: netAssets(snapshot, player.id) }))
     .sort((first, second) => Number(first.bankrupt) - Number(second.bankrupt) || second.netAssets - first.netAssets || second.cash - first.cash);
   let rank = 1;

@@ -9,6 +9,7 @@ type Preview = { readonly game: StoredGame; readonly expected: unknown; readonly
 
 export function TransferPanel({ app, onClose }: { app: GameApp; onClose: () => void }) {
   const language = app.getSnapshot().preferences.language;
+  const session = app.getSnapshot().session;
   const copy = messages(language).storage;
   const [preview, setPreview] = useState<Preview | null>(null);
   const [phase, setPhase] = useState<"ready" | "reading" | "writing">("ready");
@@ -69,7 +70,7 @@ export function TransferPanel({ app, onClose }: { app: GameApp; onClose: () => v
     }} /></label>
     <button disabled={phase !== "ready"} onClick={() => void prepare()}>{copy.transfer.backup}</button>
     <p>{copy.exportWarning}</p>
-    {app.getSnapshot().session && <button onClick={() => downloadSave(app.getSnapshot().session!.exportRecord())}>{copy.export}</button>}
+    {session?.kind === "local" && <button onClick={() => downloadSave(session.exportRecord())}>{copy.export}</button>}
     <button disabled={phase !== "ready"} onClick={() => void exportRaw()}>{copy.transfer.raw}</button>
     {phase !== "ready" && <p role="status">{copy.transfer.working}</p>}
     {error && <p role="alert">{copy.transfer.errors[error]}</p>}

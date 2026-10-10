@@ -6,10 +6,10 @@ import type { Language } from "../i18n/language";
 import { canDeclareBankruptcy, saleOption, rentFor, upgradeOption } from "../domain/economy";
 import { canProposeTrade } from "../domain/market";
 
-function availableCommands(view: GameView) {
+export function availableCommands(view: GameView) {
   const snapshot = view.displayed;
   const actor = snapshot.decision.kind === "game_over" ? null : snapshot.decision.actorId;
-  const ready = !view.presenting && view.save.kind !== "saving" && view.mode === "running" && view.attached && view.error !== "presentation_failed";
+  const ready = !view.presenting && view.save.kind !== "saving" && view.mode === "running" && view.attached && view.error !== "presentation_failed" && (!view.network || view.network.connected && !view.network.pending);
   return ready && actor !== null && actor === view.viewPlayerId && playerConfig(snapshot.config, actor).controller === "human" ? legalCommands(snapshot, actor) : [];
 }
 
@@ -57,7 +57,7 @@ export function actionView(view: GameView, language: Language) {
   const commands = availableCommands(view);
   const insufficientFunds = property !== null && choices.some((command) => command.kind === "skip") && !choices.some((command) => command.kind === "buy");
   const botDecision = view.presenting && view.botDecision?.revision === view.committed.revision ? view.botDecision : null;
-  const status = view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
+  const status = view.network && !view.network.connected ? messages(language).network.errors[view.network.error ?? "unavailable"] : view.network?.pending ? messages(language).network.pending : view.network?.error ? messages(language).network.errors[view.network.error] : view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
     ? botDecision ? formatMessage(messages(language).ai.action, { actor: playerName(language, botDecision.actorId, snapshot.config), difficulty: messages(language).ai.difficulties[botDecision.difficulty], reason: messages(language).ai.reasons[botDecision.reason] })
       : formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
@@ -65,7 +65,7 @@ export function actionView(view: GameView, language: Language) {
     : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending
     : snapshot.decision.kind === "awaiting_trade" ? messages(language).trade.pending
     : snapshot.decision.kind === "awaiting_discard" ? messages(language).items.pending
-    : formatMessage(playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
+    : formatMessage(view.network && actor !== view.viewPlayerId ? messages(language).network.waiting : playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
   return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };
 }
 

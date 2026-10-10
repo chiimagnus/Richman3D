@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CardInstanceId, Command, GameSnapshot, ItemCardId, PlayerId } from "../domain/types";
+import type { CardInstanceId, Command, GameReadSnapshot, ItemCardId, PlayerId } from "../domain/types";
 import { cardType, CONTROLLED_TOTALS, HAND_LIMIT } from "../domain/cards";
 import { chanceCardText, formatMessage, messages, playerName } from "../i18n";
 import type { Language } from "../i18n/language";
@@ -7,13 +7,13 @@ import { PanelHost } from "./PanelHost";
 import styles from "./Inspection.module.css";
 
 export function HandPanel({ snapshot, actor, commands, language, onCommand, onClose }: {
-  snapshot: GameSnapshot; actor: PlayerId; commands: readonly Command[]; language: Language;
+  snapshot: GameReadSnapshot; actor: PlayerId; commands: readonly Command[]; language: Language;
   onCommand: (command: Command) => void; onClose: () => void;
 }) {
   const copy = messages(language).items;
   const hand = snapshot.players.find((player) => player.id === actor)!.hand;
   const discarding = snapshot.decision.kind === "awaiting_discard" && snapshot.decision.actorId === actor;
-  const [selected, setSelected] = useState<CardInstanceId | null>(hand[0] ?? null);
+  const [selected, setSelected] = useState<CardInstanceId | null>(hand?.[0] ?? null);
   const [draft, setDraft] = useState(false);
   const [total, setTotal] = useState(7);
   const targets = snapshot.players.filter((player) => !player.bankrupt && player.id !== actor);
@@ -23,6 +23,7 @@ export function HandPanel({ snapshot, actor, commands, language, onCommand, onCl
   const command = choices.find((command) => command.kind === "discard_item" || command.kind === "use_item" &&
     (type !== "controlled-dice" || command.total === total) && (type !== "swap-positions" || command.targetId === targetId));
   const reason = !discarding && !command ? snapshot.itemUsed ? copy.used : snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor ? copy.beforeRoll : copy.busy : null;
+  if (hand === null) return null;
   return <PanelHost title={discarding ? formatMessage(copy.discardTitle, { limit: HAND_LIMIT }) : copy.title} onClose={() => { if (draft) setDraft(false); else onClose(); }}>
     <div className={styles.panel}>
       {discarding && <p>{formatMessage(copy.discardReason, { limit: HAND_LIMIT, next: HAND_LIMIT + 1 })}</p>}

@@ -1,7 +1,15 @@
-import type { GameEvent, GameSnapshot } from "../domain/types";
+import type { GameEvent, GameReadSnapshot } from "../domain/types";
+import { playerConfig } from "../domain/config";
+
+export function feedbackEvent(events: readonly GameEvent[], snapshot: GameReadSnapshot): GameEvent | null {
+  const event = events.find((entry) => entry.kind === "paid") ?? events.find((entry) => entry.kind === "card_moved") ?? events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
+  return event && snapshot.decision.kind !== "awaiting_debt" && snapshot.decision.kind !== "awaiting_trade" && snapshot.decision.kind !== "awaiting_discard" &&
+    !("actor" in event && ["purchased", "upgraded", "building_sold", "item_used"].includes(event.kind) && playerConfig(snapshot.config, event.actor).controller === "human") &&
+    !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available") ? event : null;
+}
 
 export type PresentationPort = {
-  sync(snapshot: GameSnapshot): void;
+  sync(snapshot: GameReadSnapshot): void;
   present(events: readonly GameEvent[], signal: AbortSignal, settle: () => number, show: (event: GameEvent) => void, settleDice: () => void): Promise<void>;
   stop(): void;
 };

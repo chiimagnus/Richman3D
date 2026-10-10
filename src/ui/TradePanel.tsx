@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Command, GameSnapshot, PlayerId, TradeTerms } from "../domain/types";
+import type { Command, GameReadSnapshot, PlayerId, TradeTerms } from "../domain/types";
 import { tradeOption, tradePropertyReason } from "../domain/market";
 import { formatCash, formatMessage, messages, playerName, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
@@ -7,7 +7,7 @@ import { PanelHost } from "./PanelHost";
 import { tradeTermsText } from "./eventText";
 import styles from "./Inspection.module.css";
 
-function TradePreview({ option, snapshot, language }: { option: ReturnType<typeof tradeOption>; snapshot: GameSnapshot; language: Language }) {
+function TradePreview({ option, snapshot, language }: { option: ReturnType<typeof tradeOption>; snapshot: GameReadSnapshot; language: Language }) {
   const copy = messages(language).trade;
   if (option.reason !== null) return <p id="trade-reason">{copy.reasons[option.reason]}</p>;
   const names = (ids: readonly string[]) => ids.map((id) => tileName(language, snapshot.map.tiles.find((tile) => tile.id === id)!)).join(messages(language).setup.nameSeparator) || copy.none;
@@ -25,7 +25,7 @@ function TradePreview({ option, snapshot, language }: { option: ReturnType<typeo
   </section>)}</div>;
 }
 
-export function TradeDraft({ snapshot, language, enabled, onCommand, onClose }: { snapshot: GameSnapshot; language: Language; enabled: boolean; onCommand: (command: Command) => void; onClose: () => void }) {
+export function TradeDraft({ snapshot, language, enabled, onCommand, onClose }: { snapshot: GameReadSnapshot; language: Language; enabled: boolean; onCommand: (command: Command) => void; onClose: () => void }) {
   const proposerId = snapshot.turnPlayerId;
   const recipients = snapshot.players.filter((player) => !player.bankrupt && player.id !== proposerId);
   const [recipientId, setRecipient] = useState(recipients[0]!.id);
@@ -65,7 +65,7 @@ export function TradeDraft({ snapshot, language, enabled, onCommand, onClose }: 
   </PanelHost>;
 }
 
-export function TradePanel({ snapshot, language, commands, onCommand, onPause }: { snapshot: GameSnapshot; language: Language; commands: readonly Command[]; onCommand: (command: Command) => void; onPause: () => void }) {
+export function TradePanel({ snapshot, language, commands, onCommand, onPause }: { snapshot: GameReadSnapshot; language: Language; commands: readonly Command[]; onCommand: (command: Command) => void; onPause: () => void }) {
   if (snapshot.decision.kind !== "awaiting_trade") return null;
   const proposal = snapshot.decision.proposal;
   const copy = messages(language).trade;

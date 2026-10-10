@@ -28,7 +28,7 @@ async function fixture(pendingBot = false) {
   const stop = vi.fn();
   app.subscribe(() => {
     const session = app.getSnapshot().session;
-    if (session && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop, present }); }
+    if (session?.kind === "local" && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop, present }); }
   });
   await vi.waitFor(() => expect(app.getSnapshot().stored.kind).toBe(pendingBot ? "valid" : "empty"));
   const visibility = (hidden: boolean) => { document.hidden = hidden; document.dispatchEvent(new Event("visibilitychange")); };
@@ -43,6 +43,7 @@ it("continuation finishing after the page becomes hidden cannot activate a saved
     visibility(true);
     await continuing;
     const session = app.getSnapshot().session!;
+    if (session.kind !== "local") throw new Error("Expected local session");
     expect(session.getSnapshot().mode).toBe("paused");
     expect(session.getSnapshot().committed).toEqual(before.snapshot);
     expect((await store.read())!.record).toEqual(before.record);
@@ -60,6 +61,7 @@ it("hidden during a committed save preserves payment, cancels presentation and r
   try {
     await app.start(createMatchConfig(6));
     const session = app.getSnapshot().session!;
+    if (session.kind !== "local") throw new Error("Expected local session");
     const save = store.save.bind(store);
     let release = () => {};
     const writing = vi.spyOn(store, "save").mockImplementationOnce(async (record, expected) => {

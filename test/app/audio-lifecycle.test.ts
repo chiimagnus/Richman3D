@@ -17,7 +17,7 @@ async function fixture() {
   const app = new GameApp(store); const attached = new Set<GameSession>();
   app.subscribe(() => {
     const session = app.getSnapshot().session;
-    if (session && !attached.has(session)) {
+    if (session?.kind === "local" && !attached.has(session)) {
       attached.add(session);
       session.bind({ sync() {}, stop() { app.audio.stop(); }, async present(events) {
         if (events.some(event => event.kind === "purchased")) app.audio.playPurchase();
@@ -55,6 +55,7 @@ it("a real session reaching its terminal decision stops ambient music without ch
   try {
     await app.start({ ...config, players: config.players.map(player => ({ ...player, controller: "human" })) });
     const session = app.getSnapshot().session!;
+    if (session.kind !== "local") throw new Error("Expected local session");
     for (let index = 0; index < 300 && session.getSnapshot().committed.decision.kind !== "game_over"; index += 1) {
       const snapshot = session.getSnapshot().committed;
       if (snapshot.decision.kind === "game_over") break;
@@ -76,7 +77,9 @@ it("native audio allocation failure during an actual purchase cannot reject, rep
   const { app, store, contexts } = await fixture(); const config = createMatchConfig(940);
   try {
     await app.start({ ...config, players: config.players.map(player => ({ ...player, controller: "human" })) });
-    const session = app.getSnapshot().session!; expect(session.confirmHandover("p1")).toBe(true);
+    const session = app.getSnapshot().session!;
+    if (session.kind !== "local") throw new Error("Expected local session");
+    expect(session.confirmHandover("p1")).toBe(true);
     await session.dispatch({ kind: "roll", actor: "p1", expectedRevision: 0 });
     vi.spyOn(contexts[0]!, "createOscillator").mockImplementationOnce(() => { throw new Error("allocation"); });
     await session.dispatch({ kind: "buy", actor: "p1", expectedRevision: 1 });

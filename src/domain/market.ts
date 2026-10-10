@@ -1,18 +1,18 @@
-import type { FinancialStats, GameSnapshot, PlayerId, TradeTerms } from "./types";
+import type { FinancialStats, GameReadSnapshot, PlayerId, TradeTerms } from "./types";
 import { completeGroup, netAssets, propertyTile } from "./economy";
 
-export function canProposeTrade(snapshot: GameSnapshot, actor: PlayerId): boolean {
+export function canProposeTrade(snapshot: GameReadSnapshot, actor: PlayerId): boolean {
   return snapshot.decision.kind === "awaiting_roll" && snapshot.decision.actorId === actor && actor === snapshot.turnPlayerId && !snapshot.tradeUsed &&
     snapshot.players.some((player) => player.id === actor && !player.bankrupt);
 }
 
-export function tradePropertyReason(snapshot: GameSnapshot, owner: PlayerId, id: string): "not_owner" | "group_has_buildings" | null {
+export function tradePropertyReason(snapshot: GameReadSnapshot, owner: PlayerId, id: string): "not_owner" | "group_has_buildings" | null {
   const tile = snapshot.map.tiles.find((entry) => entry.type === "property" && entry.id === id);
   if (!tile || tile.type !== "property" || snapshot.properties[id]!.ownerId !== owner) return "not_owner";
   return snapshot.map.tiles.some((entry) => entry.type === "property" && entry.group === tile.group && snapshot.properties[entry.id]!.level > 0) ? "group_has_buildings" : null;
 }
 
-export function tradeOption(snapshot: GameSnapshot, proposerId: PlayerId, terms: TradeTerms) {
+export function tradeOption(snapshot: GameReadSnapshot, proposerId: PlayerId, terms: TradeTerms) {
   const proposer = snapshot.players.find((player) => player.id === proposerId);
   const recipient = snapshot.players.find((player) => player.id === terms.recipientId);
   const failure = (reason: "players_invalid" | "invalid_terms" | "not_owner" | "group_has_buildings" | "insufficient_cash" | "amount_overflow") => ({ reason, candidate: null, sides: null } as const);
@@ -52,7 +52,7 @@ export function tradeOption(snapshot: GameSnapshot, proposerId: PlayerId, terms:
     });
     const candidate = { ...snapshot, properties, players };
     for (const id of [proposer.id, recipient.id]) netAssets(candidate, id);
-    const groups = (state: GameSnapshot, owner: PlayerId) => [...new Set(state.map.tiles.flatMap((tile) => tile.type === "property" && state.properties[tile.id]!.ownerId === owner && completeGroup(state, tile) ? [tile.group] : []))];
+    const groups = (state: GameReadSnapshot, owner: PlayerId) => [...new Set(state.map.tiles.flatMap((tile) => tile.type === "property" && state.properties[tile.id]!.ownerId === owner && completeGroup(state, tile) ? [tile.group] : []))];
     const sides = [proposer.id, recipient.id].map((id) => ({ id, cashBefore: snapshot.players.find((player) => player.id === id)!.cash,
       cashAfter: players.find((player) => player.id === id)!.cash, given: id === proposer.id ? terms.givePropertyIds : terms.receivePropertyIds,
       received: id === proposer.id ? terms.receivePropertyIds : terms.givePropertyIds, groupsBefore: groups(snapshot, id), groupsAfter: groups(candidate, id) }));

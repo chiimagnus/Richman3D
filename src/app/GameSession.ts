@@ -1,8 +1,9 @@
 import { Game } from "../domain/game";
 import { chooseBotAction, observeBot, type BotAction, type BotReason } from "../domain/bot";
 import { observerId, playerConfig } from "../domain/config";
-import type { BotDifficulty, Command, GameEvent, GameSnapshot, PlayerId, RollResult } from "../domain/types";
-import { PresentationQueue, type PresentationPort } from "./PresentationQueue";
+import type { BotDifficulty, Command, GameEvent, GameReadSnapshot, GameSnapshot, PlayerId, RollResult } from "../domain/types";
+import type { RoomError } from "../network/protocol";
+import { feedbackEvent, PresentationQueue, type PresentationPort } from "./PresentationQueue";
 import { GameStore } from "../storage/GameStore";
 import { makeSave, SaveError, type SaveIdentity, type SaveRecord } from "../storage/snapshot";
 import { PRESENTATION_RATES, type PresentationSpeed } from "../settings/preferences";
@@ -12,9 +13,9 @@ import { matchAchievements, type AchievementId } from "../domain/achievements";
 export type SaveView = { readonly kind: "disabled" | "saving" } | { readonly kind: "saved"; readonly savedAt: number }
   | { readonly kind: "unsaved"; readonly acknowledged: boolean; readonly error: SaveError["kind"] } | { readonly kind: "conflict" };
 
-export type GameView = {
-  readonly committed: GameSnapshot;
-  readonly displayed: GameSnapshot;
+export type GameView<Snapshot extends GameReadSnapshot = GameReadSnapshot> = {
+  readonly committed: Snapshot;
+  readonly displayed: Snapshot;
   readonly mode: "running" | "paused" | "disposed";
   readonly presenting: boolean;
   readonly attached: boolean;
@@ -26,16 +27,18 @@ export type GameView = {
   readonly notice: { readonly id: number; readonly event: GameEvent; readonly expiresAt: number } | null;
   readonly save: SaveView;
   readonly viewPlayerId: PlayerId | null;
+  readonly network?: { readonly connected: boolean; readonly pending: boolean; readonly error: RoomError | "unavailable" | null };
 };
 
 export class GameSession {
+  readonly kind = "local";
   private readonly queue = new PresentationQueue();
   private readonly listeners = new Set<() => void>();
   private port: PresentationPort | null = null;
   private work: Promise<void> | null = null;
   private announcedNoticeId = 0;
   private announcedDiceRevision = 0;
-  private view: GameView;
+  private view: GameView<GameSnapshot>;
   private saving: Promise<boolean> | null = null;
   private expected: SaveIdentity | null;
   private allowUnsaved = false;
@@ -48,7 +51,7 @@ export class GameSession {
     this.view = { committed: game.snapshot, displayed: game.snapshot, mode: "running", presenting: false, attached: false, events: [], presentationEvent: null, settledRoll: null, botDecision: null, error: null, notice: null, save: { kind: persistence ? "saving" : "disabled" }, viewPlayerId: game.snapshot.config.players.filter((player) => player.controller === "human").length > 1 ? null : observerId(game.snapshot.config) };
   }
 
-  getSnapshot = (): GameView => this.view;
+  getSnapshot = (): GameView<GameSnapshot> => this.view;
   get challenge(): DailyChallenge | null { return this.persistence?.challenge ?? null; }
   get source(): SaveRecord["source"] { return this.persistence?.source ?? "local"; }
   setPresentationSpeed(speed: PresentationSpeed): void { this.presentationSpeed = speed; }
@@ -224,8 +227,7 @@ export class GameSession {
           botDecision: botAction ? { actorId: command.actor, revision: result.snapshot.revision, difficulty: playerConfig(before.config, command.actor).difficulty, reason: botAction.reason } : null });
         if (this.persistence) await this.persist();
         if (this.getSnapshot().mode !== "running" || this.port !== port) return;
-        const event = result.events.find((entry) => entry.kind === "paid") ?? result.events.find((entry) => entry.kind === "card_moved") ?? result.events.find((entry) => entry.kind !== "turn" && entry.kind !== "ended");
-        const meaningful = event && result.snapshot.decision.kind !== "awaiting_debt" && result.snapshot.decision.kind !== "awaiting_trade" && result.snapshot.decision.kind !== "awaiting_discard" && !("actor" in event && ["purchased", "upgraded", "building_sold", "item_used"].includes(event.kind) && playerConfig(before.config, event.actor).controller === "human") && !((event.kind === "rolled" || event.kind === "card_moved") && event.result.landing.kind === "property_available");
+        const event = feedbackEvent(result.events, result.snapshot);
         let settled = false;
         const rolled = result.events.find((event) => event.kind === "rolled");
         const settleDice = () => {
@@ -237,8 +239,8 @@ export class GameSession {
           if (settled || this.getSnapshot().mode !== "running" || this.port !== port) return 0;
           settled = true;
           settleDice();
-          const duration = meaningful ? 1750 : 0;
-          this.publish({ displayed: result.snapshot, presentationEvent: null, notice: meaningful ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration / PRESENTATION_RATES[this.presentationSpeed] } : null });
+          const duration = event ? 1750 : 0;
+          this.publish({ displayed: result.snapshot, presentationEvent: null, notice: event ? { id: result.snapshot.revision, event, expiresAt: Date.now() + duration / PRESENTATION_RATES[this.presentationSpeed] } : null });
           return duration;
         };
         const finished = await this.queue.run(port, result.events, settle, (event) => this.publish({ presentationEvent: event }), settleDice);
@@ -263,7 +265,7 @@ export class GameSession {
     return this.view.viewPlayerId;
   }
 
-  private publish(change: Partial<GameView>): void {
+  private publish(change: Partial<GameView<GameSnapshot>>): void {
     if (Object.entries(change).every(([key, value]) => this.view[key as keyof GameView] === value)) return;
     this.view = { ...this.view, ...change };
     for (const listener of this.listeners) {

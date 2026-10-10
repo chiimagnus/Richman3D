@@ -1,4 +1,4 @@
-import type { GameSession } from "../app/GameSession";
+import type { PlaySession } from "../app/Session";
 import { useEffect, useRef, type ReactNode, type CSSProperties } from "react";
 import type { PlayerId } from "../domain/types";
 import type { ItemCardId } from "../domain/types";
@@ -10,14 +10,14 @@ import { formatCash, formatMessage, messages, playerName, tileName } from "../i1
 import type { Language } from "../i18n/language";
 import styles from "./Hud.module.css";
 
-export function Hud({ session, language, onAssets, onHand, assetPanel, inspectedTileId, onInspect }: { session: GameSession; language: Language; onAssets: (playerId: PlayerId) => void; onHand?: (() => void) | undefined; assetPanel: ReactNode; inspectedTileId: string | null; onInspect: (tileId: string | null) => void }) {
+export function Hud({ session, language, onAssets, onHand, assetPanel, inspectedTileId, onInspect }: { session: PlaySession; language: Language; onAssets: (playerId: PlayerId) => void; onHand?: (() => void) | undefined; assetPanel: ReactNode; inspectedTileId: string | null; onInspect: (tileId: string | null) => void }) {
   const view = useGameView(session);
   const model = actionView(view, language);
   const copy = messages(language);
   const actions = useRef<HTMLDivElement>(null);
   const decisionKind = view.displayed.decision.kind;
   useEffect(() => {
-    if (!view.presenting && view.mode === "running" && document.activeElement === document.body) {
+    if (!document.hidden && !view.presenting && view.mode === "running" && document.activeElement === document.body) {
       actions.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     }
   }, [decisionKind, view.presenting, view.mode, view.attached]);
@@ -31,7 +31,7 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
   return <>
     <aside className={styles.balances} aria-label={copy.hud.balancesAria}>
       {view.displayed.players.map((player, index) => <button key={player.id} id={`assets-open-${player.id}`} aria-current={player.id === view.displayed.turnPlayerId ? "true" : undefined} aria-label={formatMessage(copy.assets.open, { player: formatMessage(copy.assets.seat, { number: index + 1, player: playerName(language, player.id, view.displayed.config) }) })} onClick={() => onAssets(player.id)}>
-        <span><span className={styles.seat} style={{ "--seat-color": view.displayed.config.players[index]!.color } as CSSProperties} aria-hidden="true">{index + 1}</span>{playerName(language, player.id, view.displayed.config)}</span><strong>{formatCash(language, player.cash)}</strong>
+        <span><span className={styles.seat} style={{ "--seat-color": view.displayed.config.players[index]!.color } as CSSProperties} aria-hidden="true">{index + 1}</span>{playerName(language, player.id, view.displayed.config)}{view.network && player.id === view.viewPlayerId ? ` · ${copy.network.you}` : ""}</span><strong>{formatCash(language, player.cash)}</strong>
       </button>)}
       <span className={styles.round}>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
     </aside>
@@ -47,7 +47,7 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
           {model.insufficientFunds && <span className={styles.reason}>{copy.status.insufficientFunds}</span>}
         </> : <button className={styles.primary} aria-keyshortcuts="Space" disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}<kbd aria-hidden="true">{copy.hud.rollKey}</kbd></button>}
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
-        {onHand && <button id="hand-open" disabled={view.presenting} onClick={onHand}>{formatMessage(copy.items.open, { count: view.displayed.players.find((player) => player.id === view.viewPlayerId)!.hand.length })}</button>}
+        {onHand && <button id="hand-open" disabled={view.presenting} onClick={onHand}>{formatMessage(copy.items.open, { count: view.displayed.players.find((player) => player.id === view.viewPlayerId)!.hand?.length ?? 0 })}</button>}
       </div>
       <details className={styles.property} open={inspectedTileId !== null} onToggle={(event) => {
         if (event.currentTarget.open && inspectedTileId === null) onInspect(inspectedTile.id);

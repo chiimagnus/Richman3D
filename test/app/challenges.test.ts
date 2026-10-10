@@ -13,21 +13,25 @@ it("the application preserves a captured challenge across leave/continue and ret
   vi.stubGlobal("document", { hidden: true, documentElement: { lang: "" }, addEventListener() {}, removeEventListener() {} });
   const factory = new IDBFactory(); const store = new GameStore(() => factory); const app = new GameApp(store);
   const bound = new Set<GameSession>();
-  app.subscribe(() => { const session = app.getSnapshot().session; if (session && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop() {}, async present() {} }); } });
+  app.subscribe(() => { const session = app.getSnapshot().session; if (session?.kind === "local" && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop() {}, async present() {} }); } });
   try {
     await vi.waitFor(() => expect(app.getSnapshot().stored.kind).toBe("empty"));
     const challenge = dailyChallenge("2026-12-31");
     await app.startChallenge(challenge);
     const first = app.getSnapshot().session!;
+    if (first.kind !== "local") throw new Error("Expected local session");
     expect(first.challenge).toEqual(challenge); expect(first.getSnapshot().committed.config).toEqual(challengeConfig(challenge));
     expect((await store.readChallenges()).results[0]!.attempts).toBe(1);
     await app.leave(); await app.continueSaved();
     const restored = app.getSnapshot().session!;
+    if (restored.kind !== "local") throw new Error("Expected local session");
     expect(restored.challenge).toEqual(challenge);
     expect(restored.getSnapshot().committed).toEqual(first.getSnapshot().committed);
     expect((await store.readChallenges()).results[0]!.attempts).toBe(1);
     await app.restart();
-    expect(app.getSnapshot().session!.challenge).toEqual(challenge);
+    const restarted = app.getSnapshot().session!;
+    if (restarted.kind !== "local") throw new Error("Expected local session");
+    expect(restarted.challenge).toEqual(challenge);
     expect(app.getSnapshot().session!.matchId).not.toBe(first.matchId);
     expect((await store.readChallenges()).results[0]!.attempts).toBe(2);
     await app.refreshProfile();
@@ -39,7 +43,7 @@ it("the terminal save refreshes the actual application score projection after tr
   vi.stubGlobal("document", { hidden: false, documentElement: { lang: "" }, addEventListener() {}, removeEventListener() {} });
   const factory = new IDBFactory(); const store = new GameStore(() => factory); const app = new GameApp(store);
   const bound = new Set<GameSession>();
-  app.subscribe(() => { const session = app.getSnapshot().session; if (session && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop() {}, async present() {} }); } });
+  app.subscribe(() => { const session = app.getSnapshot().session; if (session?.kind === "local" && !bound.has(session)) { bound.add(session); session.bind({ sync() {}, stop() {}, async present() {} }); } });
   try {
     await app.startChallenge(dailyChallenge("2026-10-09"));
     const session = app.getSnapshot().session!;

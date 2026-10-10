@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { GameSession } from "../app/GameSession";
+import type { PlaySession } from "../app/Session";
 import type { Language } from "../i18n/language";
 import { chanceCardText, formatMessage, messages, playerName } from "../i18n";
 import { cardType, CONTROLLED_TOTALS } from "../domain/cards";
@@ -7,7 +7,7 @@ import { useGameView } from "./useGameView";
 import { eventText } from "./eventText";
 import styles from "./FeedbackLayer.module.css";
 
-export function FeedbackLayer({ session, language }: { session: GameSession; language: Language }) {
+export function FeedbackLayer({ session, language }: { session: PlaySession; language: Language }) {
   const view = useGameView(session);
   const [expired, setExpired] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -39,7 +39,7 @@ export function FeedbackLayer({ session, language }: { session: GameSession; lan
   const current = inMotion ? view.presentationEvent : null;
   const rolled = inMotion && !current ? view.events.find((event) => event.kind === "rolled") : null;
   const receipt = current?.kind === "rolled" && current.result.landing.kind === "item_received" && current.result.playerId === view.viewPlayerId
-    ? view.committed.players.find((player) => player.id === view.viewPlayerId)!.hand.at(-1) : null;
+    ? view.committed.players.find((player) => player.id === view.viewPlayerId)!.hand?.at(-1) : null;
   return <div className={styles.layer}>
     {current ? <p className={styles.event}>{eventText(language, current, view.committed)}{receipt && " " + chanceCardText(language, cardType(receipt), 0, 0, cardType(receipt) === "tax-discount" ? view.committed.rules.taxDiscountPercent : view.committed.rules.constructionDiscountPercent, CONTROLLED_TOTALS)}</p> : rolled?.kind === "rolled" && rolled.result.controlledBy ? <p className={styles.controlled}>{formatMessage(messages(language).items.controlled, { total: rolled.result.steps })}</p> : !rolled && notice && expired !== notice.id && notice.expiresAt > Date.now() && <p className={styles.event}>{eventText(language, notice.event, view.displayed)}</p>}
     <span className={styles.srOnly} aria-live="polite" aria-atomic="true">{announcement}</span>

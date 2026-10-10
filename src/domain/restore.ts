@@ -5,11 +5,13 @@ import { rulesFor } from "./rules";
 import { initialTurnOrder } from "./turns";
 import { matchResult } from "./selectors";
 import { completeGroup, constructionCost, constructionRefund, discountedCost, netAssets, obligation, rentAmount, rentFor } from "./economy";
-import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type LandingResult, type MatchConfig, type PendingDebt, type PlayerId, type SavedGameState, type TradeProposal, type TradeTerms } from "./types";
+import { HISTORY_LIMIT, type GameEvent, type GameSnapshot, type GameReadSnapshot, type LandingResult, type MatchConfig, type PendingDebt, type PlayerId, type SavedGameState, type TradeProposal, type TradeTerms } from "./types";
 import { tradeOption } from "./market";
 import { cardInstances, cardType, CONTROLLED_TOTALS, HAND_LIMIT, initialDeck } from "./cards";
 import type { CardInstanceId, DeckState } from "./types";
 import { movement } from "./movement";
+
+export const FINANCIAL_STAT_FIELDS = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases", "purchaseBookValue", "tradeCashReceived", "tradeCashPaid", "tradeBookValueReceived", "tradeBookValueGiven", "constructionSpent", "constructionRefunds", "constructionSoldCost", "debtWrittenOff", "rentLost"] as const;
 
 export function record(value: unknown, keys?: readonly string[]): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value) ||
@@ -33,7 +35,7 @@ export function sameData(first: unknown, second: unknown): boolean {
   return Object.keys(left).length === Object.keys(right).length && Object.keys(left).every((key) => Object.hasOwn(right, key) && sameData(left[key], right[key]));
 }
 
-export function restoreTradeTerms(value: unknown, snapshot: Pick<GameSnapshot, "config" | "map">): TradeTerms {
+export function restoreTradeTerms(value: unknown, snapshot: Pick<GameReadSnapshot, "config" | "map">): TradeTerms {
   const terms = record(value, ["recipientId", "givePropertyIds", "receivePropertyIds", "cash"]);
   if (!snapshot.config.players.some((player) => player.id === terms.recipientId)) throw new Error("交易接收者无效");
   for (const ids of [terms.givePropertyIds, terms.receivePropertyIds]) {
@@ -47,7 +49,7 @@ export function restoreTradeTerms(value: unknown, snapshot: Pick<GameSnapshot, "
   return { recipientId: terms.recipientId as PlayerId, givePropertyIds: [...given], receivePropertyIds: [...received], cash: cash ? { payerId: cash.payerId as PlayerId, amount: integer(cash.amount, 1) } : null };
 }
 
-function restoreTradeProposal(value: unknown, snapshot: GameSnapshot): TradeProposal {
+export function restoreTradeProposal(value: unknown, snapshot: GameReadSnapshot): TradeProposal {
   const proposal = record(value, ["recipientId", "givePropertyIds", "receivePropertyIds", "cash", "proposerId", "revision"]);
   const { proposerId, revision, ...raw } = proposal;
   const terms = restoreTradeTerms(raw, snapshot);
@@ -76,15 +78,14 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
   const initialRandom = new RuleRandom(config.seed);
   if (!sameData(state.turnOrder, initialTurnOrder(config, initialRandom))) throw new Error("固定轮序无效");
   if (!Array.isArray(state.players) || state.players.length !== config.players.length) throw new Error("玩家数量无效");
-  const statsKeys = ["startBonus", "rentReceived", "rentPaid", "taxesPaid", "chanceIncome", "chanceExpense", "purchases", "purchaseBookValue", "tradeCashReceived", "tradeCashPaid", "tradeBookValueReceived", "tradeBookValueGiven", "constructionSpent", "constructionRefunds", "constructionSoldCost", "debtWrittenOff", "rentLost"] as const;
   for (const [index, raw] of state.players.entries()) {
     const player = record(raw, ["id", "cash", "position", "bankrupt", "hand", "statistics"]);
     if (player.id !== config.players[index]!.id || typeof player.bankrupt !== "boolean") throw new Error("玩家身份无效");
     const cash = integer(player.cash);
     integer(player.position, 0, map.tiles.length - 1);
     if (!Array.isArray(player.hand) || player.hand.length > HAND_LIMIT + 1 || player.bankrupt && player.hand.length > 0 || player.hand.some((id) => !instances.includes(id) || !rules.chanceCards.some((card) => card.kind === "item" && card.id === cardType(id)))) throw new Error("手牌无效");
-    const stats = record(player.statistics, statsKeys);
-    for (const field of statsKeys) integer(stats[field]);
+    const stats = record(player.statistics, FINANCIAL_STAT_FIELDS);
+    for (const field of FINANCIAL_STAT_FIELDS) integer(stats[field]);
     if (player.bankrupt ? cash !== 0 || stats.debtWrittenOff === 0 : stats.debtWrittenOff !== 0) throw new Error("破产状态无效");
     const balance = BigInt(rules.startingCash) + BigInt(stats.startBonus as number) + BigInt(stats.rentReceived as number) + BigInt(stats.chanceIncome as number)
       + BigInt(stats.constructionRefunds as number) + BigInt(stats.tradeCashReceived as number) - BigInt(stats.tradeCashPaid as number)
@@ -293,7 +294,7 @@ function validateCardHistory(snapshot: GameSnapshot, history: GameSnapshot["hist
       discarded.some((id, index) => id === null ? !snapshot.rules.chanceCards.some((card) => card.kind === "item" && card.id === cardType(snapshot.deck.discardPile[index]!)) : id !== snapshot.deck.discardPile[index])) throw new Error("牌堆或手牌与历史不一致");
 }
 
-function restoreHistory(value: unknown, snapshot: GameSnapshot): GameSnapshot["history"] {
+export function restoreHistory(value: unknown, snapshot: GameReadSnapshot): GameSnapshot["history"] {
   if (!Array.isArray(value) || value.length > HISTORY_LIMIT || (snapshot.revision === 0 ? value.length !== 0 : value.length === 0)) throw new Error("历史数量无效");
   let previous = 0;
   const history = value.map((raw) => {
@@ -354,7 +355,7 @@ function restoreHistory(value: unknown, snapshot: GameSnapshot): GameSnapshot["h
   return history;
 }
 
-function restoreDebt(value: unknown, snapshot: GameSnapshot, payer: PlayerId): PendingDebt {
+export function restoreDebt(value: unknown, snapshot: GameReadSnapshot, payer: PlayerId): PendingDebt {
   const debt = record(value, ["creditorId", "amount", "source", "continuation"]);
   const source = record(debt.source);
   if (source.kind === "rent") {
@@ -375,13 +376,13 @@ function restoreDebt(value: unknown, snapshot: GameSnapshot, payer: PlayerId): P
   return expected!;
 }
 
-function restoreChance(value: unknown, snapshot: GameSnapshot): void {
+function restoreChance(value: unknown, snapshot: GameReadSnapshot): void {
   const card = record(value, ["kind", "amount", "cardId", "instanceId"]);
   if (!cardInstances(snapshot.rules).includes(card.instanceId as CardInstanceId) || cardType(card.instanceId as CardInstanceId) !== card.cardId ||
       !snapshot.rules.chanceCards.some((rule) => rule.kind === "cash" && rule.id === card.cardId && rule.amount === card.amount)) throw new Error("实体现金牌无效");
 }
 
-function restoreEvent(value: unknown, snapshot: GameSnapshot): GameEvent {
+export function restoreEvent(value: unknown, snapshot: GameReadSnapshot): GameEvent {
   const event = record(value);
   const actor = (value: unknown): PlayerId => {
     if (!snapshot.config.players.some((player) => player.id === value)) throw new Error("历史玩家无效");

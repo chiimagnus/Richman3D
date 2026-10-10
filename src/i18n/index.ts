@@ -35,7 +35,7 @@ export function playerName(language: Language, playerId: PlayerId, config: Pick<
   return player.name ?? messages(language).players[player.defaultNameKey];
 }
 
-export function resultTitle(language: Language, result: MatchResult, config: MatchConfig): string {
+export function resultTitle(language: Language, result: MatchResult, config: Pick<MatchConfig, "players">): string {
   return formatMessage(result.winnerIds.length > 1 ? messages(language).setup.tied : messages(language).status.winner, {
     playerName: result.winnerIds.map((id) => playerName(language, id, config)).join(messages(language).setup.nameSeparator),
   });

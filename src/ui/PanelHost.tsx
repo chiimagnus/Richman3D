@@ -8,10 +8,10 @@ export function PanelHost({ title, onClose, action, children, initialFocusId }: 
     const element = dialog.current!;
     if (document.pointerLockElement) document.exitPointerLock();
     element.showModal();
-    if (initialFocusId) element.querySelector<HTMLElement>(`#${initialFocusId}`)?.focus({ preventScroll: true });
+    if (!document.hidden && initialFocusId) element.querySelector<HTMLElement>(`#${initialFocusId}`)?.focus({ preventScroll: true });
     return () => {
       element.close();
-      if (previous?.isConnected) previous.focus({ preventScroll: true });
+      if (!document.hidden && previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
   return <dialog ref={dialog} className={styles.dialog} aria-labelledby="panel-title" onCancel={(event) => { event.preventDefault(); onClose?.(); }}>

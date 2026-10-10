@@ -1,6 +1,6 @@
 import type { RuleRandom } from "./random";
 import type { RuleSet } from "./rules";
-import type { CardInstanceId, ChanceCardId, Command, DeckState, GameSnapshot, PlayerId } from "./types";
+import type { CardInstanceId, ChanceCardId, Command, DeckState, GameReadSnapshot, PlayerId } from "./types";
 
 export const HAND_LIMIT = 3;
 export const CONTROLLED_TOTALS = { min: 2, max: 12 } as const;
@@ -41,9 +41,10 @@ export function discardItem(deck: DeckState, instanceId: CardInstanceId): DeckSt
   return { ...deck, discardPile: [...deck.discardPile, instanceId] };
 }
 
-export function itemCommands(snapshot: GameSnapshot, actor: PlayerId): readonly Extract<Command, { kind: "use_item" }>[] {
+export function itemCommands(snapshot: GameReadSnapshot, actor: PlayerId): readonly Extract<Command, { kind: "use_item" }>[] {
   if (snapshot.itemUsed || snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor) return [];
   const player = snapshot.players.find((player) => player.id === actor)!;
+  if (player.hand === null) return [];
   return player.hand.flatMap<Extract<Command, { kind: "use_item" }>>((instanceId) => {
     const base = { kind: "use_item" as const, actor, expectedRevision: snapshot.revision, instanceId, total: null, targetId: null };
     switch (cardType(instanceId)) {

@@ -1,4 +1,4 @@
-import type { Command, GameSnapshot } from "../domain/types";
+import type { Command, GameReadSnapshot } from "../domain/types";
 import { formatCash, formatMessage, messages, playerName, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
 import { PropertyOperations } from "./AssetPanel";
@@ -8,7 +8,7 @@ import { debtSourceText } from "./eventText";
 import type { debtView } from "./viewModel";
 import styles from "./Inspection.module.css";
 
-export function DebtPanel({ model, snapshot, language, onCommand, onPause }: { model: NonNullable<ReturnType<typeof debtView>>; snapshot: GameSnapshot; language: Language; onCommand: (command: Command) => void; onPause: () => void }) {
+export function DebtPanel({ model, snapshot, language, onCommand, onPause }: { model: NonNullable<ReturnType<typeof debtView>>; snapshot: GameReadSnapshot; language: Language; onCommand: (command: Command) => void; onPause: () => void }) {
   const copy = messages(language).debt;
   const assetsCopy = messages(language).assets;
   const creditor = model.debt.creditorId === null ? assetsCopy.bank : playerName(language, model.debt.creditorId, snapshot.config);

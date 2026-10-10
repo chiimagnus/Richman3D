@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 
 import type { BoardTile, MapDefinition } from "../domain/board";
 import type { RuleSet } from "../domain/rules";
-import type { GameSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
+import type { GameReadSnapshot, LandingResult, MatchConfig, PlayerId } from "../domain/types";
 import { playerConfig } from "../domain/config";
 import { formatMessage, messages, tileName } from "../i18n";
 import type { Language } from "../i18n/language";
@@ -32,13 +32,13 @@ export class BoardView {
   private readonly propertyFlags = new Map<string, THREE.Group>();
   private readonly tileDetails = new Map<number, string>();
   private readonly propertyBuildings = new Map<string, { level: number; ownerId: PlayerId; object: THREE.Group }>();
-  private snapshot: GameSnapshot | null = null;
+  private snapshot: GameReadSnapshot | null = null;
 
   constructor(
     scene: THREE.Scene,
     private language: Language,
     private readonly map: MapDefinition,
-    private readonly config: MatchConfig,
+    private readonly config: Pick<MatchConfig, "players">,
     private readonly rules: RuleSet,
   ) {
     this.object.name = "board";
@@ -63,7 +63,7 @@ export class BoardView {
     if (index >= 0) this.selection.position.copy(boardPosition(this.map, index));
   }
 
-  syncOwnership(snapshot: GameSnapshot): void {
+  syncOwnership(snapshot: GameReadSnapshot): void {
     this.snapshot = snapshot;
     for (const [index, tile] of this.map.tiles.entries()) {
       if (tile.type !== "property") {
@@ -113,7 +113,7 @@ export class BoardView {
     }
   }
 
-  private syncBuilding(propertyId: string, index: number, snapshot: GameSnapshot): void {
+  private syncBuilding(propertyId: string, index: number, snapshot: GameReadSnapshot): void {
     const property = snapshot.properties[propertyId]!;
     const existing = this.propertyBuildings.get(propertyId);
     if (existing?.level === property.level && existing.ownerId === property.ownerId) return;
@@ -423,7 +423,7 @@ function drawWrappedText(context: CanvasRenderingContext2D, text: string, langua
   return baseline + lineHeight;
 }
 
-export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, snapshot: GameSnapshot | null = null): string {
+export function tileDetail(tile: BoardTile, language: Language, rules: RuleSet, snapshot: GameReadSnapshot | null = null): string {
   const copy = messages(language).board;
 
   switch (tile.type) {
