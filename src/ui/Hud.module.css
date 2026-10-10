@@ -5,16 +5,16 @@
 .balances strong { font-variant-numeric: tabular-nums; }
 .balances .seat { display: inline-grid; place-content: center; min-width: 1.5em; margin-inline-end: 6px; border: 1px solid rgb(38 63 67 / 20%); border-radius: 6px; color: #263f43; background: var(--seat-color); font-variant-numeric: tabular-nums; }
 .round { padding: 10px 12px; color: var(--muted); font-size: .875rem; overflow-wrap: anywhere; }
-.dock { grid-area: 3 / 1 / 4 / -1; justify-self: center; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; width: min(820px, 100%); padding: 14px 18px 4px; border: 1px solid var(--border); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow); }
-.copy { display: grid; min-width: 0; gap: 6px; overflow-wrap: anywhere; }
+.dock { grid-area: 3 / 1 / 4 / -1; justify-self: center; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; width: min(820px, 100%); padding: 14px 18px 4px; border: 1px solid var(--border); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow); }
+.copy { display: grid; flex: 1 1 240px; min-width: 0; gap: 6px; overflow-wrap: anywhere; }
 .copy strong { font-size: 1.125rem; font-weight: 650; }
 .copy span { color: var(--muted); line-height: 1.6; }
-.actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 340px; }
+.actions { display: flex; flex: 1 1 300px; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 340px; }
 .primary { background: var(--primary); color: var(--on-primary); border-color: transparent; box-shadow: inset 0 1px rgb(255 255 255 / 20%), 0 3px 6px rgb(35 101 108 / 16%); }
 .dice { display: flex; gap: 4px; margin-inline-end: 4px; }
 .dice span { display: grid; place-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--field); color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 650; }
 .reason { flex-basis: 100%; color: var(--muted); font-size: .875rem; }
-.property, .assets, .notice { grid-column: 1 / -1; min-width: 0; }
+.property, .assets, .notice { flex-basis: 100%; min-width: 0; }
 .property, .assets { border-top: 1px solid var(--border); }
 .property summary { color: var(--muted); }
 .property dl { margin-top: 4px; }
@@ -22,6 +22,6 @@
 .tilePicker select { width: 100%; min-width: 0; }
 .notice { margin: 0; color: var(--muted); }
 @media (max-width: 640px) {
-  .dock { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+  .dock { gap: 12px; padding: 16px; }
   .actions { max-width: none; justify-content: flex-start; }
 }
