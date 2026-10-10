@@ -17,7 +17,7 @@ export type RoomState = {
   readonly expiresAt: number;
   readonly snapshot: GameReadSnapshot | null;
 };
-export type RoomError = "invalid_request" | "not_found" | "full" | "started" | "forbidden" | "not_ready" | "stale_revision" | "illegal_action" | "storage_failed" | "rate_limited" | "incompatible";
+export type RoomError = "invalid_request" | "not_found" | "full" | "started" | "forbidden" | "replaced" | "not_ready" | "stale_revision" | "illegal_action" | "storage_failed" | "rate_limited" | "incompatible";
 export type ServerMessage = { readonly version: typeof PROTOCOL_VERSION } & (
   { readonly kind: "state"; readonly room: RoomState; readonly events: readonly GameEvent[]; readonly reset: boolean }
   | { readonly kind: "error"; readonly error: RoomError });

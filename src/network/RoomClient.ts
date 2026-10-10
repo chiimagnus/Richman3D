@@ -100,11 +100,17 @@ export class RoomClient {
           } else { this.publish({ status: "disconnected", error: "incompatible", pending: false }); this.disconnect(); }
         } catch { this.publish({ status: "disconnected", error: "incompatible", pending: false }); this.disconnect(); }
       });
-      const disconnected = () => {
+      const disconnected = (event: Event) => {
         if (this.socket !== socket) return;
-        this.socket = null;
+        let error: RoomView["error"] = "unavailable";
+        if (event.type === "close") {
+          this.socket = null;
+          const closed = event as CloseEvent;
+          if (closed.code === 1008 && (closed.reason === "replaced" || closed.reason === "rate_limited" || closed.reason === "not_found")) error = closed.reason;
+          else if (closed.code === 1001 && closed.reason === "expired") error = "not_found";
+        }
         this.pendingRevision = null;
-        this.publish({ status: "disconnected", pending: false, error: this.view.error ?? "unavailable" });
+        this.publish({ status: "disconnected", pending: false, error });
       };
       socket.addEventListener("close", disconnected);
       socket.addEventListener("error", disconnected);
@@ -138,7 +144,7 @@ export class RoomClient {
   }
 }
 
-const ERRORS: readonly RoomError[] = ["invalid_request", "not_found", "full", "started", "forbidden", "not_ready", "stale_revision", "illegal_action", "storage_failed", "rate_limited", "incompatible"];
+const ERRORS: readonly RoomError[] = ["invalid_request", "not_found", "full", "started", "forbidden", "replaced", "not_ready", "stale_revision", "illegal_action", "storage_failed", "rate_limited", "incompatible"];
 function knownError(value: unknown): value is RoomError { return typeof value === "string" && ERRORS.includes(value as RoomError); }
 function validState(message: Record<string, unknown>, code: string): boolean {
   try { validateRoomState(message, code); return true; } catch { return false; }

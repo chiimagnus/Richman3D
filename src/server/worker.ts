@@ -160,14 +160,15 @@ export class Room extends DurableObject<Env> {
     } catch { this.reject(socket, "storage_failed"); }
   }
 
-  async webSocketClose(socket: WebSocket, code: number): Promise<void> {
+  async webSocketClose(socket: WebSocket, code: number, reason: string): Promise<void> {
     socket.serializeAttachment({ playerId: null, window: Date.now(), count: 0 } satisfies Attachment);
-    socket.close(code);
+    if (code === 1005) socket.close();
+    else if (code !== 1006 && code !== 1015) socket.close(code, reason);
     const stored = await this.read();
     if (stored) this.broadcast(stored, [], false);
   }
 
-  async webSocketError(socket: WebSocket): Promise<void> { await this.webSocketClose(socket, 1011); }
+  async webSocketError(socket: WebSocket): Promise<void> { await this.webSocketClose(socket, 1011, ""); }
 
   async alarm(): Promise<void> {
     const stored = await this.ctx.storage.get<StoredRoom>("room");

@@ -32,12 +32,14 @@ describe("browser client and online session against native workerd", () => {
   let origin: string;
   const clients: RoomClient[] = [];
   const sessions: OnlineSession[] = [];
+  const sockets: WebSocket[] = [];
   beforeEach(async () => {
+    sockets.length = 0;
     directory = await mkdtemp(join(tmpdir(), "richman-client-"));
     runtime = await roomRuntime(directory);
     origin = (await runtime.ready).origin;
     vi.stubGlobal("WebSocket", class extends WebSocket {
-      constructor(url: string | URL, protocols: string[]) { super(url, protocols, { origin }); }
+      constructor(url: string | URL, protocols: string[]) { super(url, protocols, { origin }); sockets.push(this); }
     });
   });
   afterEach(async () => {
@@ -82,10 +84,53 @@ describe("browser client and online session against native workerd", () => {
     expect(recipientClient.getSnapshot().error).toBe("stale_revision");
     const replacement = await enter(first.credential);
     await until(() => first.getSnapshot().status === "disconnected");
+    expect(first.getSnapshot().error).toBe("replaced");
     expect(availableCommands(left.getSnapshot())).toEqual([]);
     expect(replacement.getSnapshot().room!.snapshot!.revision).toBe(2);
     expect(replacement.getSnapshot().room!.playerId).toBe("p1");
     expect(replacement.getSnapshot().room!.snapshot!.players[1]!.hand).toBeNull();
+  });
+
+  it.each(["clean", "empty", "abrupt"])("does not mistake a stale command rejection for transport failure and restores the same result after a %s disconnect", async (mode) => {
+    const { first, second, left } = await start();
+    const snapshot = first.getSnapshot().room!.snapshot!;
+    expect(first.command({ kind: "roll", actor: "p1", expectedRevision: snapshot.revision + 1 })).toBe(true);
+    await until(() => first.getSnapshot().error === "stale_revision" && !first.getSnapshot().pending);
+    if (mode === "abrupt") sockets[0]!.terminate();
+    else if (mode === "empty") sockets[0]!.close();
+    else sockets[0]!.close(1000);
+    await until(() => first.getSnapshot().status === "disconnected");
+    expect(first.getSnapshot().error).toBe("unavailable");
+    expect(left.getSnapshot().network!.error).toBe("unavailable");
+    expect(availableCommands(left.getSnapshot())).toEqual([]);
+    await vi.waitFor(() => expect(second.getSnapshot().room!.members[0]!.connected).toBe(false), { timeout: 2000 });
+    expect(second.getSnapshot().status).toBe("connected");
+    first.reconnect();
+    await until(() => first.getSnapshot().status === "connected");
+    expect(first.getSnapshot().error).toBeNull();
+    expect(first.getSnapshot().room!.snapshot).toEqual(snapshot);
+    expect(first.getSnapshot().room!.playerId).toBe("p1");
+    await until(() => second.getSnapshot().room!.members[0]!.connected);
+  });
+
+  it.each([
+    [1001, "expired", "not_found"],
+    [1008, "not_found", "not_found"],
+    [1008, "replaced", "replaced"],
+    [1008, "rate_limited", "rate_limited"],
+    [1008, "arbitrary reason", "unavailable"],
+    [1000, "replaced", "unavailable"],
+    [1011, "send_failed", "unavailable"],
+  ] as const)("keeps the socket until close after an error and classifies only recognized close frames (%s, %s)", async (code, reason, expected) => {
+    const client = await enter(roomCredential("create", "Host", "", options));
+    const socket = sockets[0]!;
+    socket.emit("error", new Error("Transport failed"));
+    expect(client.getSnapshot().status).toBe("disconnected");
+    expect(client.getSnapshot().error).toBe("unavailable");
+    socket.close(code, reason);
+    await until(() => socket.readyState === WebSocket.CLOSED);
+    expect(client.getSnapshot().error).toBe(expected);
+    expect(client.getSnapshot().pending).toBe(false);
   });
 
   it("gates animations, skips safely, pauses only presentation and cannot revive a disposed session", async () => {

@@ -52,7 +52,8 @@ For free-only hosting, confirm Workers Free in the dashboard first. Free usage i
 
 ## Room Recovery
 
-- After refreshing, return to your seat from “Multiplayer room”; use reconnect after a connection loss. Closing the tab or clearing browser data can lose your seat. New players cannot replace seats in a started match.
+- After refreshing, return to your seat from “Multiplayer room”; use reconnect after a connection loss. Confirmed actions will not be replayed.
+- Connecting the same seat in another page replaces the old connection; close duplicate pages before reconnecting. Closing the tab or clearing browser data can lose your seat. New players cannot replace seats in a started match.
 - Rooms expire 24 hours after the last accepted operation; the UI displays the expiry.
 
 ## Validation
