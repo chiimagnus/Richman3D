@@ -113,6 +113,11 @@ export type GameSnapshot = {
 
 export type SavedGameState = Omit<GameSnapshot, "rules" | "map">;
 
+export type GameReadSnapshot = Omit<GameSnapshot, "config" | "players" | "random" | "deck"> & {
+  readonly config: Omit<MatchConfig, "seed">;
+  readonly players: readonly (Omit<PlayerState, "hand"> & { readonly hand: readonly CardInstanceId[] | null })[];
+};
+
 export type LandingResult =
   | { readonly kind: "start" }
   | { readonly kind: "property_available"; readonly propertyId: string; readonly price: number }
