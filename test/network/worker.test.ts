@@ -9,6 +9,7 @@ import { projectGame, PROTOCOL_VERSION, type ServerMessage } from "../../src/net
 import { itemCheckpoint } from "../fixtures/items";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { CITY } from "../../src/domain/maps/city";
+import { PAGES_ORIGIN } from "../../src/network/endpoints";
 
 type StateMessage = Extract<ServerMessage, { kind: "state" }>;
 type Socket = NonNullable<Awaited<ReturnType<Miniflare["dispatchFetch"]>>["webSocket"]>;
@@ -39,6 +40,7 @@ describe("authoritative rooms in real workerd", () => {
   let runtime: Miniflare;
   let directory: string;
   let script: string;
+  let frontendOrigin = origin;
   const sockets: Socket[] = [];
 
   const spawn = () => new Miniflare({ resourcePersistencePath: directory, telemetry: { enabled: false }, workers: [{ config: {
@@ -49,6 +51,7 @@ describe("authoritative rooms in real workerd", () => {
   } }] });
 
   beforeEach(async () => {
+    frontendOrigin = origin;
     directory = await mkdtemp(join(tmpdir(), "richman-network-"));
     const result = await build({ entryPoints: ["src/server/worker.ts"], bundle: true, format: "esm", platform: "neutral", external: ["cloudflare:workers"], write: false });
     script = result.outputFiles[0]!.text;
@@ -60,11 +63,11 @@ describe("authoritative rooms in real workerd", () => {
     await rm(directory, { recursive: true, force: true });
   });
 
-  async function post(action: string, body: unknown, requestOrigin = origin) {
-    return runtime.dispatchFetch(`${origin}/api/rooms/${code}/${action}`, { method: "POST", headers: { "Content-Type": "application/json", Origin: requestOrigin }, body: JSON.stringify(body) });
+  async function post(action: string, body: unknown, requestOrigin = frontendOrigin) {
+    return runtime.dispatchFetch(`${origin}/api/rooms/${code}/${action}`, { method: "POST", headers: { "Content-Type": "application/json", Origin: requestOrigin, "Sec-Fetch-Site": requestOrigin === origin ? "same-origin" : "cross-site" }, body: JSON.stringify(body) });
   }
   async function connect(token: string) {
-    const response = await runtime.dispatchFetch(`${origin}/api/rooms/${code}/socket`, { headers: { Upgrade: "websocket", Origin: origin, "Sec-WebSocket-Protocol": `richman-v${PROTOCOL_VERSION}, seat.${token}` } });
+    const response = await runtime.dispatchFetch(`${origin}/api/rooms/${code}/socket`, { headers: { Upgrade: "websocket", Origin: frontendOrigin, "Sec-Fetch-Site": frontendOrigin === origin ? "same-origin" : "cross-site", "Sec-WebSocket-Protocol": `richman-v${PROTOCOL_VERSION}, seat.${token}` } });
     expect(response.status).toBe(101);
     const socket = response.webSocket!;
     sockets.push(socket);
@@ -112,7 +115,57 @@ describe("authoritative rooms in real workerd", () => {
     expect(guest.state.room.members).toHaveLength(2);
   });
 
-  it("synchronizes real cash/ownership/trades and rejects impersonation and duplicate economic commands", async () => {
+  it("allows only Pages JSON preflights and readable HTTP results without weakening seat authentication", async () => {
+    frontendOrigin = PAGES_ORIGIN;
+    const preflight = (action: string, source = PAGES_ORIGIN, method = "POST", headers = "content-type") => runtime.dispatchFetch(`${origin}/api/rooms/${code}/${action}`, {
+      method: "OPTIONS", headers: { Origin: source, "Sec-Fetch-Site": "cross-site", "Access-Control-Request-Method": method, "Access-Control-Request-Headers": headers },
+    });
+    for (const action of ["create", "join"]) {
+      const response = await preflight(action);
+      expect(response.status).toBe(204);
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(PAGES_ORIGIN);
+      expect(response.headers.get("Access-Control-Allow-Methods")).toBe("POST");
+      expect(response.headers.get("Access-Control-Allow-Headers")).toBe("Content-Type");
+      expect(response.headers.get("Vary")).toContain("Origin");
+      expect(response.headers.has("Access-Control-Allow-Credentials")).toBe(false);
+    }
+    for (const source of ["https://evil.test", "https://chiimagnus.github.io.evil.test", "http://chiimagnus.github.io", "null"]) {
+      const denied = await preflight("create", source);
+      expect(denied.status).toBe(403); expect(denied.headers.has("Access-Control-Allow-Origin")).toBe(false);
+      expect((await post("create", { token: firstToken, name: "Host", options }, source)).status).toBe(403);
+      const socket = await runtime.dispatchFetch(`${origin}/api/rooms/${code}/socket`, { headers: { Upgrade: "websocket", Origin: source, "Sec-WebSocket-Protocol": `richman-v1, seat.${firstToken}` } });
+      expect(socket.status).toBe(403);
+    }
+    expect((await preflight("socket")).status).toBe(400);
+    expect((await preflight("create", PAGES_ORIGIN, "DELETE")).status).toBe(400);
+    expect((await preflight("create", PAGES_ORIGIN, "POST", "Content-Type, Authorization")).status).toBe(400);
+    const missing = await post("join", { token: secondToken, name: "Guest" });
+    expect(missing.status).toBe(404); expect(missing.headers.get("Access-Control-Allow-Origin")).toBe(PAGES_ORIGIN);
+    expect(await missing.json()).toEqual({ error: "not_found" });
+    const invalid = await post("create", { token: firstToken, name: "Host", options: { ...options, seats: 5 } });
+    expect(invalid.status).toBe(400); expect(invalid.headers.get("Access-Control-Allow-Origin")).toBe(PAGES_ORIGIN);
+    const created = await post("create", { token: firstToken, name: "Host", options });
+    expect(created.status).toBe(200); expect(created.headers.get("Access-Control-Allow-Origin")).toBe(PAGES_ORIGIN);
+    expect(created.headers.get("Vary")).toContain("Origin");
+    expect((await post("join", { token: secondToken, name: "Guest" })).status).toBe(200);
+    const full = await post("join", { token: "c".repeat(64), name: "Third" });
+    expect(full.status).toBe(409); expect(full.headers.get("Access-Control-Allow-Origin")).toBe(PAGES_ORIGIN);
+    expect(await full.json()).toEqual({ error: "full" });
+    for (const headers of [
+      { Origin: PAGES_ORIGIN, "Sec-WebSocket-Protocol": `richman-v1, seat.${"c".repeat(64)}` },
+      { "Sec-WebSocket-Protocol": `richman-v1, seat.${firstToken}` },
+    ]) {
+      const rejected = await runtime.dispatchFetch(`${origin}/api/rooms/${code}/socket`, { headers: { ...headers, Upgrade: "websocket" } });
+      expect(rejected.status).not.toBe(101);
+    }
+    const host = await connect(firstToken);
+    expect(host.state.room.members).toHaveLength(2);
+    host.socket.close();
+    expect((await connect(firstToken)).state.room.playerId).toBe("p1");
+  });
+
+  it.each([origin, PAGES_ORIGIN])("synchronizes real cash/ownership/trades from %s and rejects impersonation and duplicate economic commands", async (source) => {
+    frontendOrigin = source;
     const { first, second } = await room();
     const clients = { p1: first, p2: second };
     let state = first.state.room.snapshot!;

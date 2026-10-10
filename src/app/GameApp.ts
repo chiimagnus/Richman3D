@@ -9,6 +9,7 @@ import { challengeConfig, type DailyChallenge } from "../domain/challenges";
 import { RoomClient, type RoomCredential } from "../network/RoomClient";
 import { OnlineSession } from "./OnlineSession";
 import { matchId } from "./matchId";
+import { roomServerOrigin } from "../network/endpoints";
 
 export type StoredView = { readonly kind: "loading" | "empty" } | { readonly kind: "valid"; readonly record: SaveRecord }
   | { readonly kind: "error"; readonly error: SaveError["kind"] };
@@ -103,7 +104,7 @@ export class GameApp {
     if (request !== this.request) return;
     previous?.dispose(); this.releaseRoom(); this.releaseSessionAudio(); this.audio.stop();
     const storage = { setItem: (key: string, value: string) => window.sessionStorage.setItem(key, value) };
-    const client = new RoomClient(credential, storage, window.location.origin);
+    const client = new RoomClient(credential, storage, roomServerOrigin(window.location.origin));
     this.unbindRoom = client.subscribe(() => {
       if (this.view.room !== client || this.view.session || !client.getSnapshot().room?.snapshot) return;
       const session = new OnlineSession(client);

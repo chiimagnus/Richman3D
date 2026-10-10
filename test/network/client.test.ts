@@ -19,6 +19,7 @@ import { playSeatFeedback } from "../../src/ui/SceneHost";
 import { GameAudio } from "../../src/audio/GameAudio";
 import { audioProtocol } from "../fixtures/audio";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
+import { CLOUD_ROOM_ORIGIN, PAGES_ORIGIN, roomServerOrigin } from "../../src/network/endpoints";
 
 const options = { seats: 2, mapId: CITY.id, rulesVersion: QUICK_RULES.version };
 const storage = { setItem: vi.fn() };
@@ -133,9 +134,30 @@ describe("browser client and online session against native workerd", () => {
     expect(observer.getSnapshot().settledRoll).toBeNull();
   });
 
-  it("enters and leaves through the real application without writing the local save or reviving old rooms", async () => {
+  it.each([false, true])("enters and leaves through the real application without local saves or reviving old rooms (Pages=%s)", async (pages) => {
+    const httpOrigins: string[] = [];
+    const socketOrigins: string[] = [];
+    if (pages) {
+      const nativeFetch = globalThis.fetch;
+      vi.stubGlobal("fetch", async (input: string, init: RequestInit) => {
+        const target = new URL(input);
+        if (target.origin !== CLOUD_ROOM_ORIGIN) return nativeFetch(input, init);
+        httpOrigins.push(target.origin);
+        const response = await nativeFetch(`${origin}${target.pathname}`, { ...init, headers: { ...init.headers, Origin: PAGES_ORIGIN, "Sec-Fetch-Site": "cross-site" } });
+        expect(response.headers.get("Access-Control-Allow-Origin")).toBe(PAGES_ORIGIN);
+        return response;
+      });
+      vi.stubGlobal("WebSocket", class extends WebSocket {
+        constructor(url: string | URL, protocols: string[]) {
+          const target = new URL(url);
+          const remote = target.origin === CLOUD_ROOM_ORIGIN.replace("https:", "wss:");
+          if (remote) socketOrigins.push(target.origin);
+          super(remote ? `${origin.replace("http:", "ws:")}${target.pathname}` : url, protocols, { origin: remote ? PAGES_ORIGIN : origin });
+        }
+      });
+    }
     vi.stubGlobal("document", { hidden: false, documentElement: {}, addEventListener() {}, removeEventListener() {} });
-    vi.stubGlobal("window", { location: { origin, hash: "", href: origin }, sessionStorage: storage, localStorage: { getItem: () => null } });
+    vi.stubGlobal("window", { location: { origin: pages ? PAGES_ORIGIN : origin, hash: "", href: pages ? `${PAGES_ORIGIN}/Richman3D/` : origin }, sessionStorage: storage, localStorage: { getItem: () => null } });
     const database = new IDBFactory();
     const store = new GameStore(() => database);
     const app = new GameApp(store);
@@ -161,6 +183,11 @@ describe("browser client and online session against native workerd", () => {
       await until(() => app.getSnapshot().session?.kind === "online");
       expect(app.getSnapshot().session).not.toBe(session);
       expect(app.getSnapshot().session!.getSnapshot().displayed.revision).toBe(0);
+      if (pages) {
+        expect(httpOrigins).toEqual([CLOUD_ROOM_ORIGIN, CLOUD_ROOM_ORIGIN]);
+        expect(socketOrigins).toEqual([CLOUD_ROOM_ORIGIN.replace("https:", "wss:"), CLOUD_ROOM_ORIGIN.replace("https:", "wss:")]);
+        expect(window.location.href).toBe(`${PAGES_ORIGIN}/Richman3D/`);
+      }
     } finally { unbind(); app.dispose(); }
   });
 
@@ -213,4 +240,8 @@ it("creates valid unique local save identities without secure-context randomUUID
   const identifiers = Array.from({ length: 100 }, () => matchId());
   expect(new Set(identifiers).size).toBe(100);
   identifiers.forEach((identifier) => expect(identifier).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/));
+});
+
+it.each([PAGES_ORIGIN, "http://192.168.1.20:8787", "http://127.0.0.1:8787", CLOUD_ROOM_ORIGIN])("selects the correct room server for %s", (origin) => {
+  expect(roomServerOrigin(origin)).toBe(origin === PAGES_ORIGIN ? CLOUD_ROOM_ORIGIN : origin);
 });

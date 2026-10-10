@@ -4,9 +4,7 @@
 
 支持第一人称与棋盘总览的 3D 大富翁浏览器游戏。使用 **TypeScript + Three.js + WebGL + Vite** 构建，支持2–4席同机真人与电脑对局。视角、总静音、音效/音乐音量、语言、鼠标灵敏度、动画速度和第一人称晃动保存在本地偏好中，不写入规则存档。
 
-**在线试玩：https://chiimagnus.github.io/Richman3D/**
-
-**远程联机：https://richman3d-multiplayer.chiimagnus.workers.dev/**
+**游戏入口（单机与远程联机）：https://chiimagnus.github.io/Richman3D/**
 
 ![Richman 3D gameplay](public/og-image.png)
 
@@ -23,7 +21,7 @@ npm run dev
 
 ## 联机开发与部署
 
-联机使用同一个 Cloudflare Worker + SQLite Durable Object 后端，支持 2–4 位真人分别使用电脑。领域层在服务器裁定，浏览器只呈现本人的视角和手牌；原有同机真人、电脑、存档和挑战仍保留。GitHub Pages 与 Vite 开发服务器没有房间后端，其「联机房间」入口前往独立 Worker 服务；开发联机使用下面的局域网命令。
+正式游戏入口仍在 GitHub Pages；「联机房间」直接在当前页面创建/加入，不跳站，邀请链接也保留 Pages 地址。远程 HTTP/WSS 房间服务由 Cloudflare Worker + SQLite Durable Object 提供，仅额外授权 `https://chiimagnus.github.io` 的跨域请求，不使用通配 Origin 或 cookie 认证。支持 2–4 位真人分别使用电脑，领域层在服务器裁定，浏览器只呈现本人的视角和手牌；原有同机真人、电脑、存档和挑战仍保留。Vite 开发服务器没有房间后端；开发联机使用下面的局域网命令，本地连接同源房主服务器而不是 Cloudflare。
 
 房主电脑先安装 Node.js 22.12+ 和依赖，再构建启动：
 
@@ -49,7 +47,7 @@ npx wrangler whoami
 npm run deploy:worker
 ```
 
-Pages 构建仍是 `npm run build` → `dist/`；Worker/LAN 使用根路径 `npm run build:worker` → `dist-worker/`，不能混用产物。Workers Free 支持本项目使用的 SQLite Durable Objects；采用 WebSocket 休眠，静态资源不经过房间 Worker。免费额度为账号共享且不是无限免费，超额会停止服务，不会由项目自动升级付费；已付费账号仍按其订阅计费。部署前在控制台确认 Workers Free，限额以 [Workers 定价](https://developers.cloudflare.com/workers/platform/pricing/) 与 [Durable Objects 定价](https://developers.cloudflare.com/durable-objects/platform/pricing/) 为准。
+Pages 构建仍是 `npm run build` → `dist/`，main 推送触发本游戏的 Pages workflow；Worker/LAN 使用根路径 `npm run build:worker` → `dist-worker/`，静态产物用于本地离线游戏，不能混用产物。更改后端 Origin 授权时先部署 Worker，再发布 Pages 前端。Workers Free 支持本项目使用的 SQLite Durable Objects；采用 WebSocket 休眠，静态资源不经过房间 Worker。免费额度为账号共享且不是无限免费，超额会停止服务，不会由项目自动升级付费；已付费账号仍按其订阅计费。部署前在控制台确认 Workers Free，限额以 [Workers 定价](https://developers.cloudflare.com/workers/platform/pricing/) 与 [Durable Objects 定价](https://developers.cloudflare.com/durable-objects/platform/pricing/) 为准。
 
 ## 技术栈
 

@@ -4,9 +4,7 @@
 
 A 3D Richman-style browser board game with first-person and board-overview views, built with **TypeScript + Three.js + WebGL + Vite**. Play 2–4 seats with local humans and computers on one device. View, total mute, effect/music volumes, language, mouse sensitivity, animation speed and first-person head bob preferences are stored locally, separately from rule saves.
 
-**Play online: https://chiimagnus.github.io/Richman3D/**
-
-**Remote multiplayer: https://richman3d-multiplayer.chiimagnus.workers.dev/**
+**Game entry (single-player and remote multiplayer): https://chiimagnus.github.io/Richman3D/**
 
 ![Richman 3D gameplay](public/og-image.png)
 
@@ -23,7 +21,7 @@ Open the local address shown by Vite in a modern desktop browser.
 
 ## Multiplayer Development and Deployment
 
-Multiplayer uses the same Cloudflare Worker and SQLite Durable Object backend locally and remotely, supporting 2–4 human players on separate computers. The server owns the rules; each browser receives its own view and hand. Existing hotseat, bots, local saves and challenges remain available. GitHub Pages and the Vite development server have no room backend: their multiplayer entry opens the independent Worker service. Use the LAN commands to develop multiplayer.
+The game stays on GitHub Pages: the multiplayer entry creates or joins rooms on the current page without navigating away, and invitation links keep the Pages address. Cloudflare Worker and SQLite Durable Object provide the remote HTTP/WSS room service, allowing cross-origin requests only from `https://chiimagnus.github.io` in addition to the server's own origin, without wildcard origins or cookie authentication. It supports 2–4 human players on separate computers. The server owns the rules; each browser receives its own view and hand. Existing hotseat, bots, local saves and challenges remain available. The Vite development server has no room backend; use the LAN commands below to develop multiplayer. Local games connect to the host's same-origin server, not Cloudflare.
 
 On the host computer, install Node.js 22.12+ and dependencies, then build and start:
 
@@ -49,7 +47,7 @@ npx wrangler whoami
 npm run deploy:worker
 ```
 
-Pages still uses `npm run build` → `dist/`. Worker/LAN uses a root-path build, `npm run build:worker` → `dist-worker/`; do not mix these outputs. Workers Free supports the SQLite Durable Objects used here. WebSockets hibernate and static assets bypass the room Worker. Free quotas are account-wide, not unlimited: exhausting them stops service; this project does not automatically enable a paid plan. Existing paid accounts remain subject to their subscription. Confirm Workers Free in the dashboard before deploying; current limits are in [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) and [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/).
+Pages still uses `npm run build` → `dist/`; pushing main triggers this game's Pages workflow. Worker/LAN uses a root-path build, `npm run build:worker` → `dist-worker/`, with static assets for offline local play; do not mix these outputs. When changing backend Origin authorization, deploy the Worker before publishing the Pages frontend. Workers Free supports the SQLite Durable Objects used here. WebSockets hibernate and static assets bypass the room Worker. Free quotas are account-wide, not unlimited: exhausting them stops service; this project does not automatically enable a paid plan. Existing paid accounts remain subject to their subscription. Confirm Workers Free in the dashboard before deploying; current limits are in [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) and [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/).
 
 ## Tech Stack
 

@@ -4,6 +4,7 @@ import { createMatchConfig, SEAT_IDS } from "../domain/config";
 import { MAPS } from "../domain/maps";
 import type { Command, GameEvent, PlayerId, SavedGameState } from "../domain/types";
 import { memberInput, object, projectGame, PROTOCOL_VERSION, ROOM_CODE, ROOM_TOKEN, ROOM_TTL, type RoomError, type RoomOptions, type ServerMessage } from "../network/protocol";
+import { PAGES_ORIGIN } from "../network/endpoints";
 
 interface Env { ROOMS: DurableObjectNamespace<Room>; ASSETS: Fetcher; ROOM_LIMIT: RateLimit }
 type Member = { id: PlayerId; name: string | null; token: string };
@@ -33,20 +34,35 @@ async function readBody(request: Request): Promise<string> {
   } finally { try { await reader.cancel(); } finally { reader.releaseLock(); } }
 }
 
+async function roomRequest(request: Request, env: Env, url: URL): Promise<Response> {
+  if (url.pathname === "/api/health" && request.method === "GET") return json({ version: PROTOCOL_VERSION });
+  const route = /^\/api\/rooms\/([^/]+)\/(create|join|socket)$/.exec(url.pathname);
+  if (!route || !ROOM_CODE.test(route[1]!)) return error("not_found", 404);
+  const origin = request.headers.get("Origin");
+  const allowedOrigin = origin === url.origin || origin === PAGES_ORIGIN;
+  if (origin !== null && !allowedOrigin || request.headers.get("Sec-Fetch-Site") === "cross-site" && origin !== PAGES_ORIGIN) return error("forbidden", 403);
+  if (request.method === "OPTIONS") {
+    const headers = request.headers.get("Access-Control-Request-Headers")?.split(",").map((header) => header.trim().toLowerCase()) ?? [];
+    if (!allowedOrigin || route[2] === "socket" || request.headers.get("Access-Control-Request-Method") !== "POST" || headers.some((header) => header !== "content-type")) return error("invalid_request");
+    return new Response(null, { status: 204, headers: { "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Content-Type", "Cache-Control": "no-store" } });
+  }
+  if (route[2] === "socket" ? request.method !== "GET" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket" || !allowedOrigin : request.method !== "POST") return error("invalid_request");
+  if (request.method === "POST" && !request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) return error("invalid_request");
+  const limit = await env.ROOM_LIMIT.limit({ key: `richman3d:${request.headers.get("CF-Connecting-IP") ?? "lan"}` });
+  if (!limit.success) return error("rate_limited", 429);
+  return env.ROOMS.get(env.ROOMS.idFromName(route[1]!)).fetch(request);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-    if (url.pathname === "/api/health" && request.method === "GET") return json({ version: PROTOCOL_VERSION });
-    const route = /^\/api\/rooms\/([^/]+)\/(create|join|socket)$/.exec(url.pathname);
-    if (!route || !ROOM_CODE.test(route[1]!)) return error("not_found", 404);
-    const origin = request.headers.get("Origin");
-    if (origin !== null && origin !== url.origin || request.headers.get("Sec-Fetch-Site") === "cross-site") return error("forbidden", 403);
-    if (route[2] === "socket" ? request.method !== "GET" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket" || origin !== url.origin : request.method !== "POST") return error("invalid_request");
-    if (request.method === "POST" && !request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) return error("invalid_request");
-    const limit = await env.ROOM_LIMIT.limit({ key: `richman3d:${request.headers.get("CF-Connecting-IP") ?? "lan"}` });
-    if (!limit.success) return error("rate_limited", 429);
-    return env.ROOMS.get(env.ROOMS.idFromName(route[1]!)).fetch(request);
+    const response = await roomRequest(request, env, url);
+    if (request.headers.get("Origin") !== PAGES_ORIGIN || response.status === 101) return response;
+    const readable = new Response(response.body, response);
+    readable.headers.set("Access-Control-Allow-Origin", PAGES_ORIGIN);
+    readable.headers.append("Vary", "Origin");
+    return readable;
   },
 } satisfies ExportedHandler<Env>;
 
