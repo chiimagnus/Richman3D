@@ -12,7 +12,8 @@ export class PlayerView {
   private readonly ring: THREE.Mesh;
 
   constructor(scene: THREE.Scene, color: string, private readonly clock: MotionClock, private readonly map: MapDefinition, seatIndex: number) {
-    this.offset = new THREE.Vector3(seatIndex % 2 === 0 ? -0.72 : 0.72, 0.18, seatIndex < 2 ? -0.72 : 0.72);
+    this.offset = new THREE.Vector3(seatIndex % 2 === 0 ? -0.45 : 0.45, 0.18, seatIndex < 2 ? -0.45 : 0.45);
+    this.object.scale.setScalar(0.5);
     const body = new THREE.Mesh(
       new THREE.CylinderGeometry(0.48, 0.62, 1.25, 20),
       new THREE.MeshStandardMaterial({

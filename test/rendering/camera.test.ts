@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { CameraRig } from "../../src/rendering/CameraRig";
 import { boardBounds, boardPosition } from "../../src/rendering/boardGeometry";
 import { CITY } from "../../src/domain/maps/city";
+import { HARBOR } from "../../src/domain/maps/harbor";
 import { PlayerView } from "../../src/rendering/PlayerView";
 import { MotionClock } from "../../src/rendering/MotionClock";
 
@@ -70,9 +71,9 @@ it.each([2, 3, 4])("draws %s real pawns with stable same-tile offsets, visibilit
   const offsets = scene.children.map((object) => object.position.clone().sub(boardPosition(CITY, 0)));
   expect(new Set(offsets.map((offset) => offset.toArray().join(","))).size).toBe(size);
   for (const [index, offset] of offsets.entries()) {
-    expect(offset.x).toBeCloseTo(index % 2 === 0 ? -0.72 : 0.72);
+    expect(offset.x).toBeCloseTo(index % 2 === 0 ? -0.45 : 0.45);
     expect(offset.y).toBeCloseTo(0.18);
-    expect(offset.z).toBeCloseTo(index < 2 ? -0.72 : 0.72);
+    expect(offset.z).toBeCloseTo(index < 2 ? -0.45 : 0.45);
   }
   pawns[0]!.setVisible(false); expect(scene.children[0]!.visible).toBe(false);
   pawns[0]!.setVisible(true); expect(scene.children[0]!.visible).toBe(true);
@@ -115,6 +116,31 @@ it("uses native bounded overview rotation/zoom, keeps pose on resize and never e
     rig.setInteractive(true);
     rig.firstPerson.lock(() => {}); expect(element.requestPointerLock).toHaveBeenCalledTimes(1);
   } finally { rig.dispose(); }
+});
+
+it.each([CITY, HARBOR])("$id four same-tile pawns stay below the real eye, including their movement bounce", async (map) => {
+  const scene = new THREE.Scene(); const clock = new MotionClock();
+  const rig = new CameraRig(map, canvas(), clock);
+  const pawns = Array.from({ length: 4 }, (_, seat) => new PlayerView(scene, "#57d4ff", clock, map, seat));
+  try {
+    rig.firstPerson.setPosition(0);
+    pawns.forEach(pawn => pawn.setPosition(0));
+    const resources = scene.children.flatMap(root => root.children.filter((object): object is THREE.Mesh => object instanceof THREE.Mesh)
+      .flatMap(mesh => [mesh.geometry, mesh.material as THREE.Material])).map(resource => vi.spyOn(resource, "dispose"));
+    const assertBelowEye = () => {
+      const bounds = scene.children.map(object => new THREE.Box3().setFromObject(object));
+      bounds.forEach(box => expect(box.max.y).toBeLessThan(rig.firstPersonCamera.position.y));
+      for (const [index, box] of bounds.entries()) for (const other of bounds.slice(index + 1)) expect(box.intersectsBox(other)).toBe(false);
+    };
+    assertBelowEye();
+    const movement = Promise.all(pawns.map(pawn => pawn.moveAlong([1])));
+    clock.update(110); assertBelowEye();
+    clock.update(110); await movement;
+    for (const pawn of pawns) expect(pawn.position.distanceTo(boardPosition(map, 1))).toBeLessThan(1e-9);
+    pawns.forEach(pawn => pawn.dispose()); pawns.forEach(pawn => pawn.dispose());
+    resources.forEach(disposed => expect(disposed).toHaveBeenCalledTimes(1));
+    expect(scene.children).toHaveLength(0);
+  } finally { clock.cancel(); pawns.forEach(pawn => pawn.dispose()); rig.dispose(); }
 });
 
 it("inspects a real tile only on a short primary tap, never after dragging back, cancellation, pinch or first-person input", () => {
