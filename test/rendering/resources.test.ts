@@ -22,7 +22,7 @@ it("keeps city decoration below the first-person eye, inside the board interior 
       expect(city).toBeDefined();
       const bounds = new THREE.Box3().setFromObject(city);
       const boardBox = boardBounds(map);
-      expect(bounds.max.y).toBeLessThan(1.1);
+      expect(bounds.max.y).toBeLessThan(1.7);
       expect(bounds.min.x).toBeGreaterThanOrEqual(boardBox.min.x + TILE_SIZE - 1e-6);
       expect(bounds.max.x).toBeLessThanOrEqual(boardBox.max.x - TILE_SIZE + 1e-6);
       expect(bounds.min.z).toBeGreaterThanOrEqual(boardBox.min.z + TILE_SIZE - 1e-6);
@@ -33,7 +33,7 @@ it("keeps city decoration below the first-person eye, inside the board interior 
       city.traverse((object) => {
         if (object instanceof THREE.Mesh) { geometries.add(object.geometry); materials.add(object.material as THREE.Material); }
       });
-      expect(geometries.size).toBeLessThanOrEqual(4);
+      expect(geometries.size).toBeLessThanOrEqual(7);
       expect(materials.size).toBeLessThanOrEqual(12);
       const disposals = [...geometries, ...materials].map((resource) => vi.spyOn(resource, "dispose"));
       board.setLanguage("zh-CN"); board.syncOwnership(new Game(createMatchConfig(), QUICK_RULES, map).snapshot);

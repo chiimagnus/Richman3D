@@ -18,14 +18,34 @@ it.each(MAPS)("$id models stay inside translated interiors below the eye with fi
   try {
     const bounds = new THREE.Box3().setFromObject(moved);
     const board = boardBounds(translated);
-    expect(bounds.max.y).toBeLessThan(1.1);
+    expect(bounds.max.y).toBeLessThan(1.7);
     expect(bounds.min.x).toBeGreaterThanOrEqual(board.min.x + TILE_SIZE - 1e-6);
     expect(bounds.max.x).toBeLessThanOrEqual(board.max.x - TILE_SIZE + 1e-6);
     expect(bounds.min.z).toBeGreaterThanOrEqual(board.min.z + TILE_SIZE - 1e-6);
     expect(bounds.max.z).toBeLessThanOrEqual(board.max.z - TILE_SIZE + 1e-6);
-    expect(moved.children.map(object => [object.name, object.position.toArray(), object.scale.toArray()]))
-      .toEqual(original.children.map(object => [object.name, object.position.toArray(), object.scale.toArray()]));
-    expect(moved.getObjectByName(map.id === "harbor" ? "boat-sail" : "city-window")).toBeDefined();
+    expect(moved.children.map(object => object.name)).toEqual(original.children.map(object => object.name));
+    moved.children.forEach((object, index) => {
+      expect(object.position.toArray()).toEqual(original.children[index]!.position.toArray());
+      object.scale.toArray().forEach((scale, axis) => expect(scale).toBeCloseTo(original.children[index]!.scale.toArray()[axis]!, 10));
+    });
+    const asset = moved.getObjectByName(map.id === "harbor" ? "model-sailboat" : "model-houseA") as THREE.Mesh;
+    expect(asset).toBeDefined();
+    expect(asset.geometry.getAttribute("position").count).toBeGreaterThan(400);
+    expect(asset.geometry.getAttribute("normal").count).toBe(asset.geometry.getAttribute("position").count);
+    expect(asset.geometry.getAttribute("color").count).toBe(asset.geometry.getAttribute("position").count);
+    expect(new Set(asset.geometry.getAttribute("color").array).size).toBeGreaterThan(20);
+    expect((asset.material as THREE.MeshStandardMaterial).vertexColors).toBe(true);
+    expect(asset.geometry.getAttribute("uv")).toBeUndefined();
+    expect((asset.material as THREE.MeshStandardMaterial).map).toBeNull();
+    moved.traverse(object => {
+      if (!(object instanceof THREE.Mesh) || !object.name.startsWith("model-")) return;
+      const worldScale = object.getWorldScale(new THREE.Vector3());
+      expect(worldScale.x).toBeCloseTo(worldScale.y, 6);
+      expect(worldScale.z).toBeCloseTo(worldScale.y, 6);
+      const source = new THREE.Box3().setFromObject(object);
+      expect(source.max.y).toBeLessThan(1.7);
+      expect(source.max.y).toBeGreaterThan(0.8);
+    });
     expect(moved.children.length).toBeLessThan(100);
   } finally { disposeObject(original); disposeObject(moved); }
 });
