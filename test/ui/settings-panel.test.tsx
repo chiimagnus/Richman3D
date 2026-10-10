@@ -86,6 +86,44 @@ it.each(["zh-CN", "en"] as const)("%s has one settings entry and native controls
   } finally { app.dispose(); }
 });
 
+it.each(["zh-CN", "en"] as const)("%s waits for scene attachment before offering resume and camera actions", async (language) => {
+  vi.stubGlobal("document", { documentElement: { lang: "" }, hidden: true, addEventListener() {}, removeEventListener() {} });
+  const app = new GameApp(new GameStore(() => new IDBFactory()));
+  try {
+    await vi.waitFor(() => expect(app.getSnapshot().stored.kind).toBe("empty"));
+    app.setPreferences({ ...app.getSnapshot().preferences, language, cameraView: "overview" });
+    const starting = app.start(createMatchConfig(940));
+    await vi.waitFor(() => expect(app.getSnapshot().session?.getSnapshot().save.kind).toBe("saved"));
+    const session = app.getSnapshot().session!;
+    session.pause();
+    const before = session.getSnapshot().committed;
+    const copy = messages(language).settings;
+    const doneButton = /<button[^>]*aria-keyshortcuts="Escape"[^>]*>/;
+    const loading = renderToStaticMarkup(<App app={app} />);
+    expect(loading.match(doneButton)?.[0]).toContain('disabled=""');
+    expect(loading).not.toContain(copy.lookAround);
+    expect(loading).not.toContain(copy.recenter);
+    await session.resume();
+    expect(session.getSnapshot().mode).toBe("paused");
+    const detach = session.bind({ sync() {}, stop() {}, async present() {} });
+    await starting;
+    const ready = renderToStaticMarkup(<App app={app} />);
+    expect(ready.match(doneButton)?.[0]).not.toContain("disabled");
+    expect(ready).toContain(copy.lookAround);
+    expect(ready).toContain(copy.recenter);
+    await session.resume();
+    expect(session.getSnapshot().mode).toBe("running");
+    expect(session.getSnapshot().committed).toBe(before);
+    session.pause();
+    detach();
+    const detached = renderToStaticMarkup(<App app={app} />);
+    expect(detached.match(doneButton)?.[0]).toContain('disabled=""');
+    expect(detached).not.toContain(copy.lookAround);
+    expect(detached).not.toContain(copy.recenter);
+    expect(session.getSnapshot().committed).toBe(before);
+  } finally { app.dispose(); }
+});
+
 it("keeps all decorative SVG references local and unique across simultaneous menu artwork instances", () => {
   const artwork = renderToStaticMarkup(<><MenuArtwork /><MenuArtwork /></>);
   const ids = [...artwork.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
