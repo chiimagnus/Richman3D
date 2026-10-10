@@ -1,0 +1,59 @@
+version = 1
+current_task_id = ""
+
+[[tasks]]
+id = "P1-T1"
+title = "确认画面诊断与美术方向"
+status = "completed"
+plan = "plan-p1.md#p1-t1"
+commit = ""
+no_commit_reason = "美术调查与用户方向确认，无生产代码改动"
+note = "官方参考图、真实后台画面与生产链路已核对；用户选择明亮玩具城市"
+
+[[tasks]]
+id = "P1-T2"
+title = "升级明亮棋盘与双地图模型"
+status = "completed"
+plan = "plan-p1.md#p1-t2"
+commit = "27c71e7ef10007d34469507836f265f1fa7b9dbe"
+note = "118渲染测试/typecheck/build；真实后台两图两视角，眼高与资源释放保持"
+
+[[tasks]]
+id = "P1-T3"
+title = "统一菜单与局内界面并完成验证"
+status = "completed"
+plan = "plan-p1.md#p1-t3"
+commit = "52087283cfbf5ae9b6da103cc27087a008d12199"
+note = "734测试/typecheck/build通过；后台双语HUD/购买/设置、800px CSS200%，B实际扣款产权，V/Esc与只读偏好不改规则状态"
+
+[[tasks]]
+id = "P2-T1"
+title = "删除右上重复按钮并收回设置"
+status = "completed"
+plan = "plan-p2.md#p2-t1"
+commit = "8a45a8aa0eed943407fd0a93145a2f512c2447a6"
+note = "右上工具DOM与样式删除；设置内视角/回中，后台Esc与真实设置路径，16项/typecheck/build"
+
+[[tasks]]
+id = "P2-T2"
+title = "替换占位资产并实看双地图"
+status = "completed"
+plan = "plan-p2.md#p2-t2"
+commit = "f90a9c0337fe32e99af0c53f59cb07fe41bc6338"
+note = "734测试/typecheck/build；双图两视角后台实看；原资产比例/许可/释放核对；同格棋子遮挡移入P2-T4"
+
+[[tasks]]
+id = "P2-T3"
+title = "替换三级经营建筑并验证状态投影"
+status = "completed"
+plan = "plan-p2.md#p2-t3"
+commit = "59fc6a3699d88bc8de79fec01bd0168e2329c29f"
+note = "三级真实几何/等比足迹/产权色/数字；18针对性及736全量/typecheck/build；后台真实三级建设1746→1336、模型实看"
+
+[[tasks]]
+id = "P2-T4"
+title = "修正同格棋子遮挡第一人称"
+status = "completed"
+plan = "plan-p2.md#p2-t4"
+commit = "e70330659721e1de405bccd056106b4843aabe72"
+note = "双图四席同格/跳跃/移动落点/释放回归；32针对性及736全量/typecheck/build；真实后台双图四席第一人称无遮挡"
