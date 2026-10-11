@@ -8,7 +8,7 @@ A 3D Richman-style board game built with TypeScript, React, Three.js and Vite, f
 
 - 2–4 seats with humans and bots on one computer, or human players on separate computers.
 - Daily challenges, local saves, and save import/export.
-- First-person and board-overview views; Chinese and English interfaces.
+- King, queen, knight and bishop character figurines; first-person and board-overview views, with Chinese and English interfaces.
 
 ## Local Development
 

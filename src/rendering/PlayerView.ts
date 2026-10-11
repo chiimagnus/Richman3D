@@ -1,10 +1,11 @@
 import * as THREE from "three";
 
-import { boardPosition, worldPath } from "./boardGeometry";
+import { boardDirection, boardPosition, worldPath } from "./boardGeometry";
 import { animatePositions } from "./motion";
 import { MotionClock } from "./MotionClock";
 import { disposeObject } from "./disposeObject";
 import type { MapDefinition } from "../domain/board";
+import { createCharacterModel } from "./CharacterModel";
 
 export class PlayerView {
   private readonly object = new THREE.Group();
@@ -14,27 +15,7 @@ export class PlayerView {
   constructor(scene: THREE.Scene, color: string, private readonly clock: MotionClock, private readonly map: MapDefinition, seatIndex: number) {
     this.offset = new THREE.Vector3(seatIndex % 2 === 0 ? -0.45 : 0.45, 0.18, seatIndex < 2 ? -0.45 : 0.45);
     this.object.scale.setScalar(0.5);
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.48, 0.62, 1.25, 20),
-      new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.4,
-        metalness: 0.08,
-      }),
-    );
-    body.position.y = 0.63;
-    body.castShadow = true;
-
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.46, 20, 16),
-      new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.3,
-        metalness: 0.08,
-      }),
-    );
-    head.position.y = 1.55;
-    head.castShadow = true;
+    this.object.name = `player-${seatIndex + 1}`;
 
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.7, 0.08, 8, 28),
@@ -50,12 +31,14 @@ export class PlayerView {
     ring.visible = false;
     this.ring = ring;
 
-    this.object.add(body, head, ring);
+    this.object.add(createCharacterModel(color, seatIndex), ring);
     scene.add(this.object);
   }
 
   setPosition(index: number): void {
     this.object.position.copy(boardPosition(this.map, index).add(this.offset));
+    const direction = boardDirection(this.map, index);
+    this.object.rotation.y = Math.atan2(direction.x, direction.z);
   }
 
   get position(): THREE.Vector3 { return this.object.position.clone().sub(this.offset); }
@@ -76,6 +59,9 @@ export class PlayerView {
       this.clock,
       points,
       (position, frame) => {
+        const from = points[frame.segmentIndex];
+        const to = points[frame.segmentIndex + 1];
+        if (from && to && from.distanceToSquared(to) > 0) this.object.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
         this.object.position.copy(position);
         this.object.position.y += Math.sin(Math.PI * frame.segmentProgress) * 0.24;
       },
