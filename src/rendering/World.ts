@@ -25,6 +25,7 @@ export class World {
   private observer: PlayerId | null;
   private readonly clock = new MotionClock();
   private readonly dice: DiceView;
+  private readonly resizeObserver: ResizeObserver;
   private lastTime: number | null = null;
   private disposed = false;
 
@@ -43,6 +44,7 @@ export class World {
 
     let disconnectControls = () => {};
     let disposeDice = () => {};
+    let disconnectResize = () => {};
     try {
 
     this.dice = new DiceView(this.clock);
@@ -66,11 +68,13 @@ export class World {
     disconnectControls = () => this.cameraRig.dispose();
 
     this.resize();
-    window.addEventListener("resize", this.resize);
+    this.resizeObserver = new ResizeObserver(this.resize);
+    disconnectResize = () => this.resizeObserver.disconnect();
+    this.resizeObserver.observe(container);
     this.renderer.setAnimationLoop(this.render);
     } catch (error) {
       disconnectControls();
-      window.removeEventListener("resize", this.resize);
+      disconnectResize();
       disposeObject(this.scene);
       disposeDice();
       this.renderer.dispose();
@@ -166,7 +170,7 @@ export class World {
     if (this.disposed) return;
     this.disposed = true;
     this.renderer.setAnimationLoop(null);
-    window.removeEventListener("resize", this.resize);
+    this.resizeObserver.disconnect();
     this.clock.cancel();
     this.cameraRig.dispose();
     this.dice.dispose();
@@ -232,11 +236,7 @@ export class World {
 
     const ground = new THREE.Mesh(
       new THREE.CircleGeometry(52, 64),
-      new THREE.MeshStandardMaterial({
-        color: 0xd8e9e5,
-        roughness: 0.9,
-        metalness: 0.04,
-      }),
+      new THREE.ShadowMaterial({ color: 0x52665d, opacity: 0.2 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.82;
