@@ -24,13 +24,14 @@ it.each(["en", "zh-CN"] as const)("%s renders one non-closable debt surface and 
   expect(html).not.toContain(copy.debt.bankrupt);
   expect(html).not.toContain(copy.assets.close);
   expect(html).toContain('name="debt-property"');
-  expect(html.match(/<option/g)).toHaveLength(2);
-  expect(html).not.toContain(copy.liquidity.choices.upgrade);
+  expect(html.match(/name="debt-property"/g)).toHaveLength(2);
+  expect(html).not.toContain("<select");
+  expect(html).not.toContain(copy.construction.upgrade);
   expect(html).not.toMatch(/mortgage|redeem|抵押|赎回/i);
   expect(JSON.stringify(model)).not.toMatch(/random|draws|statistics|history/);
   expect(model.management!.properties["neon-avenue"]!.sell_building).toMatchObject({ proceeds: 45, payment: 120, remainingCash: 25, command: { expectedRevision: before.revision } });
   const options = model.management!.properties["neon-avenue"]!;
-  const sale = renderToStaticMarkup(<PropertyOperations options={options} propertyId="neon-avenue" language={language} onCommand={onCommand} kinds={["sell_building"]} />);
+  const sale = renderToStaticMarkup(<PropertyOperations options={options} propertyId="neon-avenue" language={language} onCommand={onCommand} />);
   expect(sale).toContain(copy.debt.autoPayment);
   expect(sale).toContain(formatCash(language, 120));
   expect(sale).toContain(formatCash(language, 25));

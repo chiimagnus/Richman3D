@@ -37,10 +37,11 @@ export function eventText(language: Language, event: GameEvent, snapshot: GameRe
     case "rolled": return (event.result.controlledBy ? formatMessage(messages(language).items.controlled, { total: event.result.steps }) + " " : "") + rollStatus(language, event.result.playerId, event.result, snapshot) + (event.result.passedStart ? " " + formatMessage(messages(language).runtime.passedStart, { amount: event.result.startBonus }) : "");
     case "purchased":
     case "upgraded":
+    case "upgrade_skipped":
     case "skipped": {
       const tile = snapshot.map.tiles.find((candidate) => candidate.id === event.propertyId);
       if (!tile) throw new Error("事件地块不存在");
-      return formatMessage(event.kind === "purchased" ? copy.purchased : event.kind === "upgraded" ? copy.upgraded : copy.skipped, { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile), ...(event.kind === "purchased" ? { amount: formatCash(language, event.price) } : event.kind === "upgraded" ? { amount: formatCash(language, event.cost), level: event.level } : {}) });
+      return formatMessage(event.kind === "purchased" ? copy.purchased : event.kind === "upgraded" ? copy.upgraded : event.kind === "upgrade_skipped" ? messages(language).construction.skipped : copy.skipped, { actor: playerName(language, event.actor, snapshot.config), propertyName: tileName(language, tile), ...(event.kind === "purchased" ? { amount: formatCash(language, event.price) } : event.kind === "upgraded" ? { amount: formatCash(language, event.cost), level: event.level } : {}) });
     }
     case "turn": return formatMessage(copy.yourTurn, { actor: playerName(language, event.actor, snapshot.config) });
     case "ended": return resultTitle(language, event.result, snapshot.config);

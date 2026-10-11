@@ -241,12 +241,12 @@
   },
   "history": { "title": "Action history", "count": "Keeping the latest {limit} events; {count} currently stored.", "empty": "No actions yet.", "revision": "Action {revision}", "back": "Close history" },
   "construction": {
-    "title": "Build one level", "rentChange": "Rent: {current} → {next}", "cost": "Construction cost", "remaining": "Cash after construction", "upgrade": "Build · {cost}",
-    "unavailable": "Wait until the current action is saved and presented.",
-    "reasons": { "not_owner": "Only the owner may build.", "not_turn": "Build before rolling on your own turn.", "incomplete_group": "Own every property in this color group first.", "max_level": "Maximum building level reached.", "unbalanced": "Build on a lower-level property in this group first.", "insufficient_cash": "Not enough cash for construction." }
+    "decision": "Visiting {propertyName}. One building level per visit.", "rentChange": "Rent: {current} → {next}", "remaining": "Cash after construction", "upgrade": "Upgrade · {cost}",
+    "unavailable": "Wait until the current action is saved and presented.", "skip": "Don't upgrade", "skipped": "{actor} skipped upgrading {propertyName} on this visit.",
+    "reasons": { "not_owner": "Only the owner may build.", "not_turn": "Upgrade one level only when you visit your own property.", "not_position": "Only the property you are standing on can be upgraded.", "incomplete_group": "Own every property in this color group first.", "max_level": "Maximum building level reached.", "unbalanced": "Build on a lower-level property in this group first.", "insufficient_cash": "Not enough cash for construction." }
   },
   "liquidity": {
-    "title": "Property operation", "operation": "Choose operation", "proceeds": "Cash received", "remaining": "Cash after operation", "loss": "Net asset loss", "choices": { "upgrade": "Build one level", "sell_building": "Sell one building level" },
+    "title": "Property operation", "proceeds": "Cash received", "remaining": "Cash after operation", "loss": "Net asset loss",
     "actions": { "sell_building": "Sell · {amount}" },
     "reasons": { "not_owner": "Only the owner may manage this property.", "not_turn": "Manage property before rolling on your own turn.", "no_building": "No building level to sell.", "unbalanced_sale": "Sell a higher-level building in this group first." }
   },

@@ -72,6 +72,7 @@ export type Decision =
   | { readonly kind: "awaiting_roll"; readonly actorId: PlayerId }
   | { readonly kind: "awaiting_discard"; readonly actorId: PlayerId; readonly continuation: "finish_turn" }
   | { readonly kind: "awaiting_purchase"; readonly actorId: PlayerId; readonly propertyId: string }
+  | { readonly kind: "awaiting_upgrade"; readonly actorId: PlayerId; readonly propertyId: string }
   | { readonly kind: "awaiting_debt"; readonly actorId: PlayerId; readonly debt: PendingDebt }
   | { readonly kind: "awaiting_trade"; readonly actorId: PlayerId; readonly proposal: TradeProposal }
   | { readonly kind: "game_over"; readonly result: MatchResult };
@@ -172,6 +173,7 @@ export type GameEvent =
   | { readonly kind: "card_moved"; readonly result: CardMovementResult }
   | { readonly kind: "purchased"; readonly actor: PlayerId; readonly propertyId: string; readonly price: number }
   | { readonly kind: "upgraded"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 1 | 2 | 3; readonly cost: number }
+  | { readonly kind: "upgrade_skipped"; readonly actor: PlayerId; readonly propertyId: string }
   | { readonly kind: "building_sold"; readonly actor: PlayerId; readonly propertyId: string; readonly level: 0 | 1 | 2; readonly cost: number; readonly refund: number }
   | { readonly kind: "skipped"; readonly actor: PlayerId; readonly propertyId: string }
   | { readonly kind: "paid"; readonly actor: PlayerId; readonly debt: PendingDebt; readonly amount: number; readonly writtenOff: number }

@@ -9,7 +9,7 @@ import { netAssets } from "../../src/domain/economy";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import type { Command, TradeTerms } from "../../src/domain/types";
-import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { buildProperties, propertyMatch, propertyMatchId } from "../fixtures/property-match";
 import { eventText } from "../../src/ui/eventText";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
 
@@ -133,8 +133,7 @@ it.each([
 });
 
 it("checks the entire color group, not only the selected empty property", () => {
-  const game = propertyMatch();
-  expect(game.apply({ kind: "upgrade", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: "harbor-walk" }).ok).toBe(true);
+  const game = buildProperties(propertyMatch(), ["harbor-walk"]);
   const before = game.snapshot;
   expect(game.apply({ kind: "trade_propose", actor: "p1", expectedRevision: before.revision, terms }).ok).toBe(false);
   expect(game.snapshot).toBe(before);
@@ -245,24 +244,23 @@ it("does not migrate or mutate the previous unpublished rule format", () => {
   expect(JSON.stringify(raw)).toBe(original);
 });
 
-it("retains the used opportunity and restores when bounded history clips the opening proposal or its response", () => {
-  const state = makeSave(propertyMatch().snapshot, propertyMatchId).state;
-  const game = Game.restore({ ...state, players: state.players.map((player) => player.id === "p1" ? { ...player, cash: 5000,
-    statistics: { ...player.statistics, chanceIncome: player.statistics.chanceIncome + 5000 - player.cash } } : player) });
-  const initialCash = game.snapshot.players[0]!.cash;
+it("restores bounded trade history across real turns without retaining an already consumed turn's trading opportunity", () => {
+  const game = new Game(createMatchConfig(8));
   submit(game, { recipientId: "p2", givePropertyIds: [], receivePropertyIds: [], cash: { payerId: "p2", amount: 180 } });
   respond(game, "trade_accept");
-  for (let count = 0; count < 100; count += 1) {
-    expect(game.apply({ kind: count % 4 < 2 ? "upgrade" : "sell_building", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: count % 2 === 0 ? "harbor-walk" : "neon-avenue" }).ok).toBe(true);
+  let clippedResponse = false;
+  for (let count = 0; count < 150 && game.snapshot.decision.kind !== "game_over"; count += 1) {
+    const snapshot = game.snapshot;
+    const commands = legalCommands(snapshot, snapshot.decision.kind === "game_over" ? "p1" : snapshot.decision.actorId);
+    expect(game.apply(commands.find((command) => command.kind === "roll" || command.kind === "skip" || command.kind === "discard_item") ?? commands[0]!).ok).toBe(true);
     const restored = Game.restore(makeSave(game.snapshot, propertyMatchId).state);
     expect(restored.snapshot).toEqual(game.snapshot);
-    expect(canProposeTrade(restored.snapshot, "p1")).toBe(false);
-    if (count === 98) expect(game.snapshot.history[0]!.event.kind).toBe("trade_accepted");
+    clippedResponse ||= game.snapshot.history.length === 100 && game.snapshot.history[0]!.event.kind === "trade_accepted";
   }
   expect(game.snapshot.history).toHaveLength(100);
   expect(game.snapshot.history.some(({ event }) => event.kind.startsWith("trade"))).toBe(false);
-  expect(game.snapshot.players[0]!.cash).toBe(initialCash + 180 - 2000);
-  expect(game.snapshot.tradeUsed).toBe(true);
+  expect(clippedResponse).toBe(true);
+  expect(game.snapshot.tradeUsed).toBe(false);
 });
 
 it("the bot explains its public-value decision separately from the rule's committed trade outcome", () => {

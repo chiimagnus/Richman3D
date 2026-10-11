@@ -1,7 +1,7 @@
 import { legalCommands, publicProperty } from "./selectors";
 import type { BotDifficulty, CardInstanceId, Command, Decision, GameReadSnapshot, GameSnapshot, PlayerId, TradeTerms } from "./types";
 import { playerConfig } from "./config";
-import { completeGroup, discountedCost, saleOption, netAssets, rentFor, upgradeOption } from "./economy";
+import { completeGroup, constructionCost, discountedCost, saleOption, netAssets, rentFor, upgradeOption } from "./economy";
 import { canProposeTrade, tradeOption } from "./market";
 import { cardType } from "./cards";
 import { movement } from "./movement";
@@ -110,6 +110,11 @@ function landingScore(observation: BotObservation, actor: PlayerId, from: number
     if (tile.type === "property") {
       const property = observation.properties.find((property) => property.tile.id === tile.id)!;
       if (property.ownerId !== null && property.ownerId !== actor) return item === "rent-waiver" ? 0 : -property.rent;
+      if (opportunities && item === "construction-discount" && property.ownerId === actor && property.groupComplete && property.level < 3 &&
+          observation.properties.filter((candidate) => candidate.tile.group === property.tile.group).every((candidate) => property.level + 1 - candidate.level <= 1)) {
+        const cost = constructionCost(property.tile, observation.rules);
+        return cost - discountedCost(cost, observation.rules.constructionDiscountPercent);
+      }
       return property.ownerId === null && opportunities ? tile.price * 0.03 + completionValue(observation, tile.id, actor) * 0.15 : 0;
     }
     if (tile.type !== "chance" || !drawChance) return 0;
@@ -219,6 +224,12 @@ export function chooseBotAction(observation: BotObservation | null, difficulty: 
     for (let left = 1; left <= 6; left += 1) for (let right = 1; right <= 6; right += 1) if (observation.tiles[(other.position + left + right) % observation.tiles.length]!.id === propertyId) landings += 1;
     return value + rent * landings / 36;
   }, 0) : rent * opponents.length / observation.tiles.length;
+  if (decision.kind === "awaiting_upgrade") {
+    const option = observation.upgrades[0];
+    return option && observation.cash - option.cost >= reserve && remaining > 0 && income(option.command.propertyId, option.nextRent - option.currentRent) > 0 &&
+      (difficulty !== "easy" || observation.properties.find((property) => property.tile.id === option.command.propertyId)!.level === 0)
+      ? { command: option.command, reason: "upgrade_income" } : action("skip", "reserve_cash");
+  }
   const scores = rollScores(observation, player.id, player.position, null, true);
   const baseline = average(scores);
   const items = actions.filter((command): command is Extract<Command, { kind: "use_item" }> => command.kind === "use_item").map((command) => {
@@ -229,10 +240,7 @@ export function chooseBotAction(observation: BotObservation | null, difficulty: 
       const target = observation.players.find((target) => target.id === command.targetId)!;
       score = average(rollScores(observation, player.id, target.position, null, true)) - baseline;
       if (difficulty !== "easy") score -= (average(rollScores(observation, target.id, player.position, null, true)) - average(rollScores(observation, target.id, target.position, null, true))) * (difficulty === "normal" ? 0.25 : 0.5);
-    } else if (type === "construction-discount") score = Math.max(0, ...observation.upgrades.filter((option) => remaining > 0 && income(option.command.propertyId, option.nextRent - option.currentRent) > 0 &&
-      (difficulty !== "easy" || observation.properties.find((property) => property.tile.id === option.command.propertyId)!.level === 0) && observation.cash - discountedCost(option.cost, observation.rules.constructionDiscountPercent) >= reserve)
-      .map((option) => option.cost - discountedCost(option.cost, observation.rules.constructionDiscountPercent)));
-    else score = average(rollScores(observation, player.id, player.position, type, true)) - baseline;
+    } else score = average(rollScores(observation, player.id, player.position, type, true)) - baseline;
     return { command, reason: "use_item" as const, score };
   });
   const item = best(items);
@@ -240,9 +248,5 @@ export function chooseBotAction(observation: BotObservation | null, difficulty: 
   const trade = best(observation.tradeCandidates.filter((candidate) => candidate.evaluation.cashAfter >= reserve)
     .map((candidate) => ({ command: candidate.command, reason: "complete_group" as const, score: candidate.evaluation.gain + candidate.evaluation.groupGain * (difficulty === "easy" ? 0.15 : difficulty === "normal" ? 0.25 : 0.35) })));
   if (trade && trade.score > 0 && observation.completedRounds < observation.rules.roundLimit - 1) return { command: trade.command, reason: trade.reason };
-  const upgrades = observation.upgrades.filter((option) => observation.cash - option.cost >= reserve && (difficulty !== "easy" || observation.properties.find((property) => property.tile.id === option.command.propertyId)!.level === 0))
-    .map((option) => ({ command: option.command, reason: "upgrade_income" as const, score: income(option.command.propertyId, option.nextRent - option.currentRent) * remaining / Math.max(1, option.cost) }));
-  const investment = best(upgrades);
-  if (investment && investment.score > 0) return { command: investment.command, reason: investment.reason };
   return action("roll", "roll");
 }

@@ -5,7 +5,7 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { legalCommands, publicProperty } from "../../src/domain/selectors";
 import { makeSave } from "../../src/storage/snapshot";
-import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { ordinaryTurn, propertyMatch, propertyMatchId, visitOwnedProperty } from "../fixtures/property-match";
 import { stubCanvas } from "../fixtures/canvas";
 import { boardDirection, boardPosition } from "../../src/rendering/boardGeometry";
 
@@ -41,7 +41,7 @@ it("keeps selection distinct from ownership and projects the actual next-path di
 });
 
 it("projects actual group completion after building upgrades and sales without a second economic state or rebuilding static flags", () => {
-  stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene();
+  stubCanvas(); let game = propertyMatch(); const scene = new THREE.Scene();
   const before = game.snapshot;
   const board = new BoardView(scene, "en", before.map, before.config, before.rules);
   try {
@@ -57,6 +57,7 @@ it("projects actual group completion after building upgrades and sales without a
     expect(groups.every((group) => group.visible)).toBe(true);
     expect(groups.every((group) => group.children.length === 2)).toBe(true);
     for (const kind of ["upgrade", "sell_building"] as const) {
+      game = kind === "upgrade" ? visitOwnedProperty(game, "neon-avenue") : ordinaryTurn(game);
       expect(game.apply({ kind, actor: "p1", propertyId: "neon-avenue", expectedRevision: game.snapshot.revision }).ok).toBe(true);
       const saved = makeSave(game.snapshot, propertyMatchId);
       board.syncOwnership(game.snapshot);

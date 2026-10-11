@@ -10,6 +10,10 @@ import { itemCheckpoint } from "../fixtures/items";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { CITY } from "../../src/domain/maps/city";
 import { PAGES_ORIGIN } from "../../src/network/endpoints";
+import { propertyMatch, propertyMatchId, visitOwnedProperty } from "../fixtures/property-match";
+import { makeSave } from "../../src/storage/snapshot";
+import { Game } from "../../src/domain/game";
+import { validateRoomState } from "../../src/network/readState";
 
 type StateMessage = Extract<ServerMessage, { kind: "state" }>;
 type Socket = NonNullable<Awaited<ReturnType<Miniflare["dispatchFetch"]>>["webSocket"]>;
@@ -247,6 +251,52 @@ describe("authoritative rooms in real workerd", () => {
     expect(await current.take((message) => message.kind === "error")).toMatchObject({ error: "stale_revision" });
     const restored = await current.take((message) => message.kind === "state" && message.reset) as StateMessage;
     expect(restored.room.snapshot).toEqual(committed.room.snapshot);
+  });
+
+  it("restores an owned landing in native workerd and commits only one level across both seats, duplicate commands and restart", async () => {
+    await runtime.dispose();
+    const bundled = await build({ stdin: { contents: `import worker, { Room as GameRoom } from "./src/server/worker";
+      export default worker;
+      export class Room extends GameRoom {
+        async checkpoint(game) { const room = await this.ctx.storage.get("room"); await this.ctx.storage.put("room", { ...room, game }); }
+      }`, resolveDir: process.cwd() }, bundle: true, format: "esm", platform: "neutral", external: ["cloudflare:workers"], write: false });
+    script = bundled.outputFiles[0]!.text;
+    runtime = spawn();
+    await room();
+    const state = makeSave(visitOwnedProperty(propertyMatch(), "neon-avenue").snapshot, propertyMatchId).state;
+    const fixture = Game.restore({ ...state, config: { ...state.config, players: state.config.players.map((player, index) => ({ ...player, controller: "human", name: index === 0 ? "房主" : "Guest" })) } });
+    const namespace = await runtime.getDurableObjectNamespace("ROOMS");
+    const stub = namespace.get(namespace.idFromName(code)) as unknown as { checkpoint(game: unknown): Promise<void> };
+    await stub.checkpoint(makeSave(fixture.snapshot, propertyMatchId).state);
+    const first = await connect(firstToken);
+    const second = await connect(secondToken);
+    expect(first.state.room.snapshot!.decision).toEqual({ kind: "awaiting_upgrade", actorId: "p1", propertyId: "neon-avenue" });
+    for (const client of [first, second]) expect(() => validateRoomState(client.state, code)).not.toThrow();
+    const before = first.state.room.snapshot!;
+    const command: Command = { kind: "upgrade", actor: "p1", propertyId: "neon-avenue", expectedRevision: before.revision };
+    second.socket.send(JSON.stringify({ kind: "command", command }));
+    expect(await second.take((message) => message.kind === "error")).toMatchObject({ error: "forbidden" });
+    first.socket.send(JSON.stringify({ kind: "command", command: { ...command, propertyId: "harbor-walk" } }));
+    expect(await first.take((message) => message.kind === "error")).toMatchObject({ error: "illegal_action" });
+    first.socket.send(JSON.stringify({ kind: "command", command }));
+    first.socket.send(JSON.stringify({ kind: "command", command }));
+    const changed = (message: ServerMessage) => message.kind === "state" && !message.reset && message.room.snapshot?.revision === before.revision + 1;
+    const committed = await first.take(changed) as StateMessage;
+    const peer = await second.take(changed) as StateMessage;
+    expect(committed.room.snapshot!.properties).toEqual(peer.room.snapshot!.properties);
+    expect(committed.room.snapshot!.properties["neon-avenue"]!.level).toBe(1);
+    expect(committed.room.snapshot!.players[0]!.cash).toBe(before.players[0]!.cash - 90);
+    expect(committed.room.snapshot!.turnPlayerId).toBe("p2");
+    expect(committed.events.map((event) => event.kind)).toEqual(["upgraded", "turn"]);
+    expect(await first.take((message) => message.kind === "error")).toMatchObject({ error: "stale_revision" });
+    first.socket.send(JSON.stringify({ kind: "command", command: { ...command, expectedRevision: before.revision + 1 } }));
+    expect(await first.take((message) => message.kind === "error")).toMatchObject({ error: "illegal_action" });
+    for (const socket of sockets.splice(0)) socket.close();
+    await runtime.dispose(); runtime = spawn();
+    const restored = await connect(firstToken);
+    expect(restored.state.room.snapshot).toEqual(committed.room.snapshot);
+    expect(restored.state.events).toEqual([]);
+    expect(() => validateRoomState(restored.state, code)).not.toThrow();
   });
 });
 

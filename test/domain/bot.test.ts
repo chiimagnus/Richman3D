@@ -8,7 +8,7 @@ import { makeSave } from "../../src/storage/snapshot";
 import type { GameSnapshot } from "../../src/domain/types";
 import { fullHandCheckpoint, itemCheckpoint } from "../fixtures/items";
 import { builtRentDebtMatch, chanceDebtMatch, debtMatch } from "../fixtures/debt-match";
-import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { propertyMatch, visitOwnedProperty } from "../fixtures/property-match";
 
 function observation(snapshot: GameSnapshot) {
   return observeBot({ ...snapshot, config: { ...snapshot.config, players: snapshot.config.players.map((player) => ({ ...player, controller: "bot" })) } })!;
@@ -48,7 +48,7 @@ it("does not change an observation or policy output when hidden RNG, deck order,
 });
 
 it("projects real upgrade and rescue economics instead of independently recalculating rule amounts", () => {
-  for (const game of [propertyMatch(), debtMatch(30, 3)]) {
+  for (const game of [visitOwnedProperty(propertyMatch(), "neon-avenue"), debtMatch(30, 3)]) {
     const snapshot = game.snapshot;
     const visible = observation(snapshot);
     for (const option of visible.upgrades) {
@@ -68,8 +68,8 @@ it("selects a legal command with a reason in every real nonterminal decision and
   const trade = propertyMatch();
   expect(trade.apply({ kind: "trade_propose", actor: "p1", expectedRevision: trade.snapshot.revision,
     terms: { recipientId: "p2", givePropertyIds: [], receivePropertyIds: [], cash: { payerId: "p1", amount: 10 } } }).ok).toBe(true);
-  const games = [new Game(createMatchConfig(940)), purchase, trade, fullHandCheckpoint(), chanceDebtMatch(), builtRentDebtMatch(3)];
-  expect(new Set(games.map((game) => game.snapshot.decision.kind))).toEqual(new Set(["awaiting_roll", "awaiting_purchase", "awaiting_trade", "awaiting_discard", "awaiting_debt"]));
+  const games = [new Game(createMatchConfig(940)), purchase, visitOwnedProperty(propertyMatch(), "neon-avenue"), trade, fullHandCheckpoint(), chanceDebtMatch(), builtRentDebtMatch(3)];
+  expect(new Set(games.map((game) => game.snapshot.decision.kind))).toEqual(new Set(["awaiting_roll", "awaiting_purchase", "awaiting_upgrade", "awaiting_trade", "awaiting_discard", "awaiting_debt"]));
   for (const game of games) {
     const before = game.snapshot;
     const visible = observation(before);

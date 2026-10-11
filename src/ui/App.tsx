@@ -78,7 +78,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: NonNul
   const saveProblem = view.save.kind === "conflict" || view.save.kind === "unsaved" && !view.save.acknowledged;
   const requested = typeof panel === "object" && panel ? panel.kind : panel;
   const inspecting = requested === "assets" || requested === "history" || requested === "trade_draft" || requested === "hand";
-  const inlineAssets = requested === "assets" && !view.presenting && view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId;
+  const inlineAssets = requested === "assets" && !view.presenting && (view.displayed.decision.kind === "awaiting_purchase" || view.displayed.decision.kind === "awaiting_upgrade") && view.displayed.decision.actorId === view.viewPlayerId;
   let surface: string | null = requested;
   if (view.error === "presentation_failed") surface = "fault";
   else if (view.network && !view.network.connected) surface = "connection";
@@ -109,7 +109,7 @@ function GamePlay({ app, session, preferences }: { app: GameApp; session: NonNul
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || surface ||
           (event.target instanceof HTMLElement && event.target.closest("input,select,textarea,a[href],[contenteditable='true']"))) return;
       if (event.code === "Space" && event.target instanceof HTMLElement && event.target.closest("button")) return;
-      const kind = ({ Space: "roll", KeyB: "buy", KeyN: "skip" } as const)[event.code as "Space" | "KeyB" | "KeyN"];
+      const kind = ({ Space: "roll", KeyB: view.displayed.decision.kind === "awaiting_upgrade" ? "upgrade" : "buy", KeyN: "skip" } as const)[event.code as "Space" | "KeyB" | "KeyN"];
       if (kind && !view.presenting) {
         const actor = view.displayed.decision.kind === "game_over" ? null : view.displayed.decision.actorId;
         const command = actor !== null && actor === view.viewPlayerId && playerConfig(view.displayed.config, actor).controller === "human" ? availableCommands(view).find((action) => action.kind === kind) : null;

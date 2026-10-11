@@ -64,7 +64,8 @@ export function validateRoomState(value: Record<string, unknown>, code: string):
     if (!members.some((member) => member.id === decision.actorId)) throw new Error();
     switch (decision.kind) {
       case "awaiting_roll": record(decision, ["kind", "actorId"]); break;
-      case "awaiting_purchase": record(decision, ["kind", "actorId", "propertyId"]); if (!Object.hasOwn(properties, String(decision.propertyId))) throw new Error(); break;
+      case "awaiting_purchase":
+      case "awaiting_upgrade": record(decision, ["kind", "actorId", "propertyId"]); if (!Object.hasOwn(properties, String(decision.propertyId))) throw new Error(); break;
       case "awaiting_discard": record(decision, ["kind", "actorId", "continuation"]); if (decision.continuation !== "finish_turn") throw new Error(); break;
       case "awaiting_trade": record(decision, ["kind", "actorId", "proposal"]); restoreTradeProposal(decision.proposal, snapshot); break;
       case "awaiting_debt": record(decision, ["kind", "actorId", "debt"]); restoreDebt(decision.debt, snapshot, decision.actorId as GameReadSnapshot["turnPlayerId"]); break;

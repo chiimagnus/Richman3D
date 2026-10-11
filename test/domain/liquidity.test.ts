@@ -4,14 +4,11 @@ import { constructionRefund, saleOption, netAssets, rentFor } from "../../src/do
 import { QUICK_RULES } from "../../src/domain/rules";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { eventText } from "../../src/ui/eventText";
-import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { buildProperties, propertyMatch, propertyMatchId } from "../fixtures/property-match";
 
 it("sells three balanced levels at actual cost, refunds once, keeps the land and restores every operation", () => {
-  let game = propertyMatch();
+  let game = buildProperties(propertyMatch(), ["neon-avenue", "harbor-walk"], 3);
   const before = game.snapshot;
-  for (let level = 0; level < 3; level += 1) for (const propertyId of ["neon-avenue", "harbor-walk"]) {
-    expect(game.apply({ kind: "upgrade", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
-  }
   for (const level of [2, 1, 0] as const) for (const propertyId of ["neon-avenue", "harbor-walk"]) {
     const initial = game.snapshot;
     const option = saleOption(initial, "p1", propertyId);
@@ -33,16 +30,13 @@ it("sells three balanced levels at actual cost, refunds once, keeps the land and
     game = Game.restore(readSave(makeSave(committed, propertyMatchId)).record.state);
     expect(game.snapshot).toEqual(committed);
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: before.players[0]!.cash - 240,
+  expect(game.snapshot.players[0]).toMatchObject({ cash: before.players[0]!.cash + 240,
     statistics: { constructionSpent: 480, constructionSoldCost: 480, constructionRefunds: 240 } });
   expect(netAssets(game.snapshot, "p1")).toBe(netAssets(before, "p1") - 240);
 });
 
 it("rejects uneven, empty, non-owner and unknown sales without partial refunds", () => {
-  const game = propertyMatch();
-  for (const propertyId of ["neon-avenue", "harbor-walk", "neon-avenue"]) {
-    expect(game.apply({ kind: "upgrade", propertyId, actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
-  }
+  const game = buildProperties(propertyMatch(), ["neon-avenue", "harbor-walk", "neon-avenue"]);
   const before = game.snapshot;
   expect(saleOption(before, "p1", "harbor-walk").reason).toBe("unbalanced_sale");
   for (const propertyId of ["harbor-walk", "skyline-road", "unknown", "city-tax"]) {

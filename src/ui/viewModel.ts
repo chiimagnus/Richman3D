@@ -19,14 +19,12 @@ export function assetManagementView(view: GameView) {
   if (actor === null || playerConfig(snapshot.config, actor).controller !== "human") return null;
   const commands = availableCommands(view);
   return { actor, properties: Object.fromEntries(snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).map((tile) => {
-    const commandFor = (kind: "upgrade" | "sell_building") => commands.find((candidate) => candidate.kind === kind && "propertyId" in candidate && candidate.propertyId === tile.id) ?? null;
     const sale = () => {
       const { nextProperty: _next, originalCost: _original, ...option } = saleOption(snapshot, actor, tile.id);
       const payment = snapshot.decision.kind === "awaiting_debt" && snapshot.decision.actorId === actor && option.reason === null && option.remainingCash >= snapshot.decision.debt.amount ? snapshot.decision.debt.amount : 0;
-      return { ...option, remainingCash: option.remainingCash - payment, payment, command: commandFor("sell_building") };
+      return { ...option, remainingCash: option.remainingCash - payment, payment, command: commands.find((candidate) => candidate.kind === "sell_building" && candidate.propertyId === tile.id) ?? null };
     };
-    return [tile.id, { upgrade: { ...upgradeOption(snapshot, actor, tile.id), proceeds: 0, loss: 0, payment: 0, command: commandFor("upgrade") },
-      sell_building: sale() }];
+    return [tile.id, { sell_building: sale() }];
   })) };
 }
 
@@ -55,18 +53,20 @@ export function actionView(view: GameView, language: Language) {
   const actor = action?.kind === "rolled" ? action.result.playerId : action && "actor" in action ? action.actor : decisionActor ?? snapshot.turnPlayerId;
   const choices = decisionActor === null ? [] : legalCommands(snapshot, decisionActor);
   const commands = availableCommands(view);
-  const insufficientFunds = property !== null && choices.some((command) => command.kind === "skip") && !choices.some((command) => command.kind === "buy");
+  const insufficientFunds = snapshot.decision.kind === "awaiting_purchase" && property !== null && choices.some((command) => command.kind === "skip") && !choices.some((command) => command.kind === "buy");
+  const upgrade = snapshot.decision.kind === "awaiting_upgrade" ? upgradeOption(snapshot, snapshot.decision.actorId, snapshot.decision.propertyId) : null;
   const botDecision = view.presenting && view.botDecision?.revision === view.committed.revision ? view.botDecision : null;
   const status = view.network && !view.network.connected ? messages(language).network.errors[view.network.error ?? "unavailable"] : view.network?.pending ? messages(language).network.pending : view.network?.error ? messages(language).network.errors[view.network.error] : view.error ? copy[view.error] : view.mode === "paused" ? copy.paused : view.presenting
     ? botDecision ? formatMessage(messages(language).ai.action, { actor: playerName(language, botDecision.actorId, snapshot.config), difficulty: messages(language).ai.difficulties[botDecision.difficulty], reason: messages(language).ai.reasons[botDecision.reason] })
       : formatMessage(view.displayed === view.committed ? copy.settling : copy.presenting, { actor: playerName(language, actor, snapshot.config) })
+    : upgrade && property ? formatMessage(messages(language).construction.decision, { propertyName: tileName(language, property) })
     : property ? formatMessage(copy.purchaseDecision, { propertyName: tileName(language, property), price: property.price, rent: rentFor(snapshot, property.id) })
     : snapshot.decision.kind === "game_over" ? resultTitle(language, snapshot.decision.result, snapshot.config)
     : snapshot.decision.kind === "awaiting_debt" ? messages(language).debt.pending
     : snapshot.decision.kind === "awaiting_trade" ? messages(language).trade.pending
     : snapshot.decision.kind === "awaiting_discard" ? messages(language).items.pending
     : formatMessage(view.network && actor !== view.viewPlayerId ? messages(language).network.waiting : playerConfig(snapshot.config, actor).controller === "human" ? messages(language).status.yourTurn : messages(language).status.botActing, { actor: playerName(language, actor, snapshot.config) });
-  return { commands, property, tile: currentTile(snapshot, actor), status, insufficientFunds };
+  return { commands, property, upgrade, tile: currentTile(snapshot, actor), status, insufficientFunds };
 }
 
 export function handCommands(view: GameView) { return availableCommands(view).filter((command) => command.kind === "use_item" || command.kind === "discard_item"); }

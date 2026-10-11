@@ -21,11 +21,12 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
       actions.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     }
   }, [decisionKind, view.presenting, view.mode, view.attached]);
-  const execute = (kind: "roll" | "buy" | "skip") => {
+  const execute = (kind: "roll" | "buy" | "upgrade" | "skip") => {
     const command = model.commands.find((action) => action.kind === kind);
     if (command) void session.dispatch(command);
   };
   const buying = view.displayed.decision.kind === "awaiting_purchase" && view.displayed.decision.actorId === view.viewPlayerId && !view.presenting;
+  const upgrading = view.displayed.decision.kind === "awaiting_upgrade" && view.displayed.decision.actorId === view.viewPlayerId && !view.presenting;
   const inspectedTile = view.displayed.map.tiles.find((tile) => tile.id === inspectedTileId) ?? model.property ?? model.tile;
   const dice = view.settledRoll?.result.dice ?? view.displayed.lastRoll;
   return <>
@@ -36,7 +37,9 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
       <span className={styles.round}>{formatMessage(copy.setup.round, { round: Math.min(view.displayed.completedRounds + 1, view.displayed.rules.roundLimit), limit: view.displayed.rules.roundLimit })}</span>
     </aside>
     <footer className={styles.dock}>
-      <div className={styles.copy}><strong>{tileName(language, model.tile)}</strong><span>{model.status}</span></div>
+      <div className={styles.copy}><strong>{tileName(language, model.tile)}</strong><span>{model.status}</span>
+        {upgrading && model.upgrade?.reason === null && <span>{formatMessage(copy.construction.rentChange, { current: formatCash(language, model.upgrade.currentRent), next: formatCash(language, model.upgrade.nextRent!) })} · {copy.construction.remaining} {formatCash(language, model.upgrade.remainingCash)}</span>}
+      </div>
       <div ref={actions} className={styles.actions}>
         <span className={styles.dice} role="img" aria-label={`${copy.hud.recentDiceAria}: ${dice ? dice.join(" + ") : "— + —"}`}>
           {(dice ?? [null, null]).map((value, index) => <span key={index} aria-hidden="true">{value ?? "—"}</span>)}
@@ -45,6 +48,10 @@ export function Hud({ session, language, onAssets, onHand, assetPanel, inspected
           <button className={styles.primary} aria-keyshortcuts="B" disabled={!model.commands.some((action) => action.kind === "buy")} onClick={() => execute("buy")}>{model.property ? formatMessage(copy.hud.buyWithPrice, { price: formatCash(language, model.property.price) }) : copy.hud.buy}<kbd aria-hidden="true">B</kbd></button>
           <button aria-keyshortcuts="N" disabled={!model.commands.some((action) => action.kind === "skip")} onClick={() => execute("skip")}>{copy.hud.skip}<kbd aria-hidden="true">N</kbd></button>
           {model.insufficientFunds && <span className={styles.reason}>{copy.status.insufficientFunds}</span>}
+        </> : upgrading && model.upgrade ? <>
+          <button className={styles.primary} aria-keyshortcuts="B" aria-describedby={model.upgrade.reason ? "upgrade-reason" : undefined} disabled={!model.commands.some((action) => action.kind === "upgrade")} onClick={() => execute("upgrade")}>{formatMessage(copy.construction.upgrade, { cost: formatCash(language, model.upgrade.cost) })}<kbd aria-hidden="true">B</kbd></button>
+          <button aria-keyshortcuts="N" disabled={!model.commands.some((action) => action.kind === "skip")} onClick={() => execute("skip")}>{copy.construction.skip}<kbd aria-hidden="true">N</kbd></button>
+          {model.upgrade.reason && <span id="upgrade-reason" className={styles.reason}>{copy.construction.reasons[model.upgrade.reason]}</span>}
         </> : <button className={styles.primary} aria-keyshortcuts="Space" disabled={!model.commands.some((action) => action.kind === "roll")} onClick={() => execute("roll")}>{copy.hud.roll}<kbd aria-hidden="true">{copy.hud.rollKey}</kbd></button>}
         {view.presenting && <button onClick={() => session.skipPresentation()}>{copy.runtime.skipAnimation}</button>}
         {onHand && <button id="hand-open" disabled={view.presenting} onClick={onHand}>{formatMessage(copy.items.open, { count: view.displayed.players.find((player) => player.id === view.viewPlayerId)!.hand?.length ?? 0 })}</button>}

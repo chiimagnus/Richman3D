@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PropertyDetails, TileDetails } from "../../src/ui/PropertyDetails";
 import { formatCash, messages } from "../../src/i18n";
-import { propertyMatch } from "../fixtures/property-match";
+import { ordinaryTurn, propertyMatch, visitOwnedProperty } from "../fixtures/property-match";
 
 it("projects actual purchases and rent through public fields without changing state or leaking rule data", () => {
   const game = new Game(createMatchConfig(940));
@@ -63,8 +63,9 @@ it.each(["en", "zh-CN"] as const)("%s renders the same actual rent and building 
 });
 
 it.each(["en", "zh-CN"] as const)("%s derives group status and an unambiguous owner seat after real upgrade and sale", (language) => {
-  const game = propertyMatch();
+  let game = propertyMatch();
   for (const kind of ["upgrade", "sell_building"] as const) {
+    game = kind === "upgrade" ? visitOwnedProperty(game, "neon-avenue") : ordinaryTurn(game);
     expect(game.apply({ kind, actor: "p1", propertyId: "neon-avenue", expectedRevision: game.snapshot.revision }).ok).toBe(true);
     for (const id of ["harbor-walk", "neon-avenue"]) {
       const property = publicProperty(game.snapshot, id);
@@ -87,7 +88,7 @@ it.each(["en", "zh-CN"] as const)("%s inspects every real board tile using the s
     else {
       expect(html).toContain(tile.type === "start" ? messages(language).board.startReward : messages(language).board.fixedFee);
       expect(html).toContain(formatCash(language, tile.type === "start" ? before.rules.passStartBonus : tile.amount));
-      expect(html).not.toContain(messages(language).construction.cost);
+      expect(html).not.toContain(messages(language).construction.remaining);
     }
     expect(html).not.toContain("<button");
     expect(game.snapshot).toBe(before);

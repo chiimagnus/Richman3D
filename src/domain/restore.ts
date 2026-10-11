@@ -111,8 +111,8 @@ export function restoreSnapshot(value: unknown): GameSnapshot {
     if (integer(random.draws) < initialRandom.snapshot.draws + 2 || state.revision === 0) throw new Error("随机游标无效");
   } else if (!sameData(random, initialRandom.snapshot) || !sameData(deck, initialDeck(rules)) || (state.players as SavedGameState["players"]).some((player) => player.position !== 0)) throw new Error("缺少骰子");
   const decision = record(state.decision);
-  if (!["awaiting_roll", "awaiting_discard", "awaiting_purchase", "awaiting_debt", "awaiting_trade", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
-  record(decision, decision.kind === "awaiting_discard" ? ["kind", "actorId", "continuation"] : decision.kind === "awaiting_trade" ? ["kind", "actorId", "proposal"] : decision.kind === "awaiting_purchase" ? ["kind", "actorId", "propertyId"] : decision.kind === "awaiting_debt" ? ["kind", "actorId", "debt"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind", "actorId"]);
+  if (!["awaiting_roll", "awaiting_discard", "awaiting_purchase", "awaiting_upgrade", "awaiting_debt", "awaiting_trade", "game_over"].includes(decision.kind as string)) throw new Error("决策无效");
+  record(decision, decision.kind === "awaiting_discard" ? ["kind", "actorId", "continuation"] : decision.kind === "awaiting_trade" ? ["kind", "actorId", "proposal"] : decision.kind === "awaiting_purchase" || decision.kind === "awaiting_upgrade" ? ["kind", "actorId", "propertyId"] : decision.kind === "awaiting_debt" ? ["kind", "actorId", "debt"] : decision.kind === "game_over" ? ["kind", "result"] : ["kind", "actorId"]);
   const snapshot = { ...state, config, rules, map, deck: restoredDeck } as GameSnapshot;
   if (snapshot.activeItem !== null) {
     const item = record(snapshot.activeItem, ["actorId", "instanceId", "total"]);
@@ -333,7 +333,7 @@ export function restoreHistory(value: unknown, snapshot: GameReadSnapshot): Game
     }
   }
   const signatures = ["rolled", "rolled,turn", "rolled,ended", "rolled,paid,turn", "rolled,paid,ended", "rolled,card_moved", "rolled,card_moved,turn", "rolled,card_moved,ended", "rolled,card_moved,paid,turn", "rolled,card_moved,paid,ended", "purchased,turn", "purchased,ended", "skipped,turn", "skipped,ended", "upgraded", "building_sold", "building_sold,paid,turn", "building_sold,paid,ended", "liquidated,paid,turn", "liquidated,paid,ended",
-    "item_used", "item_discarded,turn", "item_discarded,ended", "trade_proposed", "trade_accepted", "trade_rejected"];
+    "upgraded,turn", "upgraded,ended", "upgrade_skipped,turn", "upgrade_skipped,ended", "item_used", "item_discarded,turn", "item_discarded,ended", "trade_proposed", "trade_accepted", "trade_rejected"];
   for (let start = 0; start < history.length;) {
     let end = start + 1;
     while (end < history.length && history[end]!.revision === history[start]!.revision) end += 1;
@@ -351,6 +351,15 @@ export function restoreHistory(value: unknown, snapshot: GameReadSnapshot): Game
     if (paid && (!truncated || first.kind !== "paid") && (paid.actor !== (first.kind === "rolled" || first.kind === "card_moved" ? first.result.playerId : "actor" in first ? first.actor : null) ||
       (first.kind === "liquidated" ? paid.writtenOff === 0 : paid.writtenOff !== 0) || (first.kind === "rolled" || first.kind === "card_moved") && !sameData(obligation(cardMove ? cardMove.result.landing : first.result.landing), paid.debt))) throw new Error("历史支付不一致");
     start = end;
+  }
+  if (snapshot.decision.kind === "awaiting_upgrade") {
+    const decision = snapshot.decision;
+    const actor = snapshot.players.find((player) => player.id === decision.actorId)!;
+    const tile = snapshot.map.tiles[actor.position]!;
+    const recent = history.at(-1)?.event;
+    const roll = history.find((entry) => entry.revision === snapshot.revision && entry.event.kind === "rolled")?.event;
+    if (roll?.kind !== "rolled" || !sameData(roll.result.dice, snapshot.lastRoll) || actor.bankrupt || actor.id !== snapshot.turnPlayerId || tile.type !== "property" || tile.id !== decision.propertyId || snapshot.properties[tile.id]!.ownerId !== actor.id || snapshot.properties[tile.id]!.level === 3 ||
+        (recent?.kind !== "rolled" && recent?.kind !== "card_moved") || recent.result.playerId !== actor.id || recent.result.to !== actor.position || recent.result.landing.kind !== "property_owned" || recent.result.landing.propertyId !== tile.id) throw new Error("升级机会与本次到访不一致");
   }
   return history;
 }
@@ -445,11 +454,12 @@ export function restoreEvent(value: unknown, snapshot: GameReadSnapshot): GameEv
       if (snapshot.decision.kind !== "game_over" || !sameData(event.result, snapshot.decision.result)) throw new Error("历史终局无效");
       return { kind: "ended", result: matchResult(snapshot, snapshot.decision.result.reason) };
     case "purchased":
-    case "skipped": {
+    case "skipped":
+    case "upgrade_skipped": {
       record(event, event.kind === "purchased" ? ["kind", "actor", "propertyId", "price"] : ["kind", "actor", "propertyId"]);
       const tile = snapshot.map.tiles.find((tile) => tile.id === event.propertyId);
       if (!tile || tile.type !== "property") throw new Error("历史地产无效");
-      return event.kind === "purchased" ? { kind: "purchased", actor: actor(event.actor), propertyId: tile.id, price: integer(event.price) } : { kind: "skipped", actor: actor(event.actor), propertyId: tile.id };
+      return event.kind === "purchased" ? { kind: "purchased", actor: actor(event.actor), propertyId: tile.id, price: integer(event.price) } : { kind: event.kind, actor: actor(event.actor), propertyId: tile.id };
     }
     case "rolled":
     case "card_moved": {

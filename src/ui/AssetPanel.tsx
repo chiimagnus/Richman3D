@@ -38,21 +38,16 @@ export function AssetPanel({ assets, initialPlayer, language, management, onComm
   </section>;
 }
 
-export function PropertyOperations({ options, propertyId, language, onCommand, kinds = ["upgrade", "sell_building"] }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void; kinds?: readonly (keyof NonNullable<ReturnType<typeof assetManagementView>>["properties"][string])[] }) {
-  const [kind, setKind] = useState<keyof typeof options>(kinds[0]!);
-  const option = options[kind];
+export function PropertyOperations({ options, propertyId, language, onCommand }: { options: NonNullable<ReturnType<typeof assetManagementView>>["properties"][string]; propertyId: string; language: Language; onCommand: (command: Command) => void }) {
+  const option = options.sell_building;
   const build = messages(language).construction;
   const copy = messages(language).liquidity;
-  const reasons = { ...build.reasons, ...copy.reasons };
-  const reason = option.reason ? reasons[option.reason] : !option.command ? build.unavailable : null;
+  const reason = option.reason ? copy.reasons[option.reason] : !option.command ? build.unavailable : null;
   const preview = option.reason === null && option.nextRent !== null;
   return <section className={styles.operation} aria-label={copy.title}>
-    <label className={styles.row}>{copy.operation}<select value={kind} onChange={(event) => setKind(event.currentTarget.value as keyof typeof options)}>
-      {kinds.map((value) => <option key={value} value={value}>{copy.choices[value]}</option>)}
-    </select></label>
     {preview && <p>{formatMessage(build.rentChange, { current: formatCash(language, option.currentRent), next: formatCash(language, option.nextRent!) })}</p>}
     {preview && <dl className={styles.values}>
-      <dt>{kind === "upgrade" ? build.cost : copy.proceeds}</dt><dd>{formatCash(language, kind === "upgrade" ? option.cost : option.proceeds)}</dd>
+      <dt>{copy.proceeds}</dt><dd>{formatCash(language, option.proceeds)}</dd>
       <dt>{copy.remaining}</dt><dd>{formatCash(language, option.remainingCash)}</dd>
       {option.payment > 0 && <><dt>{messages(language).debt.autoPayment}</dt><dd>{formatCash(language, option.payment)}</dd></>}
       {option.loss > 0 && <><dt>{copy.loss}</dt><dd>{formatCash(language, option.loss)}</dd></>}
@@ -61,7 +56,7 @@ export function PropertyOperations({ options, propertyId, language, onCommand, k
       if (!option.command) return;
       event.currentTarget.closest("details")?.querySelector("summary")?.focus({ preventScroll: true });
       onCommand(option.command);
-    }}>{kind === "upgrade" ? formatMessage(build.upgrade, { cost: formatCash(language, option.cost) }) : formatMessage(copy.actions[kind], { amount: formatCash(language, option.proceeds) })}</button>
+    }}>{formatMessage(copy.actions.sell_building, { amount: formatCash(language, option.proceeds) })}</button>
     <p id={`property-reason-${propertyId}`}>{reason}</p>
   </section>;
 }

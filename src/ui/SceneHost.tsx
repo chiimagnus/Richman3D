@@ -110,7 +110,8 @@ export function SceneHost({ app, session, preferences, cameraView, interactive, 
               case "item_discarded": break;
               case "trade_proposed":
               case "trade_rejected": break;
-              case "skipped": break;
+              case "skipped":
+              case "upgrade_skipped": break;
               case "paid":
               case "liquidated": break;
               case "turn": playSeatFeedback(audio, session.getSnapshot(), event); break;

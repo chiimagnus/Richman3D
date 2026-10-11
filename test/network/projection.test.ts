@@ -7,6 +7,8 @@ import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { MAPS } from "../../src/domain/maps";
 import { QUICK_RULES, STANDARD_RULES } from "../../src/domain/rules";
+import { propertyMatch, propertyMatchId, visitOwnedProperty } from "../fixtures/property-match";
+import { makeSave } from "../../src/storage/snapshot";
 
 function stateMessage(game: Game) {
   const snapshot = game.snapshot;
@@ -61,4 +63,20 @@ it("never exposes another player's private discard choices", () => {
   const full = game.snapshot;
   expect(legalCommands(projectGame(full, "p1"), "p1")).toEqual(legalCommands(full, "p1"));
   expect(legalCommands(projectGame(full, "p2"), "p1")).toEqual([]);
+});
+
+it("uses the same visit invariant for private saves and redacted room decisions", () => {
+  const state = makeSave(visitOwnedProperty(propertyMatch(), "neon-avenue").snapshot, propertyMatchId).state;
+  const game = Game.restore({ ...state, config: { ...state.config, players: state.config.players.map((player) => ({ ...player, controller: "human" })) } });
+  expect(() => validateRoomState(stateMessage(game), "ABCDEFGH")).not.toThrow();
+  expect(legalCommands(projectGame(game.snapshot, "p1"), "p1")).toEqual(legalCommands(game.snapshot, "p1"));
+  for (const mutate of [
+    (value: ReturnType<typeof stateMessage>) => { Object.assign(value.room.snapshot.decision, { propertyId: "harbor-walk" }); },
+    (value: ReturnType<typeof stateMessage>) => { Object.assign(value.room.snapshot.players[0]!, { position: 1 }); },
+    (value: ReturnType<typeof stateMessage>) => { Object.assign(value.room.snapshot, { lastRoll: [1, 1] }); },
+    (value: ReturnType<typeof stateMessage>) => { Object.assign(value.room.snapshot, { history: value.room.snapshot.history.slice(0, -1) }); },
+  ]) {
+    const value = structuredClone(stateMessage(game)); mutate(value);
+    expect(() => validateRoomState(value, "ABCDEFGH")).toThrow();
+  }
 });

@@ -51,9 +51,10 @@ export function upgradeOption(snapshot: GameReadSnapshot, actor: PlayerId, prope
   const cost = snapshot.activeItem?.actorId === actor && cardType(snapshot.activeItem.instanceId) === "construction-discount"
     ? discountedCost(baseCost, snapshot.rules.constructionDiscountPercent) : baseCost;
   const group = snapshot.map.tiles.filter((candidate) => candidate.type === "property" && candidate.group === tile.group);
-  let reason: "not_owner" | "not_turn" | "incomplete_group" | "max_level" | "unbalanced" | "insufficient_cash" | null = null;
+  let reason: "not_owner" | "not_turn" | "not_position" | "incomplete_group" | "max_level" | "unbalanced" | "insufficient_cash" | null = null;
   if (property.ownerId !== actor) reason = "not_owner";
-  else if (snapshot.decision.kind !== "awaiting_roll" || snapshot.decision.actorId !== actor || player.bankrupt) reason = "not_turn";
+  else if (snapshot.decision.kind !== "awaiting_upgrade" || snapshot.decision.actorId !== actor || player.bankrupt) reason = "not_turn";
+  else if (snapshot.map.tiles[player.position]!.id !== propertyId || snapshot.decision.propertyId !== propertyId) reason = "not_position";
   else if (group.some((candidate) => snapshot.properties[candidate.id]!.ownerId !== actor)) reason = "incomplete_group";
   else if (property.level === 3) reason = "max_level";
   else if (group.some((candidate) => property.level + 1 - snapshot.properties[candidate.id]!.level > 1)) reason = "unbalanced";

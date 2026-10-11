@@ -4,7 +4,7 @@ import { upgradeOption, rentFor, netAssets } from "../../src/domain/economy";
 import { legalCommands } from "../../src/domain/selectors";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { eventText } from "../../src/ui/eventText";
-import { opponentRentCheckpoint, propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { buildProperties, opponentRentCheckpoint, propertyMatch, propertyMatchId, visitOwnedProperty } from "../fixtures/property-match";
 import type { GameSnapshot } from "../../src/domain/types";
 
 function upgrade(game: Game, propertyId: string) {
@@ -12,8 +12,7 @@ function upgrade(game: Game, propertyId: string) {
 }
 
 it("charges the upgraded rent through real movement, credits exactly once and keeps both saved ledgers balanced", () => {
-  const game = propertyMatch();
-  expect(upgrade(game, "neon-avenue").ok).toBe(true);
+  const game = buildProperties(propertyMatch(), ["neon-avenue"]);
   const visiting = opponentRentCheckpoint(game);
   const before = visiting.snapshot;
   const command = { kind: "roll" as const, actor: "p2" as const, expectedRevision: before.revision };
@@ -30,12 +29,13 @@ it("charges the upgraded rent through real movement, credits exactly once and ke
   expect(visiting.apply(command).ok).toBe(false);
 });
 
-it("constructs three balanced levels with real cash/statistics, unchanged turn/RNG and replay-safe saved rents", () => {
-  const game = propertyMatch();
+it("constructs three balanced levels on separate visits with real cash/statistics and replay-safe saved rents", () => {
+  let game = propertyMatch();
   const initial = game.snapshot;
   expect(initial.decision).toEqual({ kind: "awaiting_roll", actorId: "p1" });
   for (const level of [1, 2, 3] as const) {
     for (const id of ["harbor-walk", "neon-avenue"]) {
+      game = visitOwnedProperty(game, id);
       const before = game.snapshot;
       const option = upgradeOption(before, "p1", id);
       expect(option.reason).toBeNull();
@@ -43,22 +43,21 @@ it("constructs three balanced levels with real cash/statistics, unchanged turn/R
       const result = game.apply(command);
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error(result.reason);
-      expect(result.events).toEqual([{ kind: "upgraded", actor: "p1", propertyId: id, level, cost: option.cost }]);
+      expect(result.events).toEqual([{ kind: "upgraded", actor: "p1", propertyId: id, level, cost: option.cost }, { kind: "turn", actor: "p2" }]);
       expect(game.snapshot.properties[id]).toMatchObject({ level, constructionCosts: Array(level).fill(option.cost) });
       expect(game.snapshot.players[0]!.cash).toBe(option.remainingCash);
       expect(rentFor(game.snapshot, id)).toBe(option.nextRent);
-      expect(game.snapshot.random).toEqual(initial.random);
-      expect(game.snapshot.turnPlayerId).toBe(initial.turnPlayerId);
-      expect(game.snapshot.completedRounds).toBe(initial.completedRounds);
-      expect(netAssets(game.snapshot, "p1")).toBe(netAssets(initial, "p1"));
+      expect(game.snapshot.random).toEqual(before.random);
+      expect(game.snapshot.turnPlayerId).toBe("p2");
+      expect(game.snapshot.completedRounds).toBe(before.completedRounds);
+      expect(netAssets(game.snapshot, "p1")).toBe(netAssets(before, "p1"));
       for (const language of ["en", "zh-CN"] as const) expect(eventText(language, result.events[0]!, game.snapshot)).toContain(String(level));
       const restored = Game.restore(readSave(makeSave(game.snapshot, propertyMatchId)).record.state);
       expect(restored.snapshot).toEqual(game.snapshot);
       expect(game.apply(command)).toEqual({ ok: false, reason: "stale_revision" });
     }
   }
-  expect(game.snapshot.players[0]).toMatchObject({ cash: initial.players[0]!.cash - 480, statistics: { constructionSpent: 480 } });
-  expect(upgradeOption(game.snapshot, "p1", "neon-avenue").reason).toBe("max_level");
+  expect(game.snapshot.players[0]).toMatchObject({ statistics: { constructionSpent: 480 } });
   expect(upgrade(game, "neon-avenue")).toEqual({ ok: false, reason: "illegal_action" });
 });
 
@@ -67,11 +66,10 @@ it.each([
   ["not_turn", (snapshot: GameSnapshot) => ({ ...snapshot, decision: { kind: "awaiting_roll" as const, actorId: "p2" as const }, turnPlayerId: "p2" as const })],
   ["insufficient_cash", (snapshot: GameSnapshot) => ({ ...snapshot, players: snapshot.players.map((player) => player.id === "p1" ? { ...player, cash: 89 } : player) })],
 ] as const)("projects and rejects %s without changing the source state", (reason, change) => {
-  const snapshot = propertyMatch().snapshot;
+  const snapshot = visitOwnedProperty(propertyMatch(), "neon-avenue").snapshot;
   const candidate = change(snapshot);
   expect(upgradeOption(candidate, "p1", "neon-avenue").reason).toBe(reason);
   expect(legalCommands(candidate, "p1").some((command) => command.kind === "upgrade" && command.propertyId === "neon-avenue")).toBe(false);
-  expect(snapshot.players[0]!.cash).toBe(1746);
   expect(snapshot.properties["neon-avenue"]!.level).toBe(0);
   const saved = makeSave(snapshot, propertyMatchId).state;
   const players = reason === "incomplete_group" ? candidate.players.map((player) => player.id === "p1" ? {
@@ -86,8 +84,7 @@ it.each([
 });
 
 it("rejects unbalanced, other-owner, missing/non-property and wrong-actor commands atomically", () => {
-  const game = propertyMatch();
-  expect(upgrade(game, "neon-avenue").ok).toBe(true);
+  const game = visitOwnedProperty(buildProperties(propertyMatch(), ["neon-avenue"]), "neon-avenue");
   expect(upgradeOption(game.snapshot, "p1", "neon-avenue").reason).toBe("unbalanced");
   const before = game.snapshot;
   for (const id of ["neon-avenue", "skyline-road", "city-tax", "unknown"]) expect(upgrade(game, id)).toEqual({ ok: false, reason: "illegal_action" });
@@ -97,7 +94,7 @@ it("rejects unbalanced, other-owner, missing/non-property and wrong-actor comman
 
 it("allows exact-cost construction but rejects one cash unit less and preserves ledger validity", () => {
   for (const cash of [89, 90]) {
-    const record = makeSave(propertyMatch().snapshot, propertyMatchId);
+    const record = makeSave(visitOwnedProperty(propertyMatch(), "neon-avenue").snapshot, propertyMatchId);
     const game = Game.restore({ ...record.state, players: record.state.players.map((player) => player.id === "p1" ? {
       ...player, cash, statistics: { ...player.statistics, taxesPaid: player.statistics.taxesPaid + player.cash - cash },
     } : player) });
@@ -112,12 +109,12 @@ it("allows exact-cost construction but rejects one cash unit less and preserves 
 it.each([
   (raw: any) => { raw.state.players[0].statistics.constructionSpent += 1; raw.state.players[0].cash -= 1; },
   (raw: any) => { raw.state.properties["neon-avenue"].constructionCosts[0] += 1; },
-  (raw: any) => { raw.state.history.at(-1).event.level = 4; },
-  (raw: any) => { raw.state.history.at(-1).event.cost = 91; },
-  (raw: any) => { raw.state.history.at(-1).event.propertyId = "city-tax"; },
-  (raw: any) => { raw.state.history.at(-1).event.actor = "unknown"; },
+  (raw: any) => { raw.state.history.at(-2).event.level = 4; },
+  (raw: any) => { raw.state.history.at(-2).event.cost = 91; },
+  (raw: any) => { raw.state.history.at(-2).event.propertyId = "city-tax"; },
+  (raw: any) => { raw.state.history.at(-2).event.actor = "unknown"; },
 ])("rejects corrupted construction ledger/state/history %# without mutating the game", (mutate) => {
-  const game = propertyMatch();
+  const game = visitOwnedProperty(propertyMatch(), "neon-avenue");
   expect(upgrade(game, "neon-avenue").ok).toBe(true);
   const before = game.snapshot;
   const raw = JSON.parse(JSON.stringify(makeSave(before, propertyMatchId)));

@@ -241,12 +241,12 @@
   },
   "history": { "title": "行动历史", "count": "保留最近{limit}条事件，当前{count}条。", "empty": "尚无行动。", "revision": "行动{revision}", "back": "关闭历史" },
   "construction": {
-    "title": "建设一级", "rentChange": "租金：{current} → {next}", "cost": "建设费用", "remaining": "建设后现金", "upgrade": "建设 · {cost}",
-    "unavailable": "等待当前行动保存并展示完成。",
-    "reasons": { "not_owner": "只有所有者可以建设。", "not_turn": "仅可在自己的回合掷骰前建设。", "incomplete_group": "请先拥有同色组的全部地产。", "max_level": "已达到最高建筑等级。", "unbalanced": "请先建设组内等级较低的地产。", "insufficient_cash": "现金不足以支付建设费用。" }
+    "decision": "本次到访「{propertyName}」，最多升级一级。", "rentChange": "租金：{current} → {next}", "remaining": "建设后现金", "upgrade": "升一级 · {cost}",
+    "unavailable": "等待当前行动保存并展示完成。", "skip": "不升级", "skipped": "{actor}本次不升级「{propertyName}」。",
+    "reasons": { "not_owner": "只有所有者可以建设。", "not_turn": "仅在本次到访自己的地产时可升级一级。", "not_position": "只能升级当前脚下的地产。", "incomplete_group": "请先拥有同色组的全部地产。", "max_level": "已达到最高建筑等级。", "unbalanced": "请先建设组内等级较低的地产。", "insufficient_cash": "现金不足以支付建设费用。" }
   },
   "liquidity": {
-    "title": "地产经营", "operation": "选择操作", "proceeds": "收到现金", "remaining": "操作后现金", "loss": "净资产损失", "choices": { "upgrade": "建设一级", "sell_building": "出售一级建筑" },
+    "title": "地产经营", "proceeds": "收到现金", "remaining": "操作后现金", "loss": "净资产损失",
     "actions": { "sell_building": "出售 · {amount}" },
     "reasons": { "not_owner": "只有所有者可以经营该地产。", "not_turn": "仅可在自己的回合掷骰前经营地产。", "no_building": "没有可出售的建筑。", "unbalanced_sale": "请先出售组内等级较高的建筑。" }
   },

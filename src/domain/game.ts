@@ -104,7 +104,7 @@ export class Game {
       let deck = before.deck;
       let lastRoll = before.lastRoll;
       const events: GameEvent[] = [];
-      let finishTurn = command.kind === "roll" || command.kind === "buy" || command.kind === "skip" || command.kind === "discard_item";
+      let finishTurn = command.kind === "roll" || command.kind === "buy" || command.kind === "skip" || command.kind === "upgrade" || command.kind === "discard_item";
       const consumeItem = () => {
         if (!activeItem) throw new Error("没有已启用道具");
         deck = discardItem(deck, activeItem.instanceId);
@@ -204,7 +204,10 @@ export class Game {
                 decision = { kind: "awaiting_purchase", actorId: player.id, propertyId: tile.id };
                 return { kind: "property_available", propertyId: tile.id, price: tile.price };
               }
-              if (ownerId === player.id) return { kind: "property_owned", propertyId: tile.id };
+              if (ownerId === player.id) {
+                if (properties[tile.id]!.level < 3) decision = { kind: "awaiting_upgrade", actorId: player.id, propertyId: tile.id };
+                return { kind: "property_owned", propertyId: tile.id };
+              }
               const owner = players.find((candidate) => candidate.id === ownerId);
               if (!owner) throw new Error("产权玩家不存在");
               const amount = rentFor(before, tile.id);
@@ -273,7 +276,7 @@ export class Game {
           properties[property.id] = { ...properties[property.id]!, ownerId: player.id };
           events.push({ kind: "purchased", actor: player.id, propertyId: property.id, price: property.price });
         } else {
-          events.push({ kind: "skipped", actor: player.id, propertyId: property.id });
+          events.push({ kind: before.decision.kind === "awaiting_upgrade" ? "upgrade_skipped" : "skipped", actor: player.id, propertyId: property.id });
         }
       }
 

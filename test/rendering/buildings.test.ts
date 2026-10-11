@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { BoardView } from "../../src/rendering/BoardView";
-import { propertyMatch } from "../fixtures/property-match";
+import { buildProperties, propertyMatch } from "../fixtures/property-match";
 import { makeSave, readSave } from "../../src/storage/snapshot";
 import { propertyMatchId } from "../fixtures/property-match";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
@@ -26,7 +26,7 @@ function trackResources(root: THREE.Object3D, includeTextures = true) {
 it("renders the real three levels, replaces their resources once, and restores without replay or reallocation", () => {
   const fillText = vi.fn();
   stubCanvas(fillText);
-  const game = propertyMatch();
+  let game = propertyMatch();
   const scene = new THREE.Scene();
   const snapshot = game.snapshot;
   const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
@@ -36,7 +36,7 @@ it("renders the real three levels, replaces their resources once, and restores w
   let previousSpies: ReturnType<typeof trackResources> = [];
   let previousHeight = 0;
   for (const level of [1, 2, 3] as const) {
-    for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ actor: "p1", kind: "upgrade", propertyId: id, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+    game = buildProperties(game, ["neon-avenue", "harbor-walk"]);
     board.syncOwnership(game.snapshot);
     const current = scene.getObjectByName("property-building-neon-avenue")!;
     expect(current).toBeDefined();
@@ -80,12 +80,12 @@ it("renders the real three levels, replaces their resources once, and restores w
 });
 
 it("grows only an already committed building through the shared clock, then restores its full outline without replay", async () => {
-  stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene(); const before = game.snapshot;
+  stubCanvas(); let game = propertyMatch(); const scene = new THREE.Scene(); const before = game.snapshot;
   const board = new BoardView(scene, "en", before.map, before.config, before.rules); const clock = new MotionClock();
   try {
     board.syncOwnership(before);
     for (const level of [1, 2, 3] as const) {
-      for (const propertyId of ["neon-avenue", "harbor-walk"]) expect(game.apply({ actor: "p1", kind: "upgrade", propertyId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+      game = buildProperties(game, ["neon-avenue", "harbor-walk"]);
       board.syncOwnership(game.snapshot);
       const saved = makeSave(game.snapshot, propertyMatchId);
       const building = scene.getObjectByName("property-building-neon-avenue")!;
@@ -106,8 +106,7 @@ it("grows only an already committed building through the shared clock, then rest
 });
 
 it.each(["abort", "clock", "dispose", "reduced", "already-aborted"] as const)("%s finishes or cancels growth without stale motion, duplicate disposal or economic replay", async (mode) => {
-  stubCanvas(); const game = propertyMatch(); const scene = new THREE.Scene(); const before = game.snapshot;
-  expect(game.apply({ actor: "p1", kind: "upgrade", propertyId: "neon-avenue", expectedRevision: before.revision }).ok).toBe(true);
+  stubCanvas(); const game = buildProperties(propertyMatch(), ["neon-avenue"]); const scene = new THREE.Scene();
   const snapshot = game.snapshot; const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);
   board.syncOwnership(snapshot);
   const building = scene.getObjectByName("property-building-neon-avenue")!; const disposals = trackResources(building);
@@ -129,8 +128,7 @@ it.each(["abort", "clock", "dispose", "reduced", "already-aborted"] as const)("%
 it("removes sold buildings and updates neighboring rent labels from real operations", () => {
   const fillText = vi.fn();
   stubCanvas(fillText);
-  const game = propertyMatch();
-  for (const id of ["neon-avenue", "harbor-walk"]) expect(game.apply({ actor: "p1", kind: "upgrade", propertyId: id, expectedRevision: game.snapshot.revision }).ok).toBe(true);
+  const game = buildProperties(propertyMatch(), ["neon-avenue", "harbor-walk"]);
   const scene = new THREE.Scene();
   const snapshot = game.snapshot;
   const board = new BoardView(scene, "en", snapshot.map, snapshot.config, snapshot.rules);

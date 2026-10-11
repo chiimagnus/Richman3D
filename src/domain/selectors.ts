@@ -7,7 +7,7 @@ import { itemCommands } from "./cards";
 
 export function pendingProperty(snapshot: GameReadSnapshot): PropertyTile | null {
   const decision = snapshot.decision;
-  if (decision.kind !== "awaiting_purchase") return null;
+  if (decision.kind !== "awaiting_purchase" && decision.kind !== "awaiting_upgrade") return null;
   const tile = snapshot.map.tiles.find((candidate) => candidate.id === decision.propertyId);
   return tile?.type === "property" ? tile : null;
 }
@@ -34,12 +34,15 @@ export function legalCommands(snapshot: GameReadSnapshot, actor: PlayerId): read
   ];
   if (snapshot.decision.kind === "awaiting_roll") return [{ ...base, kind: "roll" }, ...itemCommands(snapshot, actor),
     ...snapshot.map.tiles.filter((tile) => tile.type === "property" && snapshot.properties[tile.id]!.ownerId === actor).flatMap((tile) => [
-      ...(upgradeOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "upgrade" as const, propertyId: tile.id }] : []),
       ...(saleOption(snapshot, actor, tile.id).reason === null ? [{ ...base, kind: "sell_building" as const, propertyId: tile.id }] : []),
     ]),
   ];
   const property = pendingProperty(snapshot);
   const player = snapshot.players.find((candidate) => candidate.id === actor);
+  if (snapshot.decision.kind === "awaiting_upgrade") return property && property.id === currentTile(snapshot, actor).id && snapshot.properties[property.id]!.ownerId === actor ? [
+    ...(upgradeOption(snapshot, actor, property.id).reason === null ? [{ ...base, kind: "upgrade" as const, propertyId: property.id }] : []),
+    { ...base, kind: "skip" },
+  ] : [];
   if (!property || !player || property.id !== currentTile(snapshot, actor).id || snapshot.properties[property.id]!.ownerId !== null) return [];
   return [
     ...(player.cash >= property.price ? [{ ...base, kind: "buy" as const }] : []),

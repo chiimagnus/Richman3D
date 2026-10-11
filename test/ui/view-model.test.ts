@@ -5,10 +5,10 @@ import { GameSession } from "../../src/app/GameSession";
 import { actionView } from "../../src/ui/viewModel";
 import { formatCash, formatMessage, messages, playerName } from "../../src/i18n";
 import { QUICK_RULES } from "../../src/domain/rules";
-import { propertyMatch } from "../fixtures/property-match";
+import { propertyMatch, visitOwnedProperty } from "../fixtures/property-match";
 
 it.each(["en", "zh-CN"] as const)("%s reports an already committed upgrade as presentation, not a pawn movement or a new actionable turn", async (language) => {
-  const game = propertyMatch(); const before = game.snapshot; const session = new GameSession(game);
+  const game = visitOwnedProperty(propertyMatch(), "neon-avenue"); const before = game.snapshot; const session = new GameSession(game);
   session.bind({ sync() {}, stop() {}, present: () => new Promise(() => {}) });
   try {
     const work = session.dispatch({ actor: "p1", kind: "upgrade", propertyId: "neon-avenue", expectedRevision: before.revision });

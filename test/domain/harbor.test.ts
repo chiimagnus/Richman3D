@@ -8,6 +8,7 @@ import { legalCommands } from "../../src/domain/selectors";
 import { movement } from "../../src/domain/movement";
 import { QUICK_RULES } from "../../src/domain/rules";
 import { makeSave } from "../../src/storage/snapshot";
+import { buildProperties } from "../fixtures/property-match";
 
 const matchId = "00000000-0000-4000-8000-000000000010";
 
@@ -55,15 +56,14 @@ it("a real dispersed group can grow evenly and sell buildings through the shared
       const actor = state.decision.kind === "game_over" ? state.turnPlayerId : state.decision.actorId;
       if (state.decision.kind === "awaiting_roll" && actor === "p1" && completeGroup(state, HARBOR.tiles[1] as Extract<typeof HARBOR.tiles[number], { type: "property" }>)) { checkpoint = game; break; }
       const kind = state.decision.kind === "awaiting_purchase" ? actor === "p1" && ["pier-walk", "fish-market", "coastal-street"].includes(state.decision.propertyId) ? "buy" : "skip"
-        : state.decision.kind === "awaiting_discard" ? "discard_item" : state.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
+        : state.decision.kind === "awaiting_upgrade" ? "skip" : state.decision.kind === "awaiting_discard" ? "discard_item" : state.decision.kind === "awaiting_debt" ? "bankrupt" : "roll";
       expect(game.apply(legalCommands(state, actor).find((command) => command.kind === kind)!).ok).toBe(true);
     }
   }
   expect(checkpoint).not.toBeNull();
-  const game = checkpoint!;
+  expect(rentFor(checkpoint!.snapshot, "pier-walk")).toBe(22 * QUICK_RULES.groupRentPercent / 100);
+  const game = buildProperties(checkpoint!, ["pier-walk", "fish-market", "coastal-street"]);
   const random = game.snapshot.random;
-  expect(rentFor(game.snapshot, "pier-walk")).toBe(22 * QUICK_RULES.groupRentPercent / 100);
-  for (const propertyId of ["pier-walk", "fish-market", "coastal-street"]) expect(game.apply({ kind: "upgrade", actor: "p1", propertyId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   for (const propertyId of ["pier-walk", "fish-market", "coastal-street"]) expect(game.apply({ kind: "sell_building", actor: "p1", propertyId, expectedRevision: game.snapshot.revision }).ok).toBe(true);
   expect(game.snapshot.random).toEqual(random);
   expect(Game.restore(makeSave(game.snapshot, matchId).state).snapshot).toEqual(game.snapshot);

@@ -10,7 +10,7 @@ import { chooseBotAction, observeBot } from "../../src/domain/bot";
 import type { Command, ItemCardId } from "../../src/domain/types";
 import { fullHandCheckpoint, itemCheckpoint, itemFineCheckpoint, itemLandingCheckpoint } from "../fixtures/items";
 import { builtRentDebtMatch } from "../fixtures/debt-match";
-import { propertyMatchId } from "../fixtures/property-match";
+import { ordinaryTurn, propertyMatchId, visitOwnedProperty } from "../fixtures/property-match";
 
 function use(game: Game, type: ItemCardId, total: number | null = null, targetId: "p2" | null = null) {
   const command = legalCommands(game.snapshot, "p1").find((command) => command.kind === "use_item" && cardType(command.instanceId) === type && command.total === total && command.targetId === targetId)!;
@@ -145,11 +145,12 @@ it("rejects a restored controlled roll whose chosen total was rewritten after co
 });
 
 it("discounts only the next legal construction, records actual cost, and bases sale proceeds and net assets on it", () => {
-  const game = itemCheckpoint("construction-discount", true);
+  let game = itemCheckpoint("construction-discount", true);
   expect(game.snapshot.properties["neon-avenue"]!.ownerId).toBe("p1");
   expect(game.snapshot.properties["harbor-walk"]!.ownerId).toBe("p1");
   const original = upgradeOption(game.snapshot, "p1", "neon-avenue").cost;
   use(game, "construction-discount");
+  game = visitOwnedProperty(game, "neon-avenue");
   const option = upgradeOption(game.snapshot, "p1", "neon-avenue");
   expect(option.cost).toBe(discountedCost(original, game.snapshot.rules.constructionDiscountPercent));
   expect(option.reason).toBeNull();
@@ -162,6 +163,7 @@ it("discounts only the next legal construction, records actual cost, and bases s
   expect(game.snapshot.activeItem).toBeNull();
   expect(upgradeOption(game.snapshot, "p1", "harbor-walk").cost).toBe(70);
   restored(game);
+  game = ordinaryTurn(game);
   const beforeSale = game.snapshot.players[0]!.cash;
   expect(game.apply({ kind: "sell_building", actor: "p1", expectedRevision: game.snapshot.revision, propertyId: "neon-avenue" }).ok).toBe(true);
   const refund = constructionRefund(option.cost, game.snapshot.rules);

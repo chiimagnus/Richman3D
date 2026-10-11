@@ -7,7 +7,7 @@ import { legalCommands } from "../../src/domain/selectors";
 import { completeGroup, netAssets, rentFor } from "../../src/domain/economy";
 import { STANDARD_RULES } from "../../src/domain/rules";
 import { makeSave, readSave } from "../../src/storage/snapshot";
-import { propertyMatch, propertyMatchId } from "../fixtures/property-match";
+import { propertyMatch, propertyMatchId, visitOwnedProperty } from "../fixtures/property-match";
 import { builtRentDebtMatch, debtMatch } from "../fixtures/debt-match";
 import { fullHandCheckpoint, itemCheckpoint } from "../fixtures/items";
 
@@ -82,23 +82,22 @@ it.each(BOT_DIFFICULTIES)("%s refuses an affordable purchase that would leave le
 it.each(BOT_DIFFICULTIES)("%s uses legal construction, respects its level/reserve budget and never sells outside debt", (difficulty) => {
   const initial = propertyMatch();
   const state = makeSave(initial.snapshot, propertyMatchId).state;
-  const game = asBot(Game.restore({ ...state, players: state.players.map((player) => player.id === "p2" ? { ...player, position: 17 } : player) }), difficulty);
-  for (let count = 0; count < 10; count += 1) {
+  let game = asBot(Game.restore({ ...state, players: state.players.map((player) => player.id === "p2" ? { ...player, position: 17 } : player) }), difficulty);
+  expect(chooseBotAction(observeBot(game.snapshot))!.command.kind).toBe("roll");
+  for (const level of [1, 2, 3]) for (const propertyId of ["harbor-walk", "neon-avenue"]) {
+    game = visitOwnedProperty(game, propertyId);
     const before = game.snapshot;
     const observation = observeBot(before)!;
     const action = chooseBotAction(observation)!;
     expect(["sell_building"]).not.toContain(action.command.kind);
-    if (action.command.kind === "roll") {
-      expect(before.properties["harbor-walk"]!.level).toBe(difficulty === "easy" ? 1 : 3);
-      expect(before.properties["neon-avenue"]!.level).toBe(difficulty === "easy" ? 1 : 3);
-      return;
-    }
-    expect(action.reason).toBe("upgrade_income");
+    expect(action).toMatchObject(difficulty === "easy" && level > 1 ? { command: { kind: "skip" }, reason: "reserve_cash" } : { command: { kind: "upgrade", propertyId }, reason: "upgrade_income" });
     expect(game.apply(action.command).ok).toBe(true);
     expect(game.snapshot.players[0]!.cash).toBeGreaterThanOrEqual(botReserve(observation, difficulty));
     expect(game.snapshot.random).toEqual(before.random);
+    expect(game.snapshot.turnPlayerId).toBe("p2");
   }
-  throw new Error("Unbounded construction");
+  expect(game.snapshot.properties["harbor-walk"]!.level).toBe(difficulty === "easy" ? 1 : 3);
+  expect(game.snapshot.properties["neon-avenue"]!.level).toBe(difficulty === "easy" ? 1 : 3);
 });
 
 it("hard does not invest in a group when no opponent's public next-roll outcomes can reach it", () => {
@@ -168,16 +167,19 @@ it("holds a low-benefit tax coupon instead of consuming it before a roll", () =>
   expect(game.snapshot.history.filter((entry) => entry.revision > before.revision).some((entry) => entry.event.kind === "item_used")).toBe(false);
 });
 
-it("uses a construction coupon for a real immediate upgrade and pays the shared query's discounted amount once", () => {
+it("does not invent a pre-roll upgrade for a coupon, but honors an activated coupon at the real arrival", () => {
   const game = itemCheckpoint("construction-discount", true);
   const controlled = legalCommands(game.snapshot, "p1").find((command) => command.kind === "use_item" && command.total === 2)!;
   expect(game.apply(controlled).ok).toBe(true);
   expect(game.apply({ kind: "roll", actor: "p1", expectedRevision: game.snapshot.revision }).ok).toBe(true);
   advanceTo(game, "p1");
-  const bot = asBot(game);
+  let bot = asBot(game);
+  expect(observeBot(bot.snapshot)!.upgrades).toEqual([]);
+  expect(chooseBotAction(observeBot(bot.snapshot))).toMatchObject({ command: { kind: "roll" }, reason: "roll" });
+  const coupon = legalCommands(bot.snapshot, "p1").find((command) => command.kind === "use_item" && command.instanceId === "construction-discount:1")!;
+  expect(bot.apply(coupon).ok).toBe(true);
+  bot = visitOwnedProperty(bot, "neon-avenue");
   const before = bot.snapshot;
-  expect(applyChoice(bot)).toMatchObject({ command: { kind: "use_item", instanceId: "construction-discount:1" }, reason: "use_item" });
-  expect(bot.snapshot.players[0]!.cash).toBe(before.players[0]!.cash);
   expect(applyChoice(bot)).toMatchObject({ command: { kind: "upgrade", propertyId: "neon-avenue" }, reason: "upgrade_income" });
   expect(bot.snapshot.players[0]!.cash).toBe(before.players[0]!.cash - 72);
   expect(bot.snapshot.properties["neon-avenue"]!.constructionCosts).toEqual([72]);

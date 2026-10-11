@@ -4,7 +4,7 @@ import { matchAchievements } from "../../src/domain/achievements";
 import { Game } from "../../src/domain/game";
 import { createMatchConfig } from "../../src/domain/config";
 import { legalCommands } from "../../src/domain/selectors";
-import { propertyMatch } from "../fixtures/property-match";
+import { propertyMatch, visitOwnedProperty } from "../fixtures/property-match";
 import { debtMatch } from "../fixtures/debt-match";
 import { recordMatch } from "../fixtures/record-match";
 
@@ -33,8 +33,9 @@ it("real purchases award human ownership but not a bot purchase", () => {
 });
 
 it("uses real group ownership, balanced level-three construction and a bilateral trade", () => {
-  const game = propertyMatch();
+  let game = propertyMatch();
   for (const level of [1, 2, 3]) for (const propertyId of ["neon-avenue", "harbor-walk"]) {
+    game = visitOwnedProperty(game, propertyId);
     const before = game.snapshot;
     const result = game.apply({ kind: "upgrade", propertyId, actor: "p1", expectedRevision: before.revision });
     if (!result.ok) throw new Error(result.reason);
